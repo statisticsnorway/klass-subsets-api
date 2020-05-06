@@ -1,2 +1,2 @@
 # klass-subsets-api
-Subsets REST service på Java
+Subsets REST service in Java
