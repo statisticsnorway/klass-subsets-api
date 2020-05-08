@@ -62,7 +62,7 @@ public class SubsetsResource {
     }
 
     /**
-     * Return a wordly greeting message.
+     * Return all subsets
      *
      * @return {@link JsonObject}
      */
@@ -76,7 +76,7 @@ public class SubsetsResource {
     }
 
     /**
-     * Return a greeting message using the name that was provided.
+     * Return a subset with the id provided
      *
      * @param id the id to get
      * @return {@link JsonObject}

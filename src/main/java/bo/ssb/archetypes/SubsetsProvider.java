@@ -26,7 +26,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 
 /**
- * Provider for greeting message.
+ * Provider for subsets
  */
 @ApplicationScoped
 public class SubsetsProvider {
