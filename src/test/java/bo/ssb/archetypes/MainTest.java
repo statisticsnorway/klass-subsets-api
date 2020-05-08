@@ -31,6 +31,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.Random;
+
 class MainTest {
     private static Server server;
 
@@ -41,7 +43,7 @@ class MainTest {
 
 
     @Test
-    void testHelloWorld() {
+    void testGetAllSubsets() {
 
         Client client = ClientBuilder.newClient();
 
@@ -51,34 +53,55 @@ class MainTest {
                 .get(JsonObject.class);
         Assertions.assertEquals("", jsonObject.getString("subsets"),
                 "get all subsets");
+    }
 
-        jsonObject = client
+    @Test
+    void testGetSubset(){
+        Client client = ClientBuilder.newClient();
+        JsonObject jsonObject = client
                 .target(getConnectionString("/subsets/1"))
                 .request()
                 .get(JsonObject.class);
         Assertions.assertEquals("{id: 1}", jsonObject.toString(),
                 "get subset 1");
+    }
 
+    @Test
+    void testPutSubset(){
+        //TODO: Never run this in prod. That might change data on lds?
+
+        String random = Float.toString(new Random().nextFloat());
+        String subset1 = "{id: 1, test:"+random+"}";
+
+        Client client = ClientBuilder.newClient();
         Response r = client
                 .target(getConnectionString("/subsets/1"))
                 .request()
-                .put(Entity.entity("{id: 1}", MediaType.APPLICATION_JSON));
+                .put(Entity.entity(subset1, MediaType.APPLICATION_JSON));
         Assertions.assertEquals(204, r.getStatus(), "PUT status code");
 
-        jsonObject = client
+        JsonObject jsonObject = client
                 .target(getConnectionString("/subsets/1"))
                 .request()
                 .get(JsonObject.class);
-        Assertions.assertEquals("Hola Jose!", jsonObject.getString("message"),
-                "hola Jose message");
+        Assertions.assertEquals(subset1, jsonObject.toString(),
+                "update subset value");
+    }
 
-        r = client
+    @Test
+    void testMetrics(){
+        Client client = ClientBuilder.newClient();
+        Response r = client
                 .target(getConnectionString("/metrics"))
                 .request()
                 .get();
         Assertions.assertEquals(200, r.getStatus(), "GET metrics status code");
+    }
 
-        r = client
+    @Test
+    void testHealth(){
+        Client client = ClientBuilder.newClient();
+        Response r = client
                 .target(getConnectionString("/health"))
                 .request()
                 .get();
