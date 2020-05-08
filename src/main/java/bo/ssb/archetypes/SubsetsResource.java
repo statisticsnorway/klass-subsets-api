@@ -119,7 +119,7 @@ public class SubsetsResource {
 
         JsonObject newSubset = jsonObject.getJsonObject("subset");
 
-        subsetsProvider.setSubset(newSubset);
+        subsetsProvider.updateSubset(newSubset);
         return Response.status(Response.Status.NO_CONTENT).build();
     }
 
@@ -151,7 +151,7 @@ public class SubsetsResource {
 
         JsonObject newSubset = jsonObject.getJsonObject("subset");
 
-        subsetsProvider.setSubset(newSubset);
+        subsetsProvider.updateSubset(newSubset);
         return Response.status(Response.Status.NO_CONTENT).build();
     }
 }

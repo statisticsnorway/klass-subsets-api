@@ -49,20 +49,20 @@ class MainTest {
                 .target(getConnectionString("/subsets"))
                 .request()
                 .get(JsonObject.class);
-        Assertions.assertEquals("Hello World!", jsonObject.getString("message"),
-                "default message");
+        Assertions.assertEquals("", jsonObject.getString("subsets"),
+                "get all subsets");
 
         jsonObject = client
                 .target(getConnectionString("/subsets/1"))
                 .request()
                 .get(JsonObject.class);
-        Assertions.assertEquals("Hello Joe!", jsonObject.getString("message"),
-                "hello Joe message");
+        Assertions.assertEquals("{id: 1}", jsonObject.toString(),
+                "get subset 1");
 
         Response r = client
                 .target(getConnectionString("/subsets/1"))
                 .request()
-                .put(Entity.entity("{\"subset\" : {}}", MediaType.APPLICATION_JSON));
+                .put(Entity.entity("{id: 1}", MediaType.APPLICATION_JSON));
         Assertions.assertEquals(204, r.getStatus(), "PUT status code");
 
         jsonObject = client

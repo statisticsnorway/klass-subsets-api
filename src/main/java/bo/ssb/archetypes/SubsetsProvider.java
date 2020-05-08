@@ -70,23 +70,36 @@ public class SubsetsProvider {
                 .build(KlassService.class);
     }
 
+    /**
+     * Get all subsets with a call to LDS
+     * @return
+     */
     JsonObject getSubsets() {
-        //return message.get();
-        // TODO: Get all subsets with a call to LDS
         return ldsSvc.getAllSubsets();
     }
 
+    /**
+     * Get a single subset with id 'id' from a call to LDS
+     * @param id
+     * @return
+     */
     JsonObject getSubset(String id) {
-        //return message.get();
-        //TODO: Get a single subset with id 'id' from a call to LDS
         return ldsSvc.getSubset(id);
     }
 
-    void setSubset(JsonObject subset) {
-        //this.message.set(message);
-        //TODO: Post/Put subset to LDS?
+    /**
+     * Put subset to LDS
+     * @param subset
+     */
+    void updateSubset(JsonObject subset) {
+        ldsSvc.updateSubset(subset.getString("id"), subset);
     }
 
+    /**
+     * Get a code from KLASS api
+     * @param code
+     * @return
+     */
     JsonObject getCode(String code) {
         return klassSvc.getCode(code);
     }
