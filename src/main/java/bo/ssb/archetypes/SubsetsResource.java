@@ -69,7 +69,7 @@ public class SubsetsResource {
     @SuppressWarnings("checkstyle:designforextension")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public JsonObject getDefaultMessage() {
+    public JsonObject getAllSubsets() {
         return JSON.createObjectBuilder()
                 .add("subsets", subsetsProvider.getSubsets())
                 .build();
@@ -85,7 +85,7 @@ public class SubsetsResource {
     @Path("/{id}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public JsonObject getMessage(@PathParam("id") String id) {
+    public JsonObject getSubset(@PathParam("id") String id) {
         return JSON.createObjectBuilder()
                 .add(id, subsetsProvider.getSubset(id))
                 .build();
