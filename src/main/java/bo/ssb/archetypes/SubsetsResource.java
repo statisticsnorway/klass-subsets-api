@@ -61,6 +61,15 @@ public class SubsetsResource {
         this.subsetsProvider = subsetsConfig;
     }
 
+    @Path("/code/{code}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public JsonObject getClassification(@PathParam("code") String code){
+        return JSON.createObjectBuilder()
+                .add("classifications", subsetsProvider.getCode(code))
+                .build();
+    }
+
     /**
      * Return all subsets
      *
