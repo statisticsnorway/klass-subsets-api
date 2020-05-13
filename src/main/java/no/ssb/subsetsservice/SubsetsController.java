@@ -1,5 +1,6 @@
 package no.ssb.subsetsservice;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,33 +26,40 @@ public class SubsetsController {
     }
 
     @RequestMapping("/v1/subsets")
-    public String getSubsets() {
-        return getFrom(LDS_SUBSET_API, "");
+    public ResponseEntity<String> getSubsets() {
+        ResponseEntity<String> responseEntity = getFrom(LDS_SUBSET_API, "");
+        return responseEntity;
     }
 
     @RequestMapping("/v1/subsets/{id}")
-    public String getSubset(@PathVariable("id") String id) {
-        return getFrom(LDS_SUBSET_API, "/"+id);
+    public ResponseEntity<String> getSubset(@PathVariable("id") String id) {
+        ResponseEntity<String> responseEntity = getFrom(LDS_SUBSET_API, "/"+id);
+        return responseEntity;
     }
 
     @RequestMapping("/v1/subsets?schema")
-    public String getSchema(){
-        return getFrom(LDS_SUBSET_API,"/?schema");
+    public ResponseEntity<String> getSchema(){
+        ResponseEntity<String> responseEntity = getFrom(LDS_SUBSET_API,"/?schema");
+        return responseEntity;
     }
 
     @RequestMapping("/v1/codes")
-    public String getCodes(){
-        return getFrom(KLASS_CODES_API, ".json");
+    public ResponseEntity<String> getCodes(){
+        ResponseEntity<String> responseEntity = getFrom(KLASS_CODES_API, ".json");
+        return responseEntity;
     }
 
     @RequestMapping("/v1/codes/{id}")
-    public String getCode(@PathVariable("id") String id){
-        return getFrom(KLASS_CODES_API, "/"+id+".json");
+    public ResponseEntity<String> getCode(@PathVariable("id") String id){
+        ResponseEntity<String> responseEntity = getFrom(KLASS_CODES_API, "/"+id+".json");
+        return responseEntity;
     }
 
-    private static String getFrom(String apiBase, String additional)
+    private static ResponseEntity<String> getFrom(String apiBase, String additional)
     {
         RestTemplate restTemplate = new RestTemplate();
-        return restTemplate.getForObject(apiBase + additional, String.class);
+        ResponseEntity<String> responseEntity = restTemplate.getForEntity(apiBase + additional, String.class);
+        return responseEntity;
+        //return restTemplate.getForObject(apiBase + additional, String.class);
     }
 }
