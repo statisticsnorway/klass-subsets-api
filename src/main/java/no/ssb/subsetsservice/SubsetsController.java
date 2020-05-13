@@ -24,27 +24,27 @@ public class SubsetsController {
         }
     }
 
-    @RequestMapping("/subsets")
+    @RequestMapping("/v1/subsets")
     public String getSubsets() {
         return getFrom(LDS_SUBSET_API, "");
     }
 
-    @RequestMapping("/subsets/{id}")
+    @RequestMapping("/v1/subsets/{id}")
     public String getSubset(@PathVariable("id") String id) {
         return getFrom(LDS_SUBSET_API, "/"+id);
     }
 
-    @RequestMapping("/subsets?schema")
+    @RequestMapping("/v1/subsets?schema")
     public String getSchema(){
         return getFrom(LDS_SUBSET_API,"/?schema");
     }
 
-    @RequestMapping("/codes")
+    @RequestMapping("/v1/codes")
     public String getCodes(){
         return getFrom(KLASS_CODES_API, ".json");
     }
 
-    @RequestMapping("/codes/{id}")
+    @RequestMapping("/v1/codes/{id}")
     public String getCode(@PathVariable("id") String id){
         return getFrom(KLASS_CODES_API, "/"+id+".json");
     }
