@@ -27,39 +27,31 @@ public class SubsetsController {
 
     @RequestMapping("/v1/subsets")
     public ResponseEntity<String> getSubsets() {
-        ResponseEntity<String> responseEntity = getFrom(LDS_SUBSET_API, "");
-        return responseEntity;
+        return getFrom(LDS_SUBSET_API, "");
     }
 
     @RequestMapping("/v1/subsets/{id}")
     public ResponseEntity<String> getSubset(@PathVariable("id") String id) {
-        ResponseEntity<String> responseEntity = getFrom(LDS_SUBSET_API, "/"+id);
-        return responseEntity;
+        return getFrom(LDS_SUBSET_API, "/"+id);
     }
 
     @RequestMapping("/v1/subsets?schema")
     public ResponseEntity<String> getSchema(){
-        ResponseEntity<String> responseEntity = getFrom(LDS_SUBSET_API,"/?schema");
-        return responseEntity;
+        return getFrom(LDS_SUBSET_API,"/?schema");
     }
 
     @RequestMapping("/v1/codes")
     public ResponseEntity<String> getCodes(){
-        ResponseEntity<String> responseEntity = getFrom(KLASS_CODES_API, ".json");
-        return responseEntity;
+        return getFrom(KLASS_CODES_API, ".json");
     }
 
     @RequestMapping("/v1/codes/{id}")
     public ResponseEntity<String> getCode(@PathVariable("id") String id){
-        ResponseEntity<String> responseEntity = getFrom(KLASS_CODES_API, "/"+id+".json");
-        return responseEntity;
+        return getFrom(KLASS_CODES_API, "/"+id+".json");
     }
 
     private static ResponseEntity<String> getFrom(String apiBase, String additional)
     {
-        RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<String> responseEntity = restTemplate.getForEntity(apiBase + additional, String.class);
-        return responseEntity;
-        //return restTemplate.getForObject(apiBase + additional, String.class);
+        return new RestTemplate().getForEntity(apiBase + additional, String.class);
     }
 }
