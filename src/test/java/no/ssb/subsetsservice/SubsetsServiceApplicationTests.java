@@ -1,8 +1,8 @@
 package no.ssb.subsetsservice;
 
-import net.minidev.json.parser.JSONParser;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.ResponseEntity;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -27,7 +27,10 @@ class SubsetsServiceApplicationTests {
 			myReader.close();
 			String subsetJSON = sb.toString();
 			System.out.println(subsetJSON);
-			SubsetsController.putTo(ldsURL, "/1", subsetJSON);
+			ResponseEntity<String> response = SubsetsController.putTo(ldsURL, "/1", subsetJSON);
+
+			System.out.println(response.getHeaders());
+			System.out.println(response.getBody());
 		} catch (FileNotFoundException e) {
 			System.out.println("An error occurred.");
 			e.printStackTrace();

@@ -1,8 +1,10 @@
 package no.ssb.subsetsservice;
 
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.Collections;
 
 @RestController
 public class SubsetsController {
@@ -28,8 +30,14 @@ public class SubsetsController {
         return getFrom(LDS_SUBSET_API, "");
     }
 
+    /**
+     * This method SHOULD figure out what the 'id' of the subset is from the value inside the JSON
+     * and then post to subsets/{id} //TODO: Make it so
+     * @param subsetsJson
+     * @return
+     */
     @PostMapping("/v1/subsets")
-    public ResponseEntity<String> postSubsets(@RequestBody String subsetsJson) {
+    public ResponseEntity<String> postSubset(@RequestBody String subsetsJson) {
         return postTo(LDS_SUBSET_API, "", subsetsJson);
     }
 
@@ -38,9 +46,9 @@ public class SubsetsController {
         return getFrom(LDS_SUBSET_API, "/"+id);
     }
 
-    @PutMapping("/v1/subsets/{id}")
+    @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> putSubset(@PathVariable("id") String id, @RequestBody String subsetJson) {
-        return putTo(LDS_SUBSET_API, "/"+id, subsetJson);
+        return postTo(LDS_SUBSET_API, "/"+id, subsetJson);
     }
 
     @GetMapping("/v1/subsets?schema")
@@ -64,11 +72,16 @@ public class SubsetsController {
     }
 
     static ResponseEntity<String> postTo(String apiBase, String additional, String json){
-        //TODO: For each subset in json of subsets, put indnividually to LDS ?
-        return new RestTemplate().postForEntity(apiBase+additional, json, String.class);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        HttpEntity<String> request = new HttpEntity<>(json, headers);
+        ResponseEntity<String> response = new RestTemplate().postForEntity(apiBase+additional, request, String.class);
+        System.out.println("POST to "+apiBase+additional+" - Status: "+response.getStatusCodeValue()+" "+response.getStatusCode().name()+" "+response.getStatusCode().getReasonPhrase());
+        return response;
     }
 
     static ResponseEntity<String> putTo(String apiBase, String additional, String json){
-        return new RestTemplate().postForEntity(apiBase+additional, json, String.class);
+        return postTo(apiBase, additional, json);
     }
 }
