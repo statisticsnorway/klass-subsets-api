@@ -77,7 +77,7 @@ public class SubsetsController {
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         HttpEntity<String> request = new HttpEntity<>(json, headers);
         ResponseEntity<String> response = new RestTemplate().postForEntity(apiBase+additional, request, String.class);
-        System.out.println("POST to "+apiBase+additional+" - Status: "+response.getStatusCodeValue()+" "+response.getStatusCode().name()+" "+response.getStatusCode().getReasonPhrase());
+        System.out.println("POST to "+apiBase+additional+" - Status: "+response.getStatusCodeValue()+" "+response.getStatusCode().name());
         return response;
     }
 
