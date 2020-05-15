@@ -1,5 +1,8 @@
 package no.ssb.subsetsservice;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.coyote.Response;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -40,7 +43,18 @@ public class SubsetsController {
      */
     @PostMapping("/v1/subsets")
     public ResponseEntity<String> postSubset(@RequestBody String subsetsJson) {
-        return postTo(LDS_SUBSET_API, "", subsetsJson);
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            JsonNode actualObj = mapper.readTree(subsetsJson);
+            if (actualObj != null){
+                JsonNode idJN = actualObj.get("id");
+                String id = idJN.asText();
+                return postTo(LDS_SUBSET_API, "/"+id, subsetsJson);
+            }
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
     @GetMapping("/v1/subsets/{id}")
