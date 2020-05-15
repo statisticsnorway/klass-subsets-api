@@ -1,0 +1,174 @@
+[
+  {
+    "id": "1",
+    "name": [
+      {
+        "languageText": "Oslo Bærum Felter 1 og 5 v3",
+        "languageCode": "nb"
+      },
+      {
+        "languageText": "Oslo Bærum Fields 1 and 5 v3",
+        "languageCode": "en"
+      }
+    ],
+    "description": [
+      {
+        "languageText": "Lagret for test formål",
+        "languageCode": "nb"
+      },
+      {
+        "languageText": "Made for test purposes",
+        "languageCode": "en"
+      }
+    ],
+    "shortName": "Test subset 1",
+    "administrativeStatus": "OPEN",
+    "createdDate": "2020-03-24T13:05:17.343Z",
+    "createdBy": "312 - Seksjon for arbeidsmarked og lønnsstatistikk ",
+    "version": "3.0.1",
+    "versionValidFrom": "2020-03-25T13:05:17.343Z",
+    "versionRationale": [
+      {
+        "languageText": "Fjernet kode 2",
+        "languageCode": "nb"
+      },
+      {
+        "languageText": "Removed code 2",
+        "languageCode": "en"
+      }
+    ],
+    "lastUpdatedDate": "2020-03-24T13:05:17.343Z",
+    "lastUpdatedBy": "Test user",
+    "validFrom": "2020-03-25T13:05:17.343Z",
+    "validUntil": "2021-03-26T13:05:17.343Z",
+    "administrativeDetails": [
+      {
+        "administrativeDetailType": "ANNOTATION",
+        "values": [
+          "Internt SSB"
+        ]
+      },
+      {
+        "administrativeDetailType": "ORIGIN",
+        "values": [
+          "https://data.ssb.no/api/klass/v1/classifications/68/codesAt.json?date=2020-03-18",
+          "https://data.ssb.no/api/klass/v1/classifications/131/codesAt.json?date=2020-03-18"
+        ]
+      }
+    ],
+    "codes": [
+      {
+        "urn": "urn:klass-api:classifications:68:code:1",
+        "rank": 1
+      },
+      {
+        "urn": "urn:klass-api:classifications:68:code:5",
+        "rank": 4
+      },
+      {
+        "urn": "urn:klass-api:classifications:131:code:0301",
+        "rank": 2
+      },
+      {
+        "urn": "urn:klass-api:classifications:131:code:3024",
+        "rank": 3
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "createdBy":"210 - Seksjon for nasjonalregnskap O 210 Seksjon for nasjonalreg",
+    "createdDate": "2020-04-01T13:05:17.343Z",
+    "administrativeStatus": "OPEN",
+    "version":"1.0.0",
+    "versionValidFrom": "2020-03-31T22:00:00.000Z",
+    "name":[{"languageText":"Uttrekk for testformål nr 2","languageCode":"nb"}],
+    "validFrom":"2020-03-31T22:00:00.000Z",
+    "validUntil":"2020-04-29T22:00:00.000Z",
+    "administrativeDetails":[
+      {"administrativeDetailType":"ANNOTATION","values":["Arbeid og lønn"]}
+    ],
+    "description":[
+      {"languageText":"Skapt i Klass Uttrekk webklient v0.2.2","languageCode":"nb"}
+    ],
+    "codes":[
+      {"rank":1,"urn":"urn:klass-api:classifications:416:code:A01_EK"},
+      {"rank":2,"urn":"urn:klass-api:classifications:416:code:B01_LM"},
+      {"rank":3,"urn":"urn:klass-api:classifications:416:code:C02_JA"},
+      {"rank":4,"urn":"urn:klass-api:classifications:6:code:01.110"},
+      {"rank":5,"urn":"urn:klass-api:classifications:6:code:01.120"},
+      {"rank":6,"urn":"urn:klass-api:classifications:6:code:01.130"}
+    ]
+  },
+  {
+    "id": 3,
+    "ownerId": "",
+    "names": [
+      {
+        "text": "Uttrekk for aller først test",
+        "lang": "nb"
+      }]
+    ,
+    "valid": {
+      "from": "2020-02-04T23:00:00.000Z",
+      "to": "2020-02-28T23:00:00.000Z"
+    },
+    "subject": "",
+    "descriptions": [],
+    "classifications": [
+      {
+        "name": "Standard for sivilstand",
+        "classificationType": "Klassifikasjon",
+        "lastModified": "2019-06-04T08:37:54.000+0000",
+        "_links": {
+          "self": {
+            "href": "https://data.ssb.no/api/klass/v1/classifications/19"
+          }
+        },
+        "id": "19",
+        "codes": [
+          {
+            "code": "1",
+            "parentCode": null,
+            "level": "1",
+            "name": "Ugift",
+            "shortName": "",
+            "presentationName": ""
+          },
+          {
+            "code": "2",
+            "parentCode": null,
+            "level": "1",
+            "name": "Gift",
+            "shortName": "",
+            "presentationName": ""
+          },
+          {
+            "code": "3",
+            "parentCode": null,
+            "level": "1",
+            "name": "Enke/enkemann",
+            "shortName": "",
+            "presentationName": ""
+          },
+          {
+            "code": "4",
+            "parentCode": null,
+            "level": "1",
+            "name": "Skilt",
+            "shortName": "",
+            "presentationName": ""
+          },
+          {
+            "code": "5",
+            "parentCode": null,
+            "level": "1",
+            "name": "Separert",
+            "shortName": "",
+            "presentationName": ""
+          }
+        ]
+      }
+    ]
+  }
+]

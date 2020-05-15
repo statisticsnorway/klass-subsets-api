@@ -1,0 +1,76 @@
+{
+  "id": "1",
+  "name": [
+    {
+      "languageText": "Oslo Bærum Felter 1 og 5 v3",
+      "languageCode": "nb"
+    },
+    {
+      "languageText": "Oslo Bærum Fields 1 and 5 v3",
+      "languageCode": "en"
+    }
+  ],
+  "description": [
+    {
+      "languageText": "Lagret for test formål",
+      "languageCode": "nb"
+    },
+    {
+      "languageText": "Made for test purposes",
+      "languageCode": "en"
+    }
+  ],
+  "shortName": "Test subset 1",
+  "administrativeStatus": "OPEN",
+  "createdDate": "2020-03-24T13:05:17.343Z",
+  "createdBy": "312 - Seksjon for arbeidsmarked og lønnsstatistikk ",
+  "version": "3.0.1",
+  "versionValidFrom": "2020-03-25T13:05:17.343Z",
+  "versionRationale": [
+    {
+      "languageText": "Fjernet kode 2",
+      "languageCode": "nb"
+    },
+    {
+      "languageText": "Removed code 2",
+      "languageCode": "en"
+    }
+  ],
+  "lastUpdatedDate": "2020-03-24T13:05:17.343Z",
+  "lastUpdatedBy": "Test user",
+  "validFrom": "2020-03-25T13:05:17.343Z",
+  "validUntil": "2021-03-26T13:05:17.343Z",
+  "administrativeDetails": [
+    {
+      "administrativeDetailType": "ANNOTATION",
+      "values": [
+        "Internt SSB"
+      ]
+    },
+    {
+      "administrativeDetailType": "ORIGIN",
+      "values": [
+        "https://data.ssb.no/api/klass/v1/classifications/68/codesAt.json?date=2020-03-18",
+        "https://data.ssb.no/api/klass/v1/classifications/131/codesAt.json?date=2020-03-18"
+      ]
+    }
+  ],
+  "codes": [
+    {
+      "urn": "urn:klass-api:classifications:68:code:1",
+      "rank": 1
+    },
+    {
+      "urn": "urn:klass-api:classifications:68:code:5",
+      "rank": 4
+    },
+    {
+      "urn": "urn:klass-api:classifications:131:code:0301",
+      "rank": 2
+    },
+    {
+      "urn": "urn:klass-api:classifications:131:code:3024",
+      "rank": 3
+    }
+  ]
+}
