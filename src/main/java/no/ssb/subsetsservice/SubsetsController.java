@@ -1,7 +1,9 @@
 package no.ssb.subsetsservice;
 
+import org.apache.coyote.Response;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
@@ -68,7 +70,13 @@ public class SubsetsController {
 
     static ResponseEntity<String> getFrom(String apiBase, String additional)
     {
-        return new RestTemplate().getForEntity(apiBase + additional, String.class);
+        // TODO: I am not sure if this is the right way of handling 404's from another server.
+        try {
+            ResponseEntity<String> response = new RestTemplate().getForEntity(apiBase + additional, String.class);
+            return response;
+        } catch (HttpClientErrorException e){
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 
     static ResponseEntity<String> postTo(String apiBase, String additional, String json){

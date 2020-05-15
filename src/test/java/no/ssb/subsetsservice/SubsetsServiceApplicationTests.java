@@ -53,7 +53,7 @@ class SubsetsServiceApplicationTests {
 		System.out.println("RESPONSE HEADERS:");
 		System.out.println(response.getHeaders());
 		System.out.println("RESPONSE BODY");
-		
+
 		System.out.println(response.getBody());
 		assertEquals(response.getStatusCodeValue(), 200);
 	}
