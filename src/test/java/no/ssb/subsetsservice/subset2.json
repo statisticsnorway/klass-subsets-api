@@ -1,0 +1,25 @@
+{
+  "id": "2",
+  "createdBy":"210 - Seksjon for nasjonalregnskap O 210 Seksjon for nasjonalreg",
+  "createdDate": "2020-04-01T13:05:17.343Z",
+  "administrativeStatus": "OPEN",
+  "version":"1.0.0",
+  "versionValidFrom": "2020-03-31T22:00:00.000Z",
+  "name":[{"languageText":"Uttrekk for testformål nr 2","languageCode":"nb"}],
+  "validFrom":"2020-03-31T22:00:00.000Z",
+  "validUntil":"2020-04-29T22:00:00.000Z",
+  "administrativeDetails":[
+    {"administrativeDetailType":"ANNOTATION","values":["Arbeid og lønn"]}
+  ],
+  "description":[
+    {"languageText":"Skapt i Klass Uttrekk webklient v0.2.2","languageCode":"nb"}
+  ],
+  "codes":[
+    {"rank":1,"urn":"urn:klass-api:classifications:416:code:A01_EK"},
+    {"rank":2,"urn":"urn:klass-api:classifications:416:code:B01_LM"},
+    {"rank":3,"urn":"urn:klass-api:classifications:416:code:C02_JA"},
+    {"rank":4,"urn":"urn:klass-api:classifications:6:code:01.110"},
+    {"rank":5,"urn":"urn:klass-api:classifications:6:code:01.120"},
+    {"rank":6,"urn":"urn:klass-api:classifications:6:code:01.130"}
+  ]
+}
