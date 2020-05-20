@@ -13,6 +13,8 @@ variables:
   - name: fullSha
     value: '$(Build.SourceVersion)'
   - name: imageName
+    value: 'eu.gcr.io/prod-bip/ssb/dapla/klass-subsets-api'
+  - name: repoName
     value: 'prod-bip/ssb/dapla/klass-subsets-api'
 
 jobs:
@@ -51,7 +53,7 @@ jobs:
         condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
         inputs:
           containerRegistry: gcrServiceConnection
-          repository: $(imageName)
+          repository: $(repoName)
           command: 'push'
           Dockerfile: 'Dockerfile'
           tags: |
