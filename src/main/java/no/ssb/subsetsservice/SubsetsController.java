@@ -3,7 +3,6 @@ package no.ssb.subsetsservice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.coyote.Response;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
@@ -49,6 +48,7 @@ public class SubsetsController {
             if (actualObj != null){
                 JsonNode idJN = actualObj.get("id");
                 String id = idJN.asText();
+                // TODO: check if subset already exists. Do not overwrite. new version instead.
                 return postTo(LDS_SUBSET_API, "/"+id, subsetsJson);
             }
         } catch (JsonProcessingException e) {
@@ -64,6 +64,7 @@ public class SubsetsController {
 
     @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> putSubset(@PathVariable("id") String id, @RequestBody String subsetJson) {
+        // TODO: check if subset already exists. Do not overwrite. new version instead.
         return postTo(LDS_SUBSET_API, "/"+id, subsetJson);
     }
 
