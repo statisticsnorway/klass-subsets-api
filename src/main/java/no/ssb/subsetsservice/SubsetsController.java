@@ -17,7 +17,7 @@ public class SubsetsController {
     static final String LDS_LOCAL = "http://localhost:9090/ns/ClassificationSubset";
     private static String LDS_SUBSET_API = "";
 
-    private static final String KLASS_CODES_API = "https://data.ssb.no/api/klass/v1/classifications";
+    private static final String KLASS_CLASSIFICATIONS_API = "https://data.ssb.no/api/klass/v1/classifications";
 
     private static final boolean prod = false;
 
@@ -62,6 +62,42 @@ public class SubsetsController {
         return getFrom(LDS_SUBSET_API, "/"+id);
     }
 
+    @GetMapping("/v1/versions/{id}")
+    public ResponseEntity<String> getVersions(@PathVariable("id") String id) {
+        return getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
+    }
+
+    @GetMapping("/v1/versions/{id}/{version}")
+    public ResponseEntity<String> getVersion(@PathVariable("id") String id, @PathVariable("version") String version) {
+        ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
+        //TODO: Get a specific version by name on form "1.0.0", by looping through timeline
+        return ldsRE;
+    }
+
+    @GetMapping("/v1/subsets/{id}/codes")
+    public ResponseEntity<String> getSubsetCodes(@PathVariable("id") String id) {
+        ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id);
+        return ldsRE; //TODO: Replace with a new RE containing a list of the codes only
+    }
+
+    @GetMapping("/v1/subsets/{id}/codes?from={fromDate}&to={toDate}")
+    public ResponseEntity<String> getSubsetCodes(@PathVariable("id") String id, @PathVariable("fromDate") String fromDate, @PathVariable("toDate") String toDate) {
+        ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
+        //TODO: find intersection of valid codes for each version that is valid in the range.
+        //Step 1: Add all codes from all versions to a Hashmap, incrementing by 1 every time it is added.
+        //Step 2: Check each code in the map. If it has a value equal to the total number of versions, add it to the return list.
+        //Step 3: Return list of codes.
+        return ldsRE;
+    }
+
+    @GetMapping("/v1/subsets/{id}/codesAt?date={date}")
+    public ResponseEntity<String> getSubsetCodesAt(@PathVariable("id") String id, @PathVariable("date") String date) {
+        ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
+        //TODO: find version that is valid at date
+        //For each version, descending: if 'date' is at or after the version's 'validFrom', return the version's code list
+        return ldsRE;
+    }
+
     @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> putSubset(@PathVariable("id") String id, @RequestBody String subsetJson) {
         // TODO: check if subset already exists. Do not overwrite. new version instead.
@@ -73,14 +109,14 @@ public class SubsetsController {
         return getFrom(LDS_SUBSET_API,"/?schema");
     }
 
-    @GetMapping("/v1/codes")
-    public ResponseEntity<String> getCodes(){
-        return getFrom(KLASS_CODES_API, ".json");
+    @GetMapping("/v1/classifications")
+    public ResponseEntity<String> getClassifications(){
+        return getFrom(KLASS_CLASSIFICATIONS_API, ".json");
     }
 
-    @GetMapping("/v1/codes/{id}")
-    public ResponseEntity<String> getCode(@PathVariable("id") String id){
-        return getFrom(KLASS_CODES_API, "/"+id+".json");
+    @GetMapping("/v1/classifications/{id}")
+    public ResponseEntity<String> getClassification(@PathVariable("id") String id){
+        return getFrom(KLASS_CLASSIFICATIONS_API, "/"+id+".json");
     }
 
     static ResponseEntity<String> getFrom(String apiBase, String additional)
