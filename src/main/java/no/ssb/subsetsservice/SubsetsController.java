@@ -76,7 +76,8 @@ public class SubsetsController {
 
     /**
      * Get a list of versions of a subset that starts with {versions}.
-     * So if {versions} is "1.0", then 1.0.1, 1.0.2, 1.0.3 etc will be returned
+     * So if {versions} is "1.0", then 1.0.0, 1.0.1, 1.0.2 etc will be returned.
+     * If {versions} is "1.0.1", then a list with a single item (1.0.1) will be returned
      * @param id
      * @param version
      * @return
