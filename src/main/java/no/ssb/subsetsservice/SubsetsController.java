@@ -42,8 +42,8 @@ public class SubsetsController {
     }
 
     /**
-     * This method SHOULD figure out what the 'id' of the subset is from the value inside the JSON
-     * and then post to subsets/{id} //TODO: Make it so
+     * This method figures out what the 'id' of the subset is from the value inside the JSON
+     * and then post to subsets/{id}
      * @param subsetsJson
      * @return
      */
@@ -74,6 +74,13 @@ public class SubsetsController {
         return getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
     }
 
+    /**
+     * Get a list of versions of a subset that starts with {versions}.
+     * So if {versions} is "1.0", then 1.0.1, 1.0.2, 1.0.3 etc will be returned
+     * @param id
+     * @param version
+     * @return
+     */
     @GetMapping("/v1/versions/{id}/{version}")
     public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String id, @PathVariable("version") String version) {
         ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
@@ -82,17 +89,19 @@ public class SubsetsController {
             JsonNode responseBodyJSON = mapper.readTree(ldsRE.getBody());
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
-                    ArrayNode arrayNode = (ArrayNode) responseBodyJSON;
-                    for (int i = 0; i < arrayNode.size(); i++) {
-                        JsonNode arrayEntry = arrayNode.get(i);
-                        String entryVersion = arrayEntry.get("document").get("version").asText();
-                        if (entryVersion.equals(version)){
-                            return new ResponseEntity<>(arrayEntry.get("document"), HttpStatus.OK);
+                    ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
+                    ArrayNode returnVersionsArrayNode = mapper.createArrayNode();
+                    for (int i = 0; i < responseBodyArrayNode.size(); i++) {
+                        JsonNode arrayEntry = responseBodyArrayNode.get(i).get("document");
+                        String subsetVersion = arrayEntry.get("version").asText();
+                        if (subsetVersion.startsWith(version)){
+                            returnVersionsArrayNode.add(arrayEntry);
                         }
                     }
-                    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+                    return new ResponseEntity<>(returnVersionsArrayNode, HttpStatus.OK);
                 }
             }
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
