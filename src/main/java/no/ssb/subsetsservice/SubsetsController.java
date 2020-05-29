@@ -3,6 +3,7 @@ package no.ssb.subsetsservice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
@@ -68,10 +69,28 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/versions/{id}/{version}")
-    public ResponseEntity<String> getVersion(@PathVariable("id") String id, @PathVariable("version") String version) {
+    public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String id, @PathVariable("version") String version) {
         ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
-        //TODO: Get a specific version by name on form "1.0.0", by looping through timeline
-        return ldsRE;
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            JsonNode responseBodyJSON = mapper.readTree(ldsRE.getBody());
+            if (responseBodyJSON != null){
+                if (responseBodyJSON.isArray()) {
+                    ArrayNode arrayNode = (ArrayNode) responseBodyJSON;
+                    for (int i = 0; i < arrayNode.size(); i++) {
+                        JsonNode arrayEntry = arrayNode.get(i);
+                        String entryVersion = arrayEntry.get("document").get("version").asText();
+                        if (entryVersion.equals(version)){
+                            return new ResponseEntity<>(arrayEntry.get("document"), HttpStatus.OK);
+                        }
+                    }
+                    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+                }
+            }
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
     @GetMapping("/v1/subsets/{id}/codes")
