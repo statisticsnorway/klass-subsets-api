@@ -94,9 +94,20 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets/{id}/codes")
-    public ResponseEntity<String> getSubsetCodes(@PathVariable("id") String id) {
+    public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id) {
         ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id);
-        return ldsRE; //TODO: Replace with a new RE containing a list of the codes only
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            JsonNode responseBodyJSON = mapper.readTree(ldsRE.getBody());
+            if (responseBodyJSON != null){
+                JsonNode codes = responseBodyJSON.get("codes");
+                return new ResponseEntity<>(codes, HttpStatus.OK);
+            }
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
     @GetMapping("/v1/subsets/{id}/codes?from={fromDate}&to={toDate}")
