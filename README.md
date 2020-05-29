@@ -17,8 +17,8 @@ This API mimics the [KLASS Classifications API](https://data.ssb.no/api/klass/v1
 - `GET /v1/subsets/{id}/codes` to retrieve a list of the valid codes in the latest version of this subset. 
     - Optional query parameters "from" and "to" take dates on form "YYYY-MM-DD". When both are given, a list containing all codes that are valid in all versions from the "from" date to the "to" date will be returned.
 - `GET /v1/subsets/{id}/codesAt?date=YYYY-MM-DD` to retrieve a list of the codes valid on the given date
-- `GET /v1/versions/{id}/` to retrieve a list of all versions of this subset, in descending order (most recent first).
-- `GET /v1/versions/{id}/{version}` to retrieve a list of versions that start with {version}
+- `GET /v1/subsets/{id}/versions` to retrieve a list of all versions of this subset, in descending order (most recent first).
+- `GET /v1/subsets/{id}/versions/{version}` to retrieve a list of versions that start with {version}
 
 ### Misc
 In addition, we support getting the subset schema at "/v1/subsets?schema"
