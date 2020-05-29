@@ -191,12 +191,33 @@ public class SubsetsController {
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
-    @GetMapping("/v1/subsets/{id}/codesAt?date={date}")
-    public ResponseEntity<String> getSubsetCodesAt(@PathVariable("id") String id, @PathVariable("date") String date) {
+    @GetMapping("/v1/subsets/{id}/codesAt")
+    public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id, @RequestParam String date) {
         ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
         //TODO: find version that is valid at date
         //For each version, descending: if 'date' is at or after the version's 'validFrom', return the version's code list
-        return ldsRE;
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            JsonNode responseBodyJSON = mapper.readTree(ldsRE.getBody());
+            if (responseBodyJSON != null){
+                if (responseBodyJSON.isArray()) {
+                    ArrayNode arrayNode = (ArrayNode) responseBodyJSON;
+                    JsonNode prev;
+                    for (int i = 0; i < arrayNode.size(); i++) {
+                        JsonNode version = arrayNode.get(i).get("document");
+                        String entryValidFrom = version.get("validFrom").asText();
+                        String entryValidUntil = version.get("validUntil").asText();
+                        if (entryValidFrom.compareTo(date) <= 0 && entryValidUntil.compareTo(date) >= 0 ){
+                            return new ResponseEntity<>(version.get("codes"), HttpStatus.OK);
+                        }
+                    }
+                    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+                }
+            }
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
     @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
