@@ -69,7 +69,7 @@ public class SubsetsController {
         return getFrom(LDS_SUBSET_API, "/"+id);
     }
 
-    @GetMapping("/v1/versions/{id}")
+    @GetMapping("/v1/subsets/{id}/versions")
     public ResponseEntity<String> getVersions(@PathVariable("id") String id) {
         return getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
     }
@@ -82,7 +82,7 @@ public class SubsetsController {
      * @param version
      * @return
      */
-    @GetMapping("/v1/versions/{id}/{version}")
+    @GetMapping("/v1/subsets/{id}/versions/{version}")
     public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String id, @PathVariable("version") String version) {
         ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
         ObjectMapper mapper = new ObjectMapper();
@@ -128,8 +128,12 @@ public class SubsetsController {
             try {
                 JsonNode responseBodyJSON = mapper.readTree(ldsRE.getBody());
                 if (responseBodyJSON != null){
-                    JsonNode codes = responseBodyJSON.get("codes");
-                    return new ResponseEntity<>(codes, HttpStatus.OK);
+                    ArrayNode codes = (ArrayNode) responseBodyJSON.get("codes");
+                    ArrayNode urnArray = mapper.createArrayNode();
+                    for (int i = 0; i < codes.size(); i++) {
+                        urnArray.add(codes.get(i).get("urn").asText());
+                    }
+                    return new ResponseEntity<>(urnArray, HttpStatus.OK);
                 }
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             } catch (JsonProcessingException e) {
