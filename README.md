@@ -9,7 +9,7 @@ The goal is to replace the existing Node + Express implementation, which can be 
 
 # API documentation
 
-This API mimics the KLASS Classifications API as closely as is reasonable.
+This API mimics the [KLASS Classifications API](https://data.ssb.no/api/klass/v1/api-guide.html) as closely as is reasonable.
 
 ### Core functionality
 - GET and POST `/v1/subsets`. (GET gets all subsets, POST posts a single subset. The ID of the subset is found inside the JSON)
