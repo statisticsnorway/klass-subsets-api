@@ -201,18 +201,22 @@ public class SubsetsController {
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
+    /**
+     * Returns all codes of the subset version that is valid on the given date.
+     * Assumes only one subset is valid on any given date, with no overlap of start/end date.
+     * @param id
+     * @param date
+     * @return
+     */
     @GetMapping("/v1/subsets/{id}/codesAt")
     public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id, @RequestParam String date) {
         ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
-        //TODO: find version that is valid at date
-        //For each version, descending: if 'date' is at or after the version's 'validFrom', return the version's code list
         ObjectMapper mapper = new ObjectMapper();
         try {
             JsonNode responseBodyJSON = mapper.readTree(ldsRE.getBody());
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
                     ArrayNode arrayNode = (ArrayNode) responseBodyJSON;
-                    JsonNode prev;
                     for (int i = 0; i < arrayNode.size(); i++) {
                         JsonNode version = arrayNode.get(i).get("document");
                         String entryValidFrom = version.get("validFrom").asText();

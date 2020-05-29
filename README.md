@@ -9,10 +9,18 @@ The goal is to replace the existing Node + Express implementation, which can be 
 
 # API documentation
 
-The core functionality of the API:
-- GET and POST requests to "/v1/subsets". (GET gets all subsets, POST posts a single subset. The ID of the subset is found inside the JSON)
-- GET and PUT requests to "/v1/subsets/{id}" to retrieve or change a subset with a specific id.
+This API mimics the KLASS Classifications API as closely as is reasonable.
 
+### Core functionality
+- GET and POST `/v1/subsets`. (GET gets all subsets, POST posts a single subset. The ID of the subset is found inside the JSON)
+- GET and PUT `/v1/subsets/{id}` to retrieve or change a subset with a specific id.
+- `GET /v1/subsets/{id}/codes` to retrieve a list of the valid codes in the latest version of this subset. 
+    - Optional query parameters "from" and "to" take dates on form "YYYY-MM-DD". When both are given, a list containing all codes that are valid in all versions from the "from" date to the "to" date will be returned.
+- `GET /v1/subsets/{id}/codesAt?date=YYYY-MM-DD` to retrieve a list of the codes valid on the given date
+- `GET /v1/versions/{id}/` to retrieve a list of all versions of this subset, in descending order (most recent first).
+- `GET /v1/versions/{id}/{version}` to retrieve a list of versions that start with {version}
+
+### Misc
 In addition, we support getting the subset schema at "/v1/subsets?schema"
 And routing GET requests for codes to Klass codes API at "/v1/codes" or "/v1/codes/{id}"
 
