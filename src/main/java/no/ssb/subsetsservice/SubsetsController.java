@@ -30,8 +30,7 @@ public class SubsetsController {
 
     public SubsetsController(){
         if (prod){
-            String lds = System.getenv().getOrDefault("API_LDS", LDS_PROD);
-            LDS_SUBSET_API = lds;
+            LDS_SUBSET_API = System.getenv().getOrDefault("API_LDS", LDS_PROD);
         } else {
             LDS_SUBSET_API = LDS_LOCAL;
         }
