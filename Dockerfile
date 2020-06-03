@@ -5,4 +5,4 @@ COPY ./target/klass-subsets-api.jar /usr/share/klass-subsets-api/
 
 ENTRYPOINT ["java", "-jar", "/usr/share/klass-subsets-api/klass-subsets-api.jar"]
 
-EXPOSE 5000
+EXPOSE 8080
