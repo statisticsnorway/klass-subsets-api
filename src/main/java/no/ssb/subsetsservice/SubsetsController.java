@@ -24,16 +24,17 @@ public class SubsetsController {
     static final String LDS_LOCAL = "http://localhost:9090/ns/ClassificationSubset";
     private static String LDS_SUBSET_API = "";
 
-    private static final String KLASS_CLASSIFICATIONS_API = "https://data.ssb.no/api/klass/v1/classifications";
+    private static String KLASS_CLASSIFICATIONS_API = "https://data.ssb.no/api/klass/v1/classifications";
 
-    private static final boolean prod = false;
+    private static final boolean prod = true;
 
     public SubsetsController(){
         if (prod){
-            LDS_SUBSET_API = LDS_PROD;
+            LDS_SUBSET_API = System.getenv().getOrDefault("API_LDS", LDS_PROD);
         } else {
             LDS_SUBSET_API = LDS_LOCAL;
         }
+        KLASS_CLASSIFICATIONS_API = System.getenv().getOrDefault("API_KLASS", KLASS_CLASSIFICATIONS_API);
     }
 
     @GetMapping("/v1/subsets")
