@@ -1,5 +1,8 @@
 package no.ssb.subsetsservice;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,9 +43,11 @@ class SubsetsServiceApplicationTests {
 				sb.append(myReader.nextLine());
 			}
 			myReader.close();
-			String subsetJSON = sb.toString();
-			System.out.println(subsetJSON);
-			ResponseEntity<String> response = SubsetsController.putTo(ldsURL, "/1", subsetJSON);
+			String subsetJSONString = sb.toString();
+			ObjectMapper mapper = new ObjectMapper();
+			JsonNode jsonNode = mapper.readTree(subsetJSONString);
+			System.out.println(subsetJSONString);
+			ResponseEntity<String> response = SubsetsController.putTo(ldsURL, "/1", jsonNode);
 
 			System.out.println("RESPONSE HEADERS:");
 			System.out.println(response.getHeaders());
@@ -53,11 +58,13 @@ class SubsetsServiceApplicationTests {
 		} catch (FileNotFoundException e) {
 			System.out.println("An error occurred.");
 			e.printStackTrace();
+		} catch (JsonProcessingException e) {
+			e.printStackTrace();
 		}
 	}
 
 	@Test
-	void getFromLDSlocal() {
+	void getFromLDSLocal() {
 		System.out.println("TESTING GET SUBSET BY ID 1 FROM LDS LOCAL INSTANCE");
 		ResponseEntity<String> response = SubsetsController.getFrom(ldsURL, "/1");
 
@@ -71,7 +78,7 @@ class SubsetsServiceApplicationTests {
 	}
 
 	@Test
-	void getAllFromLDSlocal() {
+	void getAllFromLDSLocal() {
 		System.out.println("TESTING GET ALL SUBSETS FROM LDS LOCAL INSTANCE");
 		ResponseEntity<String> response = SubsetsController.getFrom(ldsURL, "");
 		System.out.println("GET "+ldsURL);
