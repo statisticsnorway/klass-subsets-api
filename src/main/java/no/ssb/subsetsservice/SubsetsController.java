@@ -89,7 +89,7 @@ public class SubsetsController {
                         for (int i = 0; i < responseBodyArrayNode.size(); i++) {
                             JsonNode arrayEntry = responseBodyArrayNode.get(i).get("document");
                             String subsetVersion = arrayEntry.get("version").asText();
-                            if (subsetVersion.equals(version)){
+                            if (subsetVersion.startsWith(version)){
                                 return new ResponseEntity<>(arrayEntry, HttpStatus.OK);
                             }
                         }
