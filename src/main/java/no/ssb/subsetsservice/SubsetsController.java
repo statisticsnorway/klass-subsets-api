@@ -70,9 +70,10 @@ public class SubsetsController {
     }
 
     /**
-     * Get a list of versions of a subset that starts with {versions}.
-     * So if {versions} is "1.0", then 1.0.0, 1.0.1, 1.0.2 etc will be returned.
-     * If {versions} is "1.0.1", then a list with a single item (1.0.1) will be returned
+     * Get a subset corresponding to a given version string.
+     * If {version} is "1.0.1", then that version of the subset will be returned
+     * If {version} is "1.0", then the latest patch of 1.0 will be returned.
+     * If {version} is "1", then the latest patch of 1 will be returned.
      * @param id
      * @param version
      * @return
@@ -87,15 +88,13 @@ public class SubsetsController {
                 if (responseBodyJSON != null){
                     if (responseBodyJSON.isArray()) {
                         ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
-                        ArrayNode returnVersionsArrayNode = mapper.createArrayNode();
                         for (int i = 0; i < responseBodyArrayNode.size(); i++) {
                             JsonNode arrayEntry = responseBodyArrayNode.get(i).get("document");
                             String subsetVersion = arrayEntry.get("version").asText();
                             if (subsetVersion.startsWith(version)){
-                                returnVersionsArrayNode.add(arrayEntry);
+                                return new ResponseEntity<>(arrayEntry, HttpStatus.OK);
                             }
                         }
-                        return new ResponseEntity<>(returnVersionsArrayNode, HttpStatus.OK);
                     }
                 }
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
