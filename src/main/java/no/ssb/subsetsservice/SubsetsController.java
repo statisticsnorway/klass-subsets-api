@@ -72,6 +72,8 @@ public class SubsetsController {
     /**
      * Get a subset corresponding to a given version string.
      * If {version} is "1.0.1", then that version of the subset will be returned
+     * If {version} is "1.0", then the latest patch of 1.0 will be returned.
+     * If {version} is "1", then the latest patch of 1 will be returned.
      * @param id
      * @param version
      * @return
