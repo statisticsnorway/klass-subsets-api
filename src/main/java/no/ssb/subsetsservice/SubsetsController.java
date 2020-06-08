@@ -4,12 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -66,7 +68,25 @@ public class SubsetsController {
 
     @GetMapping("/v1/subsets/{id}/versions")
     public ResponseEntity<String> getVersions(@PathVariable("id") String id) {
-        return getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
+        ResponseEntity<String> timelineResponseEntity = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            JsonNode responseBodyJSON = mapper.readTree(timelineResponseEntity.getBody());
+            if (responseBodyJSON != null){
+                if (responseBodyJSON.isArray()) {
+                    ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
+                    for (int i = 0; i < responseBodyArrayNode.size(); i++) {
+                        ObjectNode arrayEntry = (ObjectNode) responseBodyArrayNode.get(i).get("document");
+                        JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), arrayEntry);
+                        arrayEntry.set("_links", self);
+                    }
+                }
+            }
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
     /**
