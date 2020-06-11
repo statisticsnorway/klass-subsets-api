@@ -26,7 +26,7 @@ public class SubsetsController {
 
     private static String KLASS_CLASSIFICATIONS_API = "https://data.ssb.no/api/klass/v1/classifications";
 
-    private static final boolean prod = false;
+    private static final boolean prod = true;
 
     public SubsetsController(){
         if (prod){
@@ -57,7 +57,7 @@ public class SubsetsController {
             if (ldsResponse.getStatusCodeValue() == 404)
                 return postTo(LDS_SUBSET_API, "/" + id, subsetsJson);
         }
-        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>("Can not POST subset with id that is already in use. Use PUT to update existing subsets", HttpStatus.BAD_REQUEST);
     }
 
     @GetMapping("/v1/subsets/{id}")
