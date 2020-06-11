@@ -64,6 +64,7 @@ public class SubsetsController {
     public ResponseEntity<String> getSubset(@PathVariable("id") String id) {
         if (Utils.isClean(id))
             return getFrom(LDS_SUBSET_API, "/"+id);
+        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
     @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
