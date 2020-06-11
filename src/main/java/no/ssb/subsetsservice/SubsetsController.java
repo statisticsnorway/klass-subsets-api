@@ -53,8 +53,9 @@ public class SubsetsController {
         if (subsetsJson != null) {
             JsonNode idJN = subsetsJson.get("id");
             String id = idJN.asText();
-            // TODO: check if subset already exists. Do not overwrite. new version instead.
-            return postTo(LDS_SUBSET_API, "/" + id, subsetsJson);
+            ResponseEntity<String> ldsResponse = getFrom(LDS_SUBSET_API, "/"+id);
+            if (ldsResponse.getStatusCodeValue() == 404)
+                return postTo(LDS_SUBSET_API, "/" + id, subsetsJson);
         }
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
@@ -62,6 +63,14 @@ public class SubsetsController {
     @GetMapping("/v1/subsets/{id}")
     public ResponseEntity<String> getSubset(@PathVariable("id") String id) {
         return getFrom(LDS_SUBSET_API, "/"+id);
+    }
+
+    @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> putSubset(@PathVariable("id") String id, @RequestBody JsonNode subsetJson) {
+        // TODO: check if subset already exists. Do not overwrite. new version instead.
+        if (Utils.isClean(id))
+            return putTo(LDS_SUBSET_API, "/"+id, subsetJson);
+        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
     @GetMapping("/v1/subsets/{id}/versions")
@@ -240,14 +249,6 @@ public class SubsetsController {
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
-    @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> putSubset(@PathVariable("id") String id, @RequestBody JsonNode subsetJson) {
-        // TODO: check if subset already exists. Do not overwrite. new version instead.
-        if (Utils.isClean(id))
-            return postTo(LDS_SUBSET_API, "/"+id, subsetJson);
-        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-    }
-
     @GetMapping("/v1/subsets?schema")
     public ResponseEntity<String> getSchema(){
         return getFrom(LDS_SUBSET_API,"/?schema");
@@ -282,7 +283,7 @@ public class SubsetsController {
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         HttpEntity<JsonNode> request = new HttpEntity<>(json, headers);
         ResponseEntity<String> response = new RestTemplate().postForEntity(apiBase+additional, request, String.class);
-        System.out.println("POST to "+apiBase+additional+" - Status: "+response.getStatusCodeValue()+" "+response.getStatusCode().name());
+        LOG.debug("POST to "+apiBase+additional+" - Status: "+response.getStatusCodeValue()+" "+response.getStatusCode().name());
         return response;
     }
 
