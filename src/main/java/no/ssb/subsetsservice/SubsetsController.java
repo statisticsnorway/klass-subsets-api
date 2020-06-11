@@ -69,10 +69,29 @@ public class SubsetsController {
 
     @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> putSubset(@PathVariable("id") String id, @RequestBody JsonNode subsetJson) {
-        // TODO: check if subset already exists. Do not overwrite. new version instead.
-        if (Utils.isClean(id))
-            return putTo(LDS_SUBSET_API, "/"+id, subsetJson);
-        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+
+        if (Utils.isClean(id)) {
+            ObjectMapper mapper = new ObjectMapper();
+            ResponseEntity<String> responseEntity = getFrom(LDS_SUBSET_API, "/"+id);
+
+            try {
+                if (responseEntity.getStatusCodeValue() != 404){
+                    JsonNode responseBodyJSON = mapper.readTree(responseEntity.getBody());
+                    String currentAdminStatus = responseBodyJSON.get("administrativeStatus").textValue();
+                    String currentVersion = responseBodyJSON.get("version").textValue();
+                    String nextVersion = subsetJson.get("version").textValue();
+                    if (!currentVersion.equals(nextVersion) || !currentAdminStatus.equals("OPEN")){ // Do not overwrite a published patch.
+                        return putTo(LDS_SUBSET_API, "/" + id, subsetJson);
+                    }
+                    return new ResponseEntity<>("trying to overwrite an already published patch of a subset", HttpStatus.BAD_REQUEST);
+                } else {
+                    return putTo(LDS_SUBSET_API, "/" + id, subsetJson);
+                }
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
+        }
+        return new ResponseEntity<>("id contains illegal characters", HttpStatus.BAD_REQUEST);
     }
 
     @GetMapping("/v1/subsets/{id}/versions")
