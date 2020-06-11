@@ -26,7 +26,7 @@ public class SubsetsController {
 
     private static String KLASS_CLASSIFICATIONS_API = "https://data.ssb.no/api/klass/v1/classifications";
 
-    private static final boolean prod = true;
+    private static final boolean prod = false;
 
     public SubsetsController(){
         if (prod){
@@ -80,7 +80,7 @@ public class SubsetsController {
                     String currentAdminStatus = responseBodyJSON.get("administrativeStatus").textValue();
                     String currentVersion = responseBodyJSON.get("version").textValue();
                     String nextVersion = subsetJson.get("version").textValue();
-                    if (!currentVersion.equals(nextVersion) || !currentAdminStatus.equals("OPEN")){ // Do not overwrite a published patch.
+                    if (currentVersion.compareTo(nextVersion) < 0 || !currentAdminStatus.equals("OPEN")){ // Do not overwrite a published patch.
                         return putTo(LDS_SUBSET_API, "/" + id, subsetJson);
                     }
                     return new ResponseEntity<>("trying to overwrite an already published patch of a subset", HttpStatus.BAD_REQUEST);
@@ -95,10 +95,10 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets/{id}/versions")
-    public ResponseEntity<String> getVersions(@PathVariable("id") String id) {
+    public ResponseEntity<JsonNode> getVersions(@PathVariable("id") String id) {
+        ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id)){
             ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
-            ObjectMapper mapper = new ObjectMapper();
             ArrayNode arrayNode = mapper.createArrayNode();
             try {
                 JsonNode responseBodyJSON = mapper.readTree(ldsRE.getBody());
@@ -114,17 +114,21 @@ public class SubsetsController {
                                 versionMap.put(subsetVersion, true);
                             }
                         }
+                        return new ResponseEntity<>(arrayNode, HttpStatus.OK);
+                    } else {
+                        return new ResponseEntity<>(mapper.createObjectNode().put("error", "LDS response body was not JSON array"), HttpStatus.INTERNAL_SERVER_ERROR);
                     }
-                    return new ResponseEntity<>("LDS response body was not JSON array", HttpStatus.INTERNAL_SERVER_ERROR);
+                } else {
+                    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
                 }
-                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             } catch (JsonProcessingException e) {
                 e.printStackTrace();
                 LOG.error(e.getMessage());
-                return new ResponseEntity<>("JsonProcessingException on response body from LDS timeline api", HttpStatus.INTERNAL_SERVER_ERROR);
+                return new ResponseEntity<>(mapper.createObjectNode().put("error", "JsonProcessingException on response body from LDS timeline api"), HttpStatus.INTERNAL_SERVER_ERROR);
             }
+        } else {
+            return new ResponseEntity<>(mapper.createObjectNode().put("error", "id contains illegal characters"), HttpStatus.BAD_REQUEST);
         }
-        return new ResponseEntity<>("id contains illegal characters", HttpStatus.BAD_REQUEST);
     }
 
     /**
