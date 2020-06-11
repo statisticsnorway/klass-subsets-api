@@ -52,7 +52,7 @@ public class SubsetsController {
     public ResponseEntity<String> postSubset(@RequestBody JsonNode subsetsJson) {
         if (subsetsJson != null) {
             JsonNode idJN = subsetsJson.get("id");
-            String id = idJN.asText();
+            String id = idJN.textValue();
             ResponseEntity<String> ldsResponse = getFrom(LDS_SUBSET_API, "/"+id);
             if (ldsResponse.getStatusCodeValue() == 404)
                 return postTo(LDS_SUBSET_API, "/" + id, subsetsJson);
@@ -108,20 +108,23 @@ public class SubsetsController {
                         Map<String, Boolean> versionMap = new HashMap<>(responseBodyArrayNode.size() * 2, 0.51f);
                         for (int i = 0; i < responseBodyArrayNode.size(); i++) {
                             JsonNode arrayEntry = responseBodyArrayNode.get(i).get("document");
-                            String subsetVersion = arrayEntry.get("version").asText();
+                            String subsetVersion = arrayEntry.get("version").textValue();
                             if (!versionMap.containsKey(subsetVersion)){ // Only include the latest update of any patch
                                 arrayNode.add(arrayEntry);
                                 versionMap.put(subsetVersion, true);
                             }
                         }
                     }
+                    return new ResponseEntity<>("LDS response body was not JSON array", HttpStatus.INTERNAL_SERVER_ERROR);
                 }
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             } catch (JsonProcessingException e) {
                 e.printStackTrace();
+                LOG.error(e.getMessage());
+                return new ResponseEntity<>("JsonProcessingException on response body from LDS timeline api", HttpStatus.INTERNAL_SERVER_ERROR);
             }
         }
-        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>("id contains illegal characters", HttpStatus.BAD_REQUEST);
     }
 
     /**
@@ -135,29 +138,32 @@ public class SubsetsController {
      */
     @GetMapping("/v1/subsets/{id}/versions/{version}")
     public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String id, @PathVariable("version") String version) {
+        ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id) && Utils.isVersion(version)){
-            ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
-            ObjectMapper mapper = new ObjectMapper();
-            try {
-                JsonNode responseBodyJSON = mapper.readTree(ldsRE.getBody());
-                if (responseBodyJSON != null){
-                    if (responseBodyJSON.isArray()) {
-                        ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
-                        for (int i = 0; i < responseBodyArrayNode.size(); i++) {
-                            JsonNode arrayEntry = responseBodyArrayNode.get(i).get("document");
-                            String subsetVersion = arrayEntry.get("version").asText();
-                            if (subsetVersion.startsWith(version)){
-                                return new ResponseEntity<>(arrayEntry, HttpStatus.OK);
+            if (Utils.isVersion(version)){
+                ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
+                try {
+                    JsonNode responseBodyJSON = mapper.readTree(ldsRE.getBody());
+                    if (responseBodyJSON != null){
+                        if (responseBodyJSON.isArray()) {
+                            ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
+                            for (int i = 0; i < responseBodyArrayNode.size(); i++) {
+                                JsonNode arrayEntry = responseBodyArrayNode.get(i).get("document");
+                                String subsetVersion = arrayEntry.get("version").textValue();
+                                if (subsetVersion.startsWith(version)){
+                                    return new ResponseEntity<>(arrayEntry, HttpStatus.OK);
+                                }
                             }
                         }
                     }
+                    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
                 }
-                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-            } catch (JsonProcessingException e) {
-                e.printStackTrace();
             }
+            return new ResponseEntity<>(mapper.createObjectNode().put("error", "malformed version"), HttpStatus.BAD_REQUEST);
         }
-        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(mapper.createObjectNode().put("error", "id contains illegal characters"), HttpStatus.BAD_REQUEST);
     }
 
     /**
@@ -183,7 +189,7 @@ public class SubsetsController {
                         ArrayNode codes = (ArrayNode) responseBodyJSON.get("codes");
                         ArrayNode urnArray = mapper.createArrayNode();
                         for (int i = 0; i < codes.size(); i++) {
-                            urnArray.add(codes.get(i).get("urn").asText());
+                            urnArray.add(codes.get(i).get("urn").textValue());
                         }
                         return new ResponseEntity<>(urnArray, HttpStatus.OK);
                     }
@@ -234,7 +240,7 @@ public class SubsetsController {
                                         ArrayNode codesArrayNode = (ArrayNode) codes;
                                         LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
                                         for (int i1 = 0; i1 < codesArrayNode.size(); i1++) {
-                                            String codeURN = codesArrayNode.get(i1).get("urn").asText();
+                                            String codeURN = codesArrayNode.get(i1).get("urn").textValue();
                                             codeMap.merge(codeURN, 1, Integer::sum);
                                         }
                                     }
@@ -279,8 +285,8 @@ public class SubsetsController {
                         ArrayNode arrayNode = (ArrayNode) responseBodyJSON;
                         for (int i = 0; i < arrayNode.size(); i++) {
                             JsonNode version = arrayNode.get(i).get("document");
-                            String entryValidFrom = version.get("validFrom").asText();
-                            String entryValidUntil = version.get("validUntil").asText();
+                            String entryValidFrom = version.get("validFrom").textValue();
+                            String entryValidUntil = version.get("validUntil").textValue();
                             if (entryValidFrom.compareTo(date) <= 0 && entryValidUntil.compareTo(date) >= 0 ){
                                 return new ResponseEntity<>(version.get("codes"), HttpStatus.OK);
                             }
