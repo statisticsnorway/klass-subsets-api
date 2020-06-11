@@ -62,7 +62,8 @@ public class SubsetsController {
 
     @GetMapping("/v1/subsets/{id}")
     public ResponseEntity<String> getSubset(@PathVariable("id") String id) {
-        return getFrom(LDS_SUBSET_API, "/"+id);
+        if (Utils.isClean(id))
+            return getFrom(LDS_SUBSET_API, "/"+id);
     }
 
     @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -75,7 +76,32 @@ public class SubsetsController {
 
     @GetMapping("/v1/subsets/{id}/versions")
     public ResponseEntity<String> getVersions(@PathVariable("id") String id) {
-        return getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
+        if (Utils.isClean(id)){
+            ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
+            ObjectMapper mapper = new ObjectMapper();
+            ArrayNode arrayNode = mapper.createArrayNode();
+            try {
+                JsonNode responseBodyJSON = mapper.readTree(ldsRE.getBody());
+                if (responseBodyJSON != null){
+                    if (responseBodyJSON.isArray()) {
+                        ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
+                        Map<String, Boolean> versionMap = new HashMap<>(responseBodyArrayNode.size() * 2, 0.51f);
+                        for (int i = 0; i < responseBodyArrayNode.size(); i++) {
+                            JsonNode arrayEntry = responseBodyArrayNode.get(i).get("document");
+                            String subsetVersion = arrayEntry.get("version").asText();
+                            if (!versionMap.containsKey(subsetVersion)){ // Only include the latest update of any patch
+                                arrayNode.add(arrayEntry);
+                                versionMap.put(subsetVersion, true);
+                            }
+                        }
+                    }
+                }
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
+        }
+        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
     /**
@@ -223,7 +249,7 @@ public class SubsetsController {
      */
     @GetMapping("/v1/subsets/{id}/codesAt")
     public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id, @RequestParam String date) {
-        if (Utils.isClean(id) && Utils.isYearMonthDay(date)){
+        if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
             ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
             ObjectMapper mapper = new ObjectMapper();
             try {
