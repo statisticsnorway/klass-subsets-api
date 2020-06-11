@@ -7,7 +7,7 @@ public class Utils {
     }
 
     public static boolean isVersion(String version){
-        return version.matches("(\\d\\.\\d\\.\\d)");
+        return version.matches("(\\d(\\.\\d)?(\\.\\d)?)");
     }
 
     public static boolean isClean(String str){
