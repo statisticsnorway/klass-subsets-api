@@ -284,7 +284,7 @@ public class SubsetsController {
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
-    @GetMapping("/v1/subsets?schema")
+    @GetMapping("/v1/subsets/schema")
     public ResponseEntity<JsonNode> getSchema(){
         LDSConsumer consumer = new LDSConsumer();
         return consumer.getFrom(LDS_SUBSET_API,"/?schema");
