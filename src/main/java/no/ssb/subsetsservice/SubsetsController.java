@@ -4,17 +4,20 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+@CrossOrigin
 @RestController
 public class SubsetsController {
 
@@ -103,7 +106,9 @@ public class SubsetsController {
                     ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
                     Map<String, Boolean> versionMap = new HashMap<>(responseBodyArrayNode.size() * 2, 0.51f);
                     for (int i = 0; i < responseBodyArrayNode.size(); i++) {
-                        JsonNode arrayEntry = responseBodyArrayNode.get(i).get("document");
+                        ObjectNode arrayEntry = (ObjectNode) responseBodyArrayNode.get(i).get("document");
+                        JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), arrayEntry);
+                        arrayEntry.set("_links", self);
                         String subsetVersion = arrayEntry.get("version").textValue();
                         if (!versionMap.containsKey(subsetVersion)){ // Only include the latest update of any patch
                             arrayNode.add(arrayEntry);

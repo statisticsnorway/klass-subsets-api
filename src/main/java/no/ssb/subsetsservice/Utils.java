@@ -1,5 +1,10 @@
 package no.ssb.subsetsservice;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
 public class Utils {
 
     public static boolean isYearMonthDay(String date){
@@ -12,5 +17,14 @@ public class Utils {
 
     public static boolean isClean(String str){
         return str.matches("^[a-zA-Z0-9-_]+$");
+    }
+
+    public static JsonNode getSelfLinkObject(ObjectMapper mapper, ServletUriComponentsBuilder servletUriComponentsBuilder, JsonNode subset){
+        String subsetVersion = subset.get("version").textValue();
+        ObjectNode hrefNode = mapper.createObjectNode();
+        hrefNode.put("href", servletUriComponentsBuilder.toUriString()+"/"+subsetVersion);
+        ObjectNode self = mapper.createObjectNode();
+        self.set("self", hrefNode);
+        return self;
     }
 }
