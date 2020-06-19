@@ -178,6 +178,7 @@ public class SubsetsController {
      */
     @GetMapping("/v1/subsets/{id}/codes")
     public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id, @RequestParam(required = false) String from, @RequestParam(required = false) String to) {
+        LOG.debug("GET subsets/id/codes");
         if (Utils.isClean(id)){
             if (from == null && to == null){
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
@@ -286,6 +287,7 @@ public class SubsetsController {
      */
     @GetMapping("/v1/subsets/{id}/codesAt")
     public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id, @RequestParam String date) {
+        LOG.debug("GET subsets/id/codesAt");
         if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
             ResponseEntity<JsonNode> ldsRE = getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
             ObjectMapper mapper = new ObjectMapper();
@@ -298,8 +300,9 @@ public class SubsetsController {
                         String entryValidFrom = version.get("validFrom").textValue();
                         String entryValidUntil = version.get("validUntil").textValue();
                         if (entryValidFrom.compareTo(date) <= 0 && entryValidUntil.compareTo(date) >= 0 ){
+                            LOG.debug("Found valid codes at "+date+". "+version.get("codes").size());
                                 ArrayNode codeArray = mapper.createArrayNode();
-                                version.get("codes").forEach(e -> codeArray.add(e.get("document")));
+                                version.get("codes").forEach(e -> codeArray.add(e.get("urn")));
                                 return new ResponseEntity<>(codeArray, HttpStatus.OK);
                         }
                     }
