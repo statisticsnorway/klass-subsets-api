@@ -104,8 +104,8 @@ public class SubsetsController {
                 if (responseBodyJSON.isArray()) {
                     ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
                     Map<String, Boolean> versionMap = new HashMap<>(responseBodyArrayNode.size() * 2, 0.51f);
-                    for (JsonNode timelineEntry : responseBodyArrayNode) {
-                        JsonNode arrayEntry = timelineEntry.get("document");
+                    for (int i = 0; i < responseBodyArrayNode.size(); i++) {
+                        JsonNode arrayEntry = responseBodyArrayNode.get(i).get("document");
                         String subsetVersion = arrayEntry.get("version").textValue();
                         if (!versionMap.containsKey(subsetVersion)){ // Only include the latest update of any patch
                             arrayNode.add(arrayEntry);
@@ -143,9 +143,9 @@ public class SubsetsController {
                 JsonNode responseBodyJSON = ldsRE.getBody();
                 if (responseBodyJSON != null){
                     if (responseBodyJSON.isArray()) {
-                        ArrayNode timelineArrayNode = (ArrayNode) responseBodyJSON;
-                        for (JsonNode timelineEntry : timelineArrayNode) {
-                            JsonNode arrayEntry = timelineEntry.get("document");
+                        ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
+                        for (int i = 0; i < responseBodyArrayNode.size(); i++) {
+                            JsonNode arrayEntry = responseBodyArrayNode.get(i).get("document");
                             String subsetVersion = arrayEntry.get("version").textValue();
                             if (subsetVersion.startsWith(version)){
                                 return new ResponseEntity<>(arrayEntry, HttpStatus.OK);
@@ -182,8 +182,8 @@ public class SubsetsController {
                 if (responseBodyJSON != null){
                     ArrayNode codes = (ArrayNode) responseBodyJSON.get("codes");
                     ArrayNode urnArray = mapper.createArrayNode();
-                    for (JsonNode code : codes) {
-                        urnArray.add(code.get("urn").textValue());
+                    for (int i = 0; i < codes.size(); i++) {
+                        urnArray.add(codes.get(i).get("urn").textValue());
                     }
                     return new ResponseEntity<>(urnArray, HttpStatus.OK);
                 }
@@ -217,8 +217,9 @@ public class SubsetsController {
                         boolean isLastValidAtOrAfterToDate = lastVersionValidUntilString.compareTo(to) >= 0;
                         LOG.debug("isLastValidAtOrAfterToDate? " + isLastValidAtOrAfterToDate);
                         if (isFirstValidAtOrBeforeFromDate && isLastValidAtOrAfterToDate) {
-                            for (JsonNode arrayEntry : versionsArrayNode) {
+                            for (int i = 0; i < versionsArrayNode.size(); i++) {
                                 // if this version has any overlap with the valid interval . . .
+                                JsonNode arrayEntry = versionsArrayNode.get(i);
                                 JsonNode subset = arrayEntry.get("document");
                                 String validFromDateString = subset.get("validFrom").textValue().split("T")[0];
                                 String validUntilDateString = subset.get("validUntil").textValue().split("T")[0];
@@ -228,8 +229,8 @@ public class SubsetsController {
                                     JsonNode codes = arrayEntry.get("document").get("codes");
                                     ArrayNode codesArrayNode = (ArrayNode) codes;
                                     LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
-                                    for (JsonNode code : codesArrayNode) {
-                                        String codeURN = code.get("urn").textValue();
+                                    for (int i1 = 0; i1 < codesArrayNode.size(); i1++) {
+                                        String codeURN = codesArrayNode.get(i1).get("urn").textValue();
                                         codeMap.merge(codeURN, 1, Integer::sum);
                                     }
                                 }
@@ -268,8 +269,8 @@ public class SubsetsController {
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
                     ArrayNode arrayNode = (ArrayNode) responseBodyJSON;
-                    for (JsonNode timelineEntry : arrayNode) {
-                        JsonNode version = timelineEntry.get("document");
+                    for (int i = 0; i < arrayNode.size(); i++) {
+                        JsonNode version = arrayNode.get(i).get("document");
                         String entryValidFrom = version.get("validFrom").textValue();
                         String entryValidUntil = version.get("validUntil").textValue();
                         if (entryValidFrom.compareTo(date) <= 0 && entryValidUntil.compareTo(date) >= 0 ){
