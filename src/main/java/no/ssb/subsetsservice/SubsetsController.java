@@ -32,6 +32,10 @@ public class SubsetsController {
     private static final boolean prod = true;
 
     public SubsetsController(){
+        updateLDSURL();
+    }
+
+    private void updateLDSURL(){
         if (prod){
             LDS_SUBSET_API = System.getenv().getOrDefault("API_LDS", LDS_PROD);
         } else {
