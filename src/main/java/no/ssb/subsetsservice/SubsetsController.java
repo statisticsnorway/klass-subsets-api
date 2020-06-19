@@ -3,14 +3,19 @@ package no.ssb.subsetsservice;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.HashMap;
 import java.util.Map;
 
+@CrossOrigin
 @RestController
 public class SubsetsController {
 
@@ -25,6 +30,10 @@ public class SubsetsController {
     private static final boolean prod = true;
 
     public SubsetsController(){
+        updateLDSURL();
+    }
+
+    private void updateLDSURL(){
         if (prod){
             LDS_SUBSET_API = System.getenv().getOrDefault("API_LDS", LDS_PROD);
         } else {
@@ -105,7 +114,9 @@ public class SubsetsController {
                     ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
                     Map<String, Boolean> versionMap = new HashMap<>(responseBodyArrayNode.size() * 2, 0.51f);
                     for (int i = 0; i < responseBodyArrayNode.size(); i++) {
-                        JsonNode arrayEntry = responseBodyArrayNode.get(i).get("document");
+                        ObjectNode arrayEntry = (ObjectNode) responseBodyArrayNode.get(i).get("document");
+                        JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), arrayEntry);
+                        arrayEntry.set("_links", self);
                         String subsetVersion = arrayEntry.get("version").textValue();
                         if (!versionMap.containsKey(subsetVersion)){ // Only include the latest update of any patch
                             arrayNode.add(arrayEntry);
@@ -172,8 +183,9 @@ public class SubsetsController {
      */
     @GetMapping("/v1/subsets/{id}/codes")
     public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id, @RequestParam(required = false) String from, @RequestParam(required = false) String to) {
+        LOG.debug("GET subsets/id/codes");
         if (Utils.isClean(id)){
-            if (from == null || to == null){
+            if (from == null && to == null){
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
                 LDSConsumer consumer = new LDSConsumer();
                 ResponseEntity<JsonNode> ldsRE = consumer.getFrom(LDS_SUBSET_API, "/"+id);
@@ -190,7 +202,9 @@ public class SubsetsController {
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
 
-            if (Utils.isYearMonthDay(from) && Utils.isYearMonthDay(to)) {
+            boolean isFromDate = from != null;
+            boolean isToDate = to != null;
+            if ((!isFromDate || Utils.isYearMonthDay(from)) && (!isToDate || Utils.isYearMonthDay(to))){ // If a date is given as param, it must be valid format
                 LDSConsumer consumer = new LDSConsumer();
                 // If a date interval is specified using 'from' and 'to' query parameters
                 ResponseEntity<JsonNode> ldsRE = consumer.getFrom(LDS_SUBSET_API, "/" + id + "?timeline");
@@ -212,10 +226,17 @@ public class SubsetsController {
                         String lastVersionValidUntilString = lastVersion.get("validUntil").textValue().split("T")[0];
                         LOG.debug("First version valid from: " + firstVersionValidFromString);
                         LOG.debug("Last version valid until: " + lastVersionValidUntilString);
-                        boolean isFirstValidAtOrBeforeFromDate = firstVersionValidFromString.compareTo(from) <= 0;
+
+                        boolean isFirstValidAtOrBeforeFromDate = true; // If no "from" date is given, version is automatically valid at or before "from" date
+                        if (isFromDate)
+                            isFirstValidAtOrBeforeFromDate = firstVersionValidFromString.compareTo(from) <= 0;
                         LOG.debug("isFirstValidAtOrBeforeFromDate? " + isFirstValidAtOrBeforeFromDate);
-                        boolean isLastValidAtOrAfterToDate = lastVersionValidUntilString.compareTo(to) >= 0;
+
+                        boolean isLastValidAtOrAfterToDate = true; // If no "to" date is given, it is automatically valid at or after "to" date
+                        if (isToDate)
+                            isLastValidAtOrAfterToDate = lastVersionValidUntilString.compareTo(to) >= 0;
                         LOG.debug("isLastValidAtOrAfterToDate? " + isLastValidAtOrAfterToDate);
+
                         if (isFirstValidAtOrBeforeFromDate && isLastValidAtOrAfterToDate) {
                             for (int i = 0; i < versionsArrayNode.size(); i++) {
                                 // if this version has any overlap with the valid interval . . .
@@ -223,26 +244,37 @@ public class SubsetsController {
                                 JsonNode subset = arrayEntry.get("document");
                                 String validFromDateString = subset.get("validFrom").textValue().split("T")[0];
                                 String validUntilDateString = subset.get("validUntil").textValue().split("T")[0];
-                                if (validUntilDateString.compareTo(from) > 0 || validFromDateString.compareTo(to) < 0) {
+
+                                boolean validUntilGTFrom = true;
+                                if (isFromDate)
+                                    validUntilGTFrom = validUntilDateString.compareTo(from) > 0;
+
+                                boolean validFromLTTo = true;
+                                if (isToDate)
+                                    validFromLTTo = validFromDateString.compareTo(to) < 0;
+
+                                if (validUntilGTFrom || validFromLTTo) {
                                     LOG.debug("Version " + subset.get("version") + " is valid in the interval, so codes will be added to map");
                                     // . . . using each code in this version as key, increment corresponding integer value in map
                                     JsonNode codes = arrayEntry.get("document").get("codes");
                                     ArrayNode codesArrayNode = (ArrayNode) codes;
                                     LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
                                     for (int i1 = 0; i1 < codesArrayNode.size(); i1++) {
-                                        String codeURN = codesArrayNode.get(i1).get("urn").textValue();
+                                        String codeURN = codesArrayNode.get(i1).get("urn").asText();
                                         codeMap.merge(codeURN, 1, Integer::sum);
                                     }
                                 }
                             }
-                            // Only return codes that were in every version in the interval, (=> they were always valid)
-                            for (String key : codeMap.keySet()) {
-                                int value = codeMap.get(key);
-                                LOG.trace("key:" + key + " value:" + value);
-                                if (value == nrOfVersions)
-                                    intersectionValidCodesInIntervalArrayNode.add(key);
-                            }
                         }
+
+                        // Only return codes that were in every version in the interval, (=> they were always valid)
+                        for (String key : codeMap.keySet()) {
+                            int value = codeMap.get(key);
+                            LOG.trace("key:" + key + " value:" + value);
+                            if (value == nrOfVersions)
+                                intersectionValidCodesInIntervalArrayNode.add(key);
+                        }
+                        
                         LOG.debug("nr of valid codes: " + intersectionValidCodesInIntervalArrayNode.size());
                         return new ResponseEntity<>(intersectionValidCodesInIntervalArrayNode, HttpStatus.OK);
                     }
@@ -262,6 +294,7 @@ public class SubsetsController {
      */
     @GetMapping("/v1/subsets/{id}/codesAt")
     public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id, @RequestParam String date) {
+        LOG.debug("GET subsets/id/codesAt");
         if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
             LDSConsumer consumer = new LDSConsumer();
             ResponseEntity<JsonNode> ldsRE = consumer.getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
@@ -274,7 +307,10 @@ public class SubsetsController {
                         String entryValidFrom = version.get("validFrom").textValue();
                         String entryValidUntil = version.get("validUntil").textValue();
                         if (entryValidFrom.compareTo(date) <= 0 && entryValidUntil.compareTo(date) >= 0 ){
-                            return new ResponseEntity<>(version.get("codes"), HttpStatus.OK);
+                            LOG.debug("Found valid codes at "+date+". "+version.get("codes").size());
+                                ArrayNode codeArray = mapper.createArrayNode();
+                                version.get("codes").forEach(e -> codeArray.add(e.get("urn")));
+                                return new ResponseEntity<>(codeArray, HttpStatus.OK);
                         }
                     }
                     return new ResponseEntity<>(HttpStatus.NOT_FOUND);
