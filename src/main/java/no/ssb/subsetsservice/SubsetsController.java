@@ -308,9 +308,10 @@ public class SubsetsController {
                         String entryValidUntil = version.get("validUntil").textValue();
                         if (entryValidFrom.compareTo(date) <= 0 && entryValidUntil.compareTo(date) >= 0 ){
                             LOG.debug("Found valid codes at "+date+". "+version.get("codes").size());
-                                ArrayNode codeArray = mapper.createArrayNode();
-                                version.get("codes").forEach(e -> codeArray.add(e.get("urn")));
-                                return new ResponseEntity<>(codeArray, HttpStatus.OK);
+                            ObjectMapper mapper = new ObjectMapper();
+                            ArrayNode codeArray = mapper.createArrayNode();
+                            version.get("codes").forEach(e -> codeArray.add(e.get("urn")));
+                            return new ResponseEntity<>(codeArray, HttpStatus.OK);
                         }
                     }
                     return new ResponseEntity<>(HttpStatus.NOT_FOUND);
