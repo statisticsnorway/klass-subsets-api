@@ -219,53 +219,54 @@ public class SubsetsController {
                         LOG.debug("First version valid from: " + firstVersionValidFromString);
                         LOG.debug("Last version valid until: " + lastVersionValidUntilString);
 
-                            boolean isFirstValidAtOrBeforeFromDate = true; // If no "from" date is given, version is automatically valid at or before "from" date
-                            if (isFromDate)
-                                isFirstValidAtOrBeforeFromDate = firstVersionValidFromString.compareTo(from) <= 0;
-                            LOG.debug("isFirstValidAtOrBeforeFromDate? " + isFirstValidAtOrBeforeFromDate);
+                        boolean isFirstValidAtOrBeforeFromDate = true; // If no "from" date is given, version is automatically valid at or before "from" date
+                        if (isFromDate)
+                            isFirstValidAtOrBeforeFromDate = firstVersionValidFromString.compareTo(from) <= 0;
+                        LOG.debug("isFirstValidAtOrBeforeFromDate? " + isFirstValidAtOrBeforeFromDate);
 
-                            boolean isLastValidAtOrAfterToDate = true; // If no "to" date is given, it is automatically valid at or after "to" date
-                            if (isToDate)
-                                isLastValidAtOrAfterToDate = lastVersionValidUntilString.compareTo(to) >= 0;
-                            LOG.debug("isLastValidAtOrAfterToDate? " + isLastValidAtOrAfterToDate);
+                        boolean isLastValidAtOrAfterToDate = true; // If no "to" date is given, it is automatically valid at or after "to" date
+                        if (isToDate)
+                            isLastValidAtOrAfterToDate = lastVersionValidUntilString.compareTo(to) >= 0;
+                        LOG.debug("isLastValidAtOrAfterToDate? " + isLastValidAtOrAfterToDate);
 
-                            if (isFirstValidAtOrBeforeFromDate && isLastValidAtOrAfterToDate) {
-                                for (int i = 0; i < versionsArrayNode.size(); i++) {
-                                    // if this version has any overlap with the valid interval . . .
-                                    JsonNode arrayEntry = versionsArrayNode.get(i);
-                                    JsonNode subset = arrayEntry.get("document");
-                                    String validFromDateString = subset.get("validFrom").textValue().split("T")[0];
-                                    String validUntilDateString = subset.get("validUntil").textValue().split("T")[0];
+                        if (isFirstValidAtOrBeforeFromDate && isLastValidAtOrAfterToDate) {
+                            for (int i = 0; i < versionsArrayNode.size(); i++) {
+                                // if this version has any overlap with the valid interval . . .
+                                JsonNode arrayEntry = versionsArrayNode.get(i);
+                                JsonNode subset = arrayEntry.get("document");
+                                String validFromDateString = subset.get("validFrom").textValue().split("T")[0];
+                                String validUntilDateString = subset.get("validUntil").textValue().split("T")[0];
 
-                                    boolean validUntilGTFrom = true;
-                                    if (isFromDate)
-                                        validUntilGTFrom = validUntilDateString.compareTo(from) > 0;
+                                boolean validUntilGTFrom = true;
+                                if (isFromDate)
+                                    validUntilGTFrom = validUntilDateString.compareTo(from) > 0;
 
-                                    boolean validFromLTTo = true;
-                                    if (isToDate)
-                                        validFromLTTo = validFromDateString.compareTo(to) < 0;
-                                    
-                                    if (validUntilGTFrom || validFromLTTo) {
-                                        LOG.debug("Version " + subset.get("version") + " is valid in the interval, so codes will be added to map");
-                                        // . . . using each code in this version as key, increment corresponding integer value in map
-                                        JsonNode codes = arrayEntry.get("document").get("codes");
-                                        ArrayNode codesArrayNode = (ArrayNode) codes;
-                                        LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
-                                        for (int i1 = 0; i1 < codesArrayNode.size(); i1++) {
-                                            String codeURN = codesArrayNode.get(i1).get("urn").asText();
-                                            codeMap.merge(codeURN, 1, Integer::sum);
-                                        }
+                                boolean validFromLTTo = true;
+                                if (isToDate)
+                                    validFromLTTo = validFromDateString.compareTo(to) < 0;
+
+                                if (validUntilGTFrom || validFromLTTo) {
+                                    LOG.debug("Version " + subset.get("version") + " is valid in the interval, so codes will be added to map");
+                                    // . . . using each code in this version as key, increment corresponding integer value in map
+                                    JsonNode codes = arrayEntry.get("document").get("codes");
+                                    ArrayNode codesArrayNode = (ArrayNode) codes;
+                                    LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
+                                    for (int i1 = 0; i1 < codesArrayNode.size(); i1++) {
+                                        String codeURN = codesArrayNode.get(i1).get("urn").asText();
+                                        codeMap.merge(codeURN, 1, Integer::sum);
                                     }
                                 }
                             }
-                            // Only return codes that were in every version in the interval, (=> they were always valid)
-                            for (String key : codeMap.keySet()) {
-                                int value = codeMap.get(key);
-                                LOG.trace("key:" + key + " value:" + value);
-                                if (value == nrOfVersions)
-                                    intersectionValidCodesInIntervalArrayNode.add(key);
-                            }
                         }
+
+                        // Only return codes that were in every version in the interval, (=> they were always valid)
+                        for (String key : codeMap.keySet()) {
+                            int value = codeMap.get(key);
+                            LOG.trace("key:" + key + " value:" + value);
+                            if (value == nrOfVersions)
+                                intersectionValidCodesInIntervalArrayNode.add(key);
+                        }
+                        
                         LOG.debug("nr of valid codes: " + intersectionValidCodesInIntervalArrayNode.size());
                         return new ResponseEntity<>(intersectionValidCodesInIntervalArrayNode, HttpStatus.OK);
                     }
