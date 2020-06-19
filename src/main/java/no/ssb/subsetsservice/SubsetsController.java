@@ -139,7 +139,7 @@ public class SubsetsController {
     @GetMapping("/v1/subsets/{id}/codes")
     public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id, @RequestParam(required = false) String from, @RequestParam(required = false) String to) {
         if (Utils.isClean(id)){
-            if (from == null || to == null){
+            if (from == null && to == null){
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
                 ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/"+id);
                 ObjectMapper mapper = new ObjectMapper();
@@ -160,7 +160,9 @@ public class SubsetsController {
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
 
-            if (Utils.isYearMonthDay(from) && Utils.isYearMonthDay(to)) {
+            boolean isFromDate = from != null;
+            boolean isToDate = to != null;
+            if ((!isFromDate || Utils.isYearMonthDay(from)) && (!isToDate || Utils.isYearMonthDay(to))){ // If a date is given as param, it must be valid format
                 // If a date interval is specified using 'from' and 'to' query parameters
                 ResponseEntity<String> ldsRE = getFrom(LDS_SUBSET_API, "/" + id + "?timeline");
                 LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
@@ -182,10 +184,17 @@ public class SubsetsController {
                             String lastVersionValidUntilString = lastVersion.get("validUntil").textValue().split("T")[0];
                             LOG.debug("First version valid from: " + firstVersionValidFromString);
                             LOG.debug("Last version valid until: " + lastVersionValidUntilString);
-                            boolean isFirstValidAtOrBeforeFromDate = firstVersionValidFromString.compareTo(from) <= 0;
+
+                            boolean isFirstValidAtOrBeforeFromDate = true; // If no "from" date is given, version is automatically valid at or before "from" date
+                            if (isFromDate)
+                                isFirstValidAtOrBeforeFromDate = firstVersionValidFromString.compareTo(from) <= 0;
                             LOG.debug("isFirstValidAtOrBeforeFromDate? " + isFirstValidAtOrBeforeFromDate);
-                            boolean isLastValidAtOrAfterToDate = lastVersionValidUntilString.compareTo(to) >= 0;
+
+                            boolean isLastValidAtOrAfterToDate = true; // If no "to" date is given, it is automatically valid at or after "to" date
+                            if (isToDate)
+                                isLastValidAtOrAfterToDate = lastVersionValidUntilString.compareTo(to) >= 0;
                             LOG.debug("isLastValidAtOrAfterToDate? " + isLastValidAtOrAfterToDate);
+
                             if (isFirstValidAtOrBeforeFromDate && isLastValidAtOrAfterToDate) {
                                 for (int i = 0; i < versionsArrayNode.size(); i++) {
                                     // if this version has any overlap with the valid interval . . .
@@ -193,7 +202,16 @@ public class SubsetsController {
                                     JsonNode subset = arrayEntry.get("document");
                                     String validFromDateString = subset.get("validFrom").textValue().split("T")[0];
                                     String validUntilDateString = subset.get("validUntil").textValue().split("T")[0];
-                                    if (validUntilDateString.compareTo(from) > 0 || validFromDateString.compareTo(to) < 0) {
+
+                                    boolean validUntilGTFrom = true;
+                                    if (isFromDate)
+                                        validUntilGTFrom = validUntilDateString.compareTo(from) > 0;
+
+                                    boolean validFromLTTo = true;
+                                    if (isToDate)
+                                        validFromLTTo = validFromDateString.compareTo(to) < 0;
+                                    
+                                    if (validUntilGTFrom || validFromLTTo) {
                                         LOG.debug("Version " + subset.get("version") + " is valid in the interval, so codes will be added to map");
                                         // . . . using each code in this version as key, increment corresponding integer value in map
                                         JsonNode codes = arrayEntry.get("document").get("codes");
