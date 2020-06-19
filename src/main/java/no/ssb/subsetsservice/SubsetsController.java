@@ -298,7 +298,9 @@ public class SubsetsController {
                         String entryValidFrom = version.get("validFrom").textValue();
                         String entryValidUntil = version.get("validUntil").textValue();
                         if (entryValidFrom.compareTo(date) <= 0 && entryValidUntil.compareTo(date) >= 0 ){
-                            return new ResponseEntity<>(version.get("codes"), HttpStatus.OK);
+                                ArrayNode codeArray = mapper.createArrayNode();
+                                version.get("codes").forEach(e -> codeArray.add(e.get("document")));
+                                return new ResponseEntity<>(codeArray, HttpStatus.OK);
                         }
                     }
                     return new ResponseEntity<>(HttpStatus.NOT_FOUND);
