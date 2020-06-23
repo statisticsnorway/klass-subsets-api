@@ -81,24 +81,11 @@ public class SubsetsController {
     public ResponseEntity<JsonNode> putSubset(@PathVariable("id") String id, @RequestBody JsonNode subsetJson) {
 
         ObjectMapper mapper = new ObjectMapper();
-        if (Utils.isClean(id)) {
-            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-            ResponseEntity<JsonNode> responseEntity = consumer.getFrom("/"+id);
-
-            if (responseEntity.getStatusCodeValue() != 404){
-                JsonNode responseBodyJSON = responseEntity.getBody();
-                String currentAdminStatus = responseBodyJSON.get("administrativeStatus").textValue();
-                String currentVersion = responseBodyJSON.get("version").textValue();
-                String nextVersion = subsetJson.get("version").textValue();
-                if (currentVersion.compareTo(nextVersion) < 0 || !currentAdminStatus.equals("OPEN")){ // Do not overwrite a published patch.
-                    return consumer.putTo("/" + id, subsetJson);
-                }
-                return new ResponseEntity<>(mapper.createObjectNode().put("error","trying to overwrite an already published patch of a subset"), HttpStatus.BAD_REQUEST);
-            } else {
-                return consumer.putTo("/" + id, subsetJson);
-            }
+        if (!Utils.isClean(id)) {
+            return new ResponseEntity<>(mapper.createObjectNode().put("error","id contains illegal characters"), HttpStatus.BAD_REQUEST);
         }
-        return new ResponseEntity<>(mapper.createObjectNode().put("error","id contains illegal characters"), HttpStatus.BAD_REQUEST);
+        LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+        return consumer.putTo("/" + id, subsetJson);
     }
 
     @GetMapping("/v1/subsets/{id}/versions")
