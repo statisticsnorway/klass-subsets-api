@@ -8,8 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.HashMap;
@@ -51,19 +49,23 @@ public class SubsetsController {
     /**
      * This method figures out what the 'id' of the subset is from the value inside the JSON
      * and then post to subsets/{id}
-     * @param subsetsJson
+     * @param subsetJson
      * @return
      */
     @PostMapping("/v1/subsets")
-    public ResponseEntity<JsonNode> postSubset(@RequestBody JsonNode subsetsJson) {
+    public ResponseEntity<JsonNode> postSubset(@RequestBody JsonNode subsetJson) {
         ObjectMapper mapper = new ObjectMapper();
-        if (subsetsJson != null) {
-            JsonNode idJN = subsetsJson.get("id");
+        if (subsetJson != null) {
+            JsonNode idJN = subsetJson.get("id");
             String id = idJN.textValue();
+            ObjectNode editableSubset = subsetJson.deepCopy();
+            String isoNow = Utils.getNowISO();
+            editableSubset.put("lastUpdatedDate", isoNow);
+            editableSubset.put("createdDate", isoNow);
             LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
             ResponseEntity<JsonNode> ldsResponse = consumer.getFrom("/"+id);
             if (ldsResponse.getStatusCodeValue() == 404)
-                return consumer.postTo("/" + id, subsetsJson);
+                return consumer.postTo("/" + id, subsetJson);
         }
         return new ResponseEntity<>(mapper.createObjectNode().put("error","Can not POST subset with id that is already in use. Use PUT to update existing subsets"), HttpStatus.BAD_REQUEST);
     }
@@ -82,23 +84,13 @@ public class SubsetsController {
 
         ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id)) {
+            ObjectNode editableSubset = subsetJson.deepCopy();
+            editableSubset.put("lastUpdatedDate", Utils.getNowISO());
             LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-            ResponseEntity<JsonNode> responseEntity = consumer.getFrom("/"+id);
-
-            if (responseEntity.getStatusCodeValue() != 404){
-                JsonNode responseBodyJSON = responseEntity.getBody();
-                String currentAdminStatus = responseBodyJSON.get("administrativeStatus").textValue();
-                String currentVersion = responseBodyJSON.get("version").textValue();
-                String nextVersion = subsetJson.get("version").textValue();
-                if (currentVersion.compareTo(nextVersion) < 0 || !currentAdminStatus.equals("OPEN")){ // Do not overwrite a published patch.
-                    return consumer.putTo("/" + id, subsetJson);
-                }
-                return new ResponseEntity<>(mapper.createObjectNode().put("error","trying to overwrite an already published patch of a subset"), HttpStatus.BAD_REQUEST);
-            } else {
-                return consumer.putTo("/" + id, subsetJson);
-            }
+            return consumer.putTo("/" + id, editableSubset);
+        } else {
+            return new ResponseEntity<>(mapper.createObjectNode().put("error", "id contains illegal characters"), HttpStatus.BAD_REQUEST);
         }
-        return new ResponseEntity<>(mapper.createObjectNode().put("error","id contains illegal characters"), HttpStatus.BAD_REQUEST);
     }
 
     @GetMapping("/v1/subsets/{id}/versions")
@@ -113,12 +105,12 @@ public class SubsetsController {
                 if (responseBodyJSON.isArray()) {
                     ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
                     Map<String, Boolean> versionMap = new HashMap<>(responseBodyArrayNode.size() * 2, 0.51f);
-                    for (int i = 0; i < responseBodyArrayNode.size(); i++) {
-                        ObjectNode arrayEntry = (ObjectNode) responseBodyArrayNode.get(i).get("document");
+                    for (JsonNode jsonNode : responseBodyArrayNode) {
+                        ObjectNode arrayEntry = jsonNode.get("document").deepCopy();
                         JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), arrayEntry);
                         arrayEntry.set("_links", self);
-                        String subsetVersion = arrayEntry.get("version").textValue();
-                        if (!versionMap.containsKey(subsetVersion)){ // Only include the latest update of any patch
+                        String subsetVersion = arrayEntry.get("version").textValue().split("\\.")[0];
+                        if (!versionMap.containsKey(subsetVersion)){ // Only include the latest update of any major version
                             arrayNode.add(arrayEntry);
                             versionMap.put(subsetVersion, true);
                         }
@@ -155,8 +147,8 @@ public class SubsetsController {
                 if (responseBodyJSON != null){
                     if (responseBodyJSON.isArray()) {
                         ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
-                        for (int i = 0; i < responseBodyArrayNode.size(); i++) {
-                            JsonNode arrayEntry = responseBodyArrayNode.get(i).get("document");
+                        for (JsonNode jsonNode : responseBodyArrayNode) {
+                            JsonNode arrayEntry =jsonNode.get("document");
                             String subsetVersion = arrayEntry.get("version").textValue();
                             if (subsetVersion.startsWith(version)){
                                 return new ResponseEntity<>(arrayEntry, HttpStatus.OK);
@@ -187,15 +179,14 @@ public class SubsetsController {
         if (Utils.isClean(id)){
             if (from == null && to == null){
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
-                LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-                ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id);
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode responseBodyJSON = ldsRE.getBody();
+                ResponseEntity<JsonNode> subsetResponseEntity = getSubset(id);
+                JsonNode responseBodyJSON = subsetResponseEntity.getBody();
                 if (responseBodyJSON != null){
                     ArrayNode codes = (ArrayNode) responseBodyJSON.get("codes");
+                    ObjectMapper mapper = new ObjectMapper();
                     ArrayNode urnArray = mapper.createArrayNode();
-                    for (int i = 0; i < codes.size(); i++) {
-                        urnArray.add(codes.get(i).get("urn").textValue());
+                    for (JsonNode code : codes) {
+                        urnArray.add(code.get("urn").textValue());
                     }
                     return new ResponseEntity<>(urnArray, HttpStatus.OK);
                 }
@@ -205,14 +196,13 @@ public class SubsetsController {
             boolean isFromDate = from != null;
             boolean isToDate = to != null;
             if ((!isFromDate || Utils.isYearMonthDay(from)) && (!isToDate || Utils.isYearMonthDay(to))){ // If a date is given as param, it must be valid format
-                LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
                 // If a date interval is specified using 'from' and 'to' query parameters
-                ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/" + id + "?timeline");
+                ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id);
+                JsonNode responseBodyJSON = versionsResponseEntity.getBody();
                 LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
                 ObjectMapper mapper = new ObjectMapper();
                 Map<String, Integer> codeMap = new HashMap<>();
                 int nrOfVersions;
-                JsonNode responseBodyJSON = ldsRE.getBody();
                 if (responseBodyJSON != null) {
                     if (responseBodyJSON.isArray()) {
                         ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
@@ -238,9 +228,8 @@ public class SubsetsController {
                         LOG.debug("isLastValidAtOrAfterToDate? " + isLastValidAtOrAfterToDate);
 
                         if (isFirstValidAtOrBeforeFromDate && isLastValidAtOrAfterToDate) {
-                            for (int i = 0; i < versionsArrayNode.size(); i++) {
+                            for (JsonNode arrayEntry : versionsArrayNode) {
                                 // if this version has any overlap with the valid interval . . .
-                                JsonNode arrayEntry = versionsArrayNode.get(i);
                                 JsonNode subset = arrayEntry.get("document");
                                 String validFromDateString = subset.get("validFrom").textValue().split("T")[0];
                                 String validUntilDateString = subset.get("validUntil").textValue().split("T")[0];
@@ -259,8 +248,8 @@ public class SubsetsController {
                                     JsonNode codes = arrayEntry.get("document").get("codes");
                                     ArrayNode codesArrayNode = (ArrayNode) codes;
                                     LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
-                                    for (int i1 = 0; i1 < codesArrayNode.size(); i1++) {
-                                        String codeURN = codesArrayNode.get(i1).get("urn").asText();
+                                    for (JsonNode jsonNode : codesArrayNode) {
+                                        String codeURN = jsonNode.get("urn").asText();
                                         codeMap.merge(codeURN, 1, Integer::sum);
                                     }
                                 }
@@ -296,14 +285,13 @@ public class SubsetsController {
     public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id, @RequestParam String date) {
         LOG.debug("GET subsets/id/codesAt");
         if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
-            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-            ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id+"?timeline");
-            JsonNode responseBodyJSON = ldsRE.getBody();
+            ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id);
+            JsonNode responseBodyJSON = versionsResponseEntity.getBody();
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
                     ArrayNode arrayNode = (ArrayNode) responseBodyJSON;
-                    for (int i = 0; i < arrayNode.size(); i++) {
-                        JsonNode version = arrayNode.get(i).get("document");
+                    for (JsonNode jsonNode : arrayNode) {
+                        JsonNode version = jsonNode.get("document");
                         String entryValidFrom = version.get("validFrom").textValue();
                         String entryValidUntil = version.get("validUntil").textValue();
                         if (entryValidFrom.compareTo(date) <= 0 && entryValidUntil.compareTo(date) >= 0 ){
