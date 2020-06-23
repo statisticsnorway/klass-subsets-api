@@ -104,7 +104,7 @@ public class SubsetsController {
                         ObjectNode arrayEntry = (ObjectNode) responseBodyArrayNode.get(i).get("document");
                         JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), arrayEntry);
                         arrayEntry.set("_links", self);
-                        String subsetVersion = arrayEntry.get("version").textValue();
+                        String subsetVersion = arrayEntry.get("version").textValue().split("\\.")[0];
                         if (!versionMap.containsKey(subsetVersion)){ // Only include the latest update of any patch
                             arrayNode.add(arrayEntry);
                             versionMap.put(subsetVersion, true);
