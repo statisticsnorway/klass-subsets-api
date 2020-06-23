@@ -105,7 +105,7 @@ public class SubsetsController {
                         JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), arrayEntry);
                         arrayEntry.set("_links", self);
                         String subsetVersion = arrayEntry.get("version").textValue().split("\\.")[0];
-                        if (!versionMap.containsKey(subsetVersion)){ // Only include the latest update of any patch
+                        if (!versionMap.containsKey(subsetVersion)){ // Only include the latest update of any major version
                             arrayNode.add(arrayEntry);
                             versionMap.put(subsetVersion, true);
                         }
@@ -174,12 +174,11 @@ public class SubsetsController {
         if (Utils.isClean(id)){
             if (from == null && to == null){
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
-                LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-                ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id);
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode responseBodyJSON = ldsRE.getBody();
+                ResponseEntity<JsonNode> subsetResponseEntity = getSubset(id);
+                JsonNode responseBodyJSON = subsetResponseEntity.getBody();
                 if (responseBodyJSON != null){
                     ArrayNode codes = (ArrayNode) responseBodyJSON.get("codes");
+                    ObjectMapper mapper = new ObjectMapper();
                     ArrayNode urnArray = mapper.createArrayNode();
                     for (int i = 0; i < codes.size(); i++) {
                         urnArray.add(codes.get(i).get("urn").textValue());
@@ -192,14 +191,13 @@ public class SubsetsController {
             boolean isFromDate = from != null;
             boolean isToDate = to != null;
             if ((!isFromDate || Utils.isYearMonthDay(from)) && (!isToDate || Utils.isYearMonthDay(to))){ // If a date is given as param, it must be valid format
-                LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
                 // If a date interval is specified using 'from' and 'to' query parameters
-                ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/" + id + "?timeline");
+                ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id);
+                JsonNode responseBodyJSON = versionsResponseEntity.getBody();
                 LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
                 ObjectMapper mapper = new ObjectMapper();
                 Map<String, Integer> codeMap = new HashMap<>();
                 int nrOfVersions;
-                JsonNode responseBodyJSON = ldsRE.getBody();
                 if (responseBodyJSON != null) {
                     if (responseBodyJSON.isArray()) {
                         ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
@@ -283,9 +281,8 @@ public class SubsetsController {
     public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id, @RequestParam String date) {
         LOG.debug("GET subsets/id/codesAt");
         if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
-            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-            ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id+"?timeline");
-            JsonNode responseBodyJSON = ldsRE.getBody();
+            ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id);
+            JsonNode responseBodyJSON = versionsResponseEntity.getBody();
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
                     ArrayNode arrayNode = (ArrayNode) responseBodyJSON;
