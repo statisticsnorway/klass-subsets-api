@@ -59,7 +59,9 @@ public class SubsetsController {
             JsonNode idJN = subsetJson.get("id");
             String id = idJN.textValue();
             ObjectNode editableSubset = subsetJson.deepCopy();
-            editableSubset.put("lastupdatedDate", Utils.getNowISO());
+            String isoNow = Utils.getNowISO();
+            editableSubset.put("lastUpdatedDate", isoNow);
+            editableSubset.put("createdDate", isoNow)
             LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
             ResponseEntity<JsonNode> ldsResponse = consumer.getFrom("/"+id);
             if (ldsResponse.getStatusCodeValue() == 404)
@@ -83,7 +85,7 @@ public class SubsetsController {
         ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id)) {
             ObjectNode editableSubset = subsetJson.deepCopy();
-            editableSubset.put("lastupdatedDate", Utils.getNowISO());
+            editableSubset.put("lastUpdatedDate", Utils.getNowISO());
             LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
             return consumer.putTo("/" + id, editableSubset);
         } else {
