@@ -47,8 +47,8 @@ class SubsetsServiceApplicationTests {
 			ObjectMapper mapper = new ObjectMapper();
 			JsonNode jsonNode = mapper.readTree(subsetJSONString);
 			System.out.println(subsetJSONString);
-			LDSConsumer consumer = new LDSConsumer();
-			ResponseEntity<JsonNode> response = consumer.putTo(ldsURL, "/1", jsonNode);
+			LDSConsumer consumer = new LDSConsumer(ldsURL);
+			ResponseEntity<JsonNode> response = consumer.putTo("/1", jsonNode);
 
 			System.out.println("RESPONSE HEADERS:");
 			System.out.println(response.getHeaders());
@@ -67,8 +67,8 @@ class SubsetsServiceApplicationTests {
 	@Test
 	void getFromLDSLocal() {
 		System.out.println("TESTING GET SUBSET BY ID 1 FROM LDS LOCAL INSTANCE");
-		LDSConsumer consumer = new LDSConsumer();
-		ResponseEntity<JsonNode> response = consumer.getFrom(ldsURL, "/1");
+		LDSConsumer consumer = new LDSConsumer(ldsURL);
+		ResponseEntity<JsonNode> response = consumer.getFrom( "/1");
 
 		System.out.println("GET "+ldsURL+"/1");
 		System.out.println("RESPONSE HEADERS:");
@@ -82,8 +82,8 @@ class SubsetsServiceApplicationTests {
 	@Test
 	void getAllFromLDSLocal() {
 		System.out.println("TESTING GET ALL SUBSETS FROM LDS LOCAL INSTANCE");
-		LDSConsumer consumer = new LDSConsumer();
-		ResponseEntity<JsonNode> response = consumer.getFrom(ldsURL, "");
+		LDSConsumer consumer = new LDSConsumer(ldsURL);
+		ResponseEntity<JsonNode> response = consumer.getFrom("");
 		System.out.println("GET "+ldsURL);
 		System.out.println("RESPONSE HEADERS:");
 		System.out.println(response.getHeaders());
