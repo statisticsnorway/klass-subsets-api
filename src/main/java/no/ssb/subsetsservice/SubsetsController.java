@@ -44,8 +44,8 @@ public class SubsetsController {
 
     @GetMapping("/v1/subsets")
     public ResponseEntity<JsonNode> getSubsets() {
-        LDSConsumer consumer = new LDSConsumer();
-        return consumer.getFrom(LDS_SUBSET_API, "");
+        LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+        return consumer.getFrom("");
     }
 
     /**
@@ -60,10 +60,10 @@ public class SubsetsController {
         if (subsetsJson != null) {
             JsonNode idJN = subsetsJson.get("id");
             String id = idJN.textValue();
-            LDSConsumer consumer = new LDSConsumer();
-            ResponseEntity<JsonNode> ldsResponse = consumer.getFrom(LDS_SUBSET_API, "/"+id);
+            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+            ResponseEntity<JsonNode> ldsResponse = consumer.getFrom("/"+id);
             if (ldsResponse.getStatusCodeValue() == 404)
-                return consumer.postTo(LDS_SUBSET_API, "/" + id, subsetsJson);
+                return consumer.postTo("/" + id, subsetsJson);
         }
         return new ResponseEntity<>(mapper.createObjectNode().put("error","Can not POST subset with id that is already in use. Use PUT to update existing subsets"), HttpStatus.BAD_REQUEST);
     }
@@ -71,8 +71,8 @@ public class SubsetsController {
     @GetMapping("/v1/subsets/{id}")
     public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id) {
         if (Utils.isClean(id)){
-            LDSConsumer consumer = new LDSConsumer();
-            return consumer.getFrom(LDS_SUBSET_API, "/"+id);
+            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+            return consumer.getFrom("/"+id);
         }
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
@@ -82,8 +82,8 @@ public class SubsetsController {
 
         ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id)) {
-            LDSConsumer consumer = new LDSConsumer();
-            ResponseEntity<JsonNode> responseEntity = consumer.getFrom(LDS_SUBSET_API, "/"+id);
+            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+            ResponseEntity<JsonNode> responseEntity = consumer.getFrom("/"+id);
 
             if (responseEntity.getStatusCodeValue() != 404){
                 JsonNode responseBodyJSON = responseEntity.getBody();
@@ -91,11 +91,11 @@ public class SubsetsController {
                 String currentVersion = responseBodyJSON.get("version").textValue();
                 String nextVersion = subsetJson.get("version").textValue();
                 if (currentVersion.compareTo(nextVersion) < 0 || !currentAdminStatus.equals("OPEN")){ // Do not overwrite a published patch.
-                    return consumer.putTo(LDS_SUBSET_API, "/" + id, subsetJson);
+                    return consumer.putTo("/" + id, subsetJson);
                 }
                 return new ResponseEntity<>(mapper.createObjectNode().put("error","trying to overwrite an already published patch of a subset"), HttpStatus.BAD_REQUEST);
             } else {
-                return consumer.putTo(LDS_SUBSET_API, "/" + id, subsetJson);
+                return consumer.putTo("/" + id, subsetJson);
             }
         }
         return new ResponseEntity<>(mapper.createObjectNode().put("error","id contains illegal characters"), HttpStatus.BAD_REQUEST);
@@ -105,8 +105,8 @@ public class SubsetsController {
     public ResponseEntity<JsonNode> getVersions(@PathVariable("id") String id) {
         ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id)){
-            LDSConsumer consumer = new LDSConsumer();
-            ResponseEntity<JsonNode> ldsRE = consumer.getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
+            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+            ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id+"?timeline");
             ArrayNode arrayNode = mapper.createArrayNode();
             JsonNode responseBodyJSON = ldsRE.getBody();
             if (responseBodyJSON != null){
@@ -149,8 +149,8 @@ public class SubsetsController {
         ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id) && Utils.isVersion(version)){
             if (Utils.isVersion(version)){
-                LDSConsumer consumer = new LDSConsumer();
-                ResponseEntity<JsonNode> ldsRE = consumer.getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
+                LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+                ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id+"?timeline");
                 JsonNode responseBodyJSON = ldsRE.getBody();
                 if (responseBodyJSON != null){
                     if (responseBodyJSON.isArray()) {
@@ -187,8 +187,8 @@ public class SubsetsController {
         if (Utils.isClean(id)){
             if (from == null && to == null){
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
-                LDSConsumer consumer = new LDSConsumer();
-                ResponseEntity<JsonNode> ldsRE = consumer.getFrom(LDS_SUBSET_API, "/"+id);
+                LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+                ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id);
                 ObjectMapper mapper = new ObjectMapper();
                 JsonNode responseBodyJSON = ldsRE.getBody();
                 if (responseBodyJSON != null){
@@ -205,9 +205,9 @@ public class SubsetsController {
             boolean isFromDate = from != null;
             boolean isToDate = to != null;
             if ((!isFromDate || Utils.isYearMonthDay(from)) && (!isToDate || Utils.isYearMonthDay(to))){ // If a date is given as param, it must be valid format
-                LDSConsumer consumer = new LDSConsumer();
+                LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
                 // If a date interval is specified using 'from' and 'to' query parameters
-                ResponseEntity<JsonNode> ldsRE = consumer.getFrom(LDS_SUBSET_API, "/" + id + "?timeline");
+                ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/" + id + "?timeline");
                 LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
                 ObjectMapper mapper = new ObjectMapper();
                 Map<String, Integer> codeMap = new HashMap<>();
@@ -296,8 +296,8 @@ public class SubsetsController {
     public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id, @RequestParam String date) {
         LOG.debug("GET subsets/id/codesAt");
         if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
-            LDSConsumer consumer = new LDSConsumer();
-            ResponseEntity<JsonNode> ldsRE = consumer.getFrom(LDS_SUBSET_API, "/"+id+"?timeline");
+            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+            ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id+"?timeline");
             JsonNode responseBodyJSON = ldsRE.getBody();
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
@@ -323,21 +323,21 @@ public class SubsetsController {
 
     @GetMapping("/v1/subsets/schema")
     public ResponseEntity<JsonNode> getSchema(){
-        LDSConsumer consumer = new LDSConsumer();
-        return consumer.getFrom(LDS_SUBSET_API,"/?schema");
+        LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+        return consumer.getFrom("/?schema");
     }
 
     @GetMapping("/v1/classifications")
     public ResponseEntity<JsonNode> getClassifications(){
-        LDSConsumer consumer = new LDSConsumer();
-        return consumer.getFrom(KLASS_CLASSIFICATIONS_API, ".json");
+        LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+        return consumer.getFrom(".json");
     }
 
     @GetMapping("/v1/classifications/{id}")
     public ResponseEntity<JsonNode> getClassification(@PathVariable("id") String id){
         if (Utils.isClean(id)) {
-            LDSConsumer consumer = new LDSConsumer();
-            return consumer.getFrom(KLASS_CLASSIFICATIONS_API, "/" + id + ".json");
+            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+            return consumer.getFrom("/" + id + ".json");
         }
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
