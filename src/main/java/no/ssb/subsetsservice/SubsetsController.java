@@ -8,8 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.HashMap;
@@ -51,19 +49,21 @@ public class SubsetsController {
     /**
      * This method figures out what the 'id' of the subset is from the value inside the JSON
      * and then post to subsets/{id}
-     * @param subsetsJson
+     * @param subsetJson
      * @return
      */
     @PostMapping("/v1/subsets")
-    public ResponseEntity<JsonNode> postSubset(@RequestBody JsonNode subsetsJson) {
+    public ResponseEntity<JsonNode> postSubset(@RequestBody JsonNode subsetJson) {
         ObjectMapper mapper = new ObjectMapper();
-        if (subsetsJson != null) {
-            JsonNode idJN = subsetsJson.get("id");
+        if (subsetJson != null) {
+            JsonNode idJN = subsetJson.get("id");
             String id = idJN.textValue();
+            ObjectNode editableSubset = subsetJson.deepCopy();
+            editableSubset.put("lastupdatedDate", Utils.getNowISO());
             LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
             ResponseEntity<JsonNode> ldsResponse = consumer.getFrom("/"+id);
             if (ldsResponse.getStatusCodeValue() == 404)
-                return consumer.postTo("/" + id, subsetsJson);
+                return consumer.postTo("/" + id, subsetJson);
         }
         return new ResponseEntity<>(mapper.createObjectNode().put("error","Can not POST subset with id that is already in use. Use PUT to update existing subsets"), HttpStatus.BAD_REQUEST);
     }
@@ -81,11 +81,14 @@ public class SubsetsController {
     public ResponseEntity<JsonNode> putSubset(@PathVariable("id") String id, @RequestBody JsonNode subsetJson) {
 
         ObjectMapper mapper = new ObjectMapper();
-        if (!Utils.isClean(id)) {
-            return new ResponseEntity<>(mapper.createObjectNode().put("error","id contains illegal characters"), HttpStatus.BAD_REQUEST);
+        if (Utils.isClean(id)) {
+            ObjectNode editableSubset = subsetJson.deepCopy();
+            editableSubset.put("lastupdatedDate", Utils.getNowISO());
+            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+            return consumer.putTo("/" + id, editableSubset);
+        } else {
+            return new ResponseEntity<>(mapper.createObjectNode().put("error", "id contains illegal characters"), HttpStatus.BAD_REQUEST);
         }
-        LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-        return consumer.putTo("/" + id, subsetJson);
     }
 
     @GetMapping("/v1/subsets/{id}/versions")
