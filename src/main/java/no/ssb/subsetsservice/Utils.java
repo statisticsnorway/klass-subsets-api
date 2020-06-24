@@ -10,7 +10,9 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.TimeZone;
 
 public class Utils {
@@ -28,7 +30,7 @@ public class Utils {
     }
 
     public static JsonNode getSelfLinkObject(ObjectMapper mapper, ServletUriComponentsBuilder servletUriComponentsBuilder, JsonNode subset){
-        String subsetVersion = subset.get("version").textValue();
+        String subsetVersion = subset.get("version").textValue().split("\\.")[0];
         ObjectNode hrefNode = mapper.createObjectNode();
         hrefNode.put("href", servletUriComponentsBuilder.toUriString()+"/"+subsetVersion);
         ObjectNode self = mapper.createObjectNode();
@@ -38,7 +40,7 @@ public class Utils {
 
     public static String getNowISO(){
         TimeZone tz = TimeZone.getTimeZone("UTC");
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'"); // Quoted "Z" to indicate UTC, no timezone offset
+        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'"); // Quoted "Z" to indicate UTC, no timezone offset
         df.setTimeZone(tz);
         String nowAsISO = df.format(new Date());
         return nowAsISO;
@@ -75,6 +77,15 @@ public class Utils {
             }
         }
         return latestVersionNode;
+    }
+
+    public static void sortByVersion(ArrayNode subsetArrayNode){
+        List<JsonNode> subsetList = new ArrayList<>(subsetArrayNode.size());
+        subsetArrayNode.forEach(subsetList::add);
+        subsetList.sort((s1, s2) -> Integer.compare(Integer.parseInt(s2.get("version").asText().split("\\.")[0]), Integer.parseInt(s1.get("version").asText().split("\\.")[0])));
+        for (int i = 0; i < subsetList.size(); i++) {
+            subsetArrayNode.set(i, subsetList.get(i));
+        }
     }
 
 }
