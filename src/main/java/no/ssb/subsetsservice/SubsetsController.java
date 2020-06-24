@@ -332,19 +332,4 @@ public class SubsetsController {
         return consumer.getFrom("/?schema");
     }
 
-    @GetMapping("/v1/classifications")
-    public ResponseEntity<JsonNode> getClassifications(){
-        LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-        return consumer.getFrom(".json");
-    }
-
-    @GetMapping("/v1/classifications/{id}")
-    public ResponseEntity<JsonNode> getClassification(@PathVariable("id") String id){
-        if (Utils.isClean(id)) {
-            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-            return consumer.getFrom("/" + id + ".json");
-        }
-        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-    }
-
 }
