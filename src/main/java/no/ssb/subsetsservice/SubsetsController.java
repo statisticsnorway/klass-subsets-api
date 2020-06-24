@@ -99,23 +99,41 @@ public class SubsetsController {
         if (Utils.isClean(id)){
             LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
             ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id+"?timeline");
-            ArrayNode arrayNode = mapper.createArrayNode();
+            ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
             JsonNode responseBodyJSON = ldsRE.getBody();
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
-                    ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
-                    Map<String, Boolean> versionMap = new HashMap<>(responseBodyArrayNode.size() * 2, 0.51f);
-                    for (JsonNode jsonNode : responseBodyArrayNode) {
-                        ObjectNode arrayEntry = jsonNode.get("document").deepCopy();
-                        JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), arrayEntry);
-                        arrayEntry.set("_links", self);
-                        String subsetVersion = arrayEntry.get("version").textValue().split("\\.")[0];
+                    ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
+                    Map<String, Boolean> versionMap = new HashMap<>(versionsArrayNode.size() * 2, 0.51f);
+                    for (JsonNode versionNode : versionsArrayNode) {
+                        ObjectNode subsetVersionDocument = versionNode.get("document").deepCopy();
+                        JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
+                        subsetVersionDocument.set("_links", self);
+                        String subsetVersion = subsetVersionDocument.get("version").textValue().split("\\.")[0];
                         if (!versionMap.containsKey(subsetVersion)){ // Only include the latest update of any major version
-                            arrayNode.add(arrayEntry);
+                            majorVersionsArrayNode.add(subsetVersionDocument);
                             versionMap.put(subsetVersion, true);
                         }
                     }
-                    return new ResponseEntity<>(arrayNode, HttpStatus.OK);
+                    JsonNode latestVersionNode = majorVersionsArrayNode.get(0);
+                    int latestVersion = 0;
+                    for (JsonNode versionNode : majorVersionsArrayNode) {
+                        int thisVersion = Integer.parseInt(versionNode.get("version").asText().split("\\.")[0]);
+                        if (thisVersion > latestVersion){
+                            latestVersionNode = versionNode;
+                            latestVersion = thisVersion;
+                        }
+                    }
+                    JsonNode name = latestVersionNode.get("name");
+                    JsonNode shortName = latestVersionNode.get("shortName");
+                    ArrayNode majorVersionsObjectNodeArray = mapper.createArrayNode();
+                    for (JsonNode versionNode : majorVersionsArrayNode) {
+                        ObjectNode objectNode = versionNode.deepCopy();
+                        objectNode.set("name", name);
+                        objectNode.set("shortName", shortName);
+                        majorVersionsObjectNodeArray.add(objectNode);
+                    }
+                    return new ResponseEntity<>(majorVersionsObjectNodeArray, HttpStatus.OK);
                 } else {
                     return new ResponseEntity<>(mapper.createObjectNode().put("error", "LDS response body was not JSON array"), HttpStatus.INTERNAL_SERVER_ERROR);
                 }
@@ -141,14 +159,13 @@ public class SubsetsController {
         ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id) && Utils.isVersion(version)){
             if (Utils.isVersion(version)){
-                LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-                ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id+"?timeline");
-                JsonNode responseBodyJSON = ldsRE.getBody();
+                ResponseEntity<JsonNode> versionsRE = getVersions(id);
+                JsonNode responseBodyJSON = versionsRE.getBody();
                 if (responseBodyJSON != null){
                     if (responseBodyJSON.isArray()) {
-                        ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
-                        for (JsonNode jsonNode : responseBodyArrayNode) {
-                            JsonNode arrayEntry =jsonNode.get("document");
+                        ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
+                        for (JsonNode jsonNode : versionsArrayNode) {
+                            JsonNode arrayEntry = jsonNode.get("document");
                             String subsetVersion = arrayEntry.get("version").textValue();
                             if (subsetVersion.startsWith(version)){
                                 return new ResponseEntity<>(arrayEntry, HttpStatus.OK);
