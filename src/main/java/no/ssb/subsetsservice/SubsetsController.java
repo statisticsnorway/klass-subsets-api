@@ -37,13 +37,19 @@ public class SubsetsController {
         } else {
             LDS_SUBSET_API = LDS_LOCAL;
         }
+        LOG.info("Running with LDS url "+LDS_SUBSET_API);
         KLASS_CLASSIFICATIONS_API = System.getenv().getOrDefault("API_KLASS", KLASS_CLASSIFICATIONS_API);
     }
 
     @GetMapping("/v1/subsets")
     public ResponseEntity<JsonNode> getSubsets() {
         LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-        return consumer.getFrom("");
+        ResponseEntity<JsonNode> ldsRE = consumer.getFrom("");
+        ArrayNode ldsAllSubsetsArrayNode = (ArrayNode) ldsRE.getBody();
+        for (int i = 0; i < ldsAllSubsetsArrayNode.size(); i++) {
+            ldsAllSubsetsArrayNode.set(i, getVersions(ldsAllSubsetsArrayNode.get(i).get("id").asText()).getBody().get(0));
+        }
+        return new ResponseEntity<>(ldsAllSubsetsArrayNode, HttpStatus.OK);
     }
 
     /**
@@ -54,7 +60,6 @@ public class SubsetsController {
      */
     @PostMapping("/v1/subsets")
     public ResponseEntity<JsonNode> postSubset(@RequestBody JsonNode subsetJson) {
-        ObjectMapper mapper = new ObjectMapper();
         if (subsetJson != null) {
             JsonNode idJN = subsetJson.get("id");
             String id = idJN.textValue();
@@ -65,18 +70,23 @@ public class SubsetsController {
             LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
             ResponseEntity<JsonNode> ldsResponse = consumer.getFrom("/"+id);
             if (ldsResponse.getStatusCodeValue() == 404)
-                return consumer.postTo("/" + id, subsetJson);
+                return consumer.postTo("/" + id, Utils.cleanSubsetVersion(subsetJson));
         }
-        return new ResponseEntity<>(mapper.createObjectNode().put("error","Can not POST subset with id that is already in use. Use PUT to update existing subsets"), HttpStatus.BAD_REQUEST);
+        return ErrorHandler.newError("Can not POST subset with id that is already in use. Use PUT to update existing subsets", HttpStatus.BAD_REQUEST, LOG);
     }
 
     @GetMapping("/v1/subsets/{id}")
     public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id) {
         if (Utils.isClean(id)){
-            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-            return consumer.getFrom("/"+id);
+            ResponseEntity<JsonNode> majorVersions = getVersions(id);
+            if (majorVersions.getBody().isArray()){
+                ArrayNode majorVersionsArray = (ArrayNode) majorVersions.getBody();
+                return new ResponseEntity<>(majorVersionsArray.get(0), HttpStatus.OK);
+            } else {
+                return ErrorHandler.newError("internal call to /versions did not return array", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+            }
         }
-        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        return ErrorHandler.illegalID(LOG);
     }
 
     @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -89,7 +99,7 @@ public class SubsetsController {
             LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
             return consumer.putTo("/" + id, editableSubset);
         } else {
-            return new ResponseEntity<>(mapper.createObjectNode().put("error", "id contains illegal characters"), HttpStatus.BAD_REQUEST);
+            return ErrorHandler.illegalID(LOG);
         }
     }
 
@@ -99,31 +109,44 @@ public class SubsetsController {
         if (Utils.isClean(id)){
             LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
             ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id+"?timeline");
-            ArrayNode arrayNode = mapper.createArrayNode();
             JsonNode responseBodyJSON = ldsRE.getBody();
+            ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
-                    ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
-                    Map<String, Boolean> versionMap = new HashMap<>(responseBodyArrayNode.size() * 2, 0.51f);
-                    for (JsonNode jsonNode : responseBodyArrayNode) {
-                        ObjectNode arrayEntry = jsonNode.get("document").deepCopy();
-                        JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), arrayEntry);
-                        arrayEntry.set("_links", self);
-                        String subsetVersion = arrayEntry.get("version").textValue().split("\\.")[0];
-                        if (!versionMap.containsKey(subsetVersion)){ // Only include the latest update of any major version
-                            arrayNode.add(arrayEntry);
-                            versionMap.put(subsetVersion, true);
+                    ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
+                    Map<String, Boolean> versionMap = new HashMap<>(versionsArrayNode.size() * 2, 0.51f);
+                    for (JsonNode versionNode : versionsArrayNode) {
+                        ObjectNode subsetVersionDocument = versionNode.get("document").deepCopy();
+                        JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
+                        subsetVersionDocument.set("_links", self);
+                        String subsetMajorVersion = subsetVersionDocument.get("version").textValue().split("\\.")[0];
+                        if (!versionMap.containsKey(subsetMajorVersion)){ // Only include the latest update of any major version
+                            majorVersionsArrayNode.add(subsetVersionDocument);
+                            versionMap.put(subsetMajorVersion, true);
                         }
                     }
-                    return new ResponseEntity<>(arrayNode, HttpStatus.OK);
+                    Utils.sortByVersion(majorVersionsArrayNode);
+                    JsonNode latestVersionNode = majorVersionsArrayNode.get(0);
+                    //JsonNode latestVersionNode = Utils.getLatestMajorVersion(majorVersionsArrayNode);
+                    JsonNode name = latestVersionNode.get("name");
+                    JsonNode shortName = latestVersionNode.get("shortName");
+                    ArrayNode majorVersionsObjectNodeArray = mapper.createArrayNode();
+                    for (JsonNode versionNode : majorVersionsArrayNode) {
+                        ObjectNode objectNode = versionNode.deepCopy();
+                        objectNode.set("name", name);
+                        objectNode.set("shortName", shortName);
+                        objectNode.put("version", objectNode.get("version").asText().split("\\.")[0]);
+                        majorVersionsObjectNodeArray.add(objectNode);
+                    }
+                    return new ResponseEntity<>(majorVersionsObjectNodeArray, HttpStatus.OK);
                 } else {
-                    return new ResponseEntity<>(mapper.createObjectNode().put("error", "LDS response body was not JSON array"), HttpStatus.INTERNAL_SERVER_ERROR);
+                    return ErrorHandler.newError("LDS response body was not JSON array", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
                 }
             } else {
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
         } else {
-            return new ResponseEntity<>(mapper.createObjectNode().put("error", "id contains illegal characters"), HttpStatus.BAD_REQUEST);
+            return ErrorHandler.illegalID(LOG);
         }
     }
 
@@ -138,17 +161,14 @@ public class SubsetsController {
      */
     @GetMapping("/v1/subsets/{id}/versions/{version}")
     public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String id, @PathVariable("version") String version) {
-        ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id) && Utils.isVersion(version)){
             if (Utils.isVersion(version)){
-                LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-                ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id+"?timeline");
-                JsonNode responseBodyJSON = ldsRE.getBody();
+                ResponseEntity<JsonNode> versionsRE = getVersions(id);
+                JsonNode responseBodyJSON = versionsRE.getBody();
                 if (responseBodyJSON != null){
                     if (responseBodyJSON.isArray()) {
-                        ArrayNode responseBodyArrayNode = (ArrayNode) responseBodyJSON;
-                        for (JsonNode jsonNode : responseBodyArrayNode) {
-                            JsonNode arrayEntry =jsonNode.get("document");
+                        ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
+                        for (JsonNode arrayEntry : versionsArrayNode) {
                             String subsetVersion = arrayEntry.get("version").textValue();
                             if (subsetVersion.startsWith(version)){
                                 return new ResponseEntity<>(arrayEntry, HttpStatus.OK);
@@ -158,9 +178,9 @@ public class SubsetsController {
                 }
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
-            return new ResponseEntity<>(mapper.createObjectNode().put("error", "malformed version"), HttpStatus.BAD_REQUEST);
+            return ErrorHandler.malformedVersion(LOG);
         }
-        return new ResponseEntity<>(mapper.createObjectNode().put("error", "id contains illegal characters"), HttpStatus.BAD_REQUEST);
+        return ErrorHandler.illegalID(LOG);
     }
 
     /**
@@ -313,21 +333,6 @@ public class SubsetsController {
     public ResponseEntity<JsonNode> getSchema(){
         LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
         return consumer.getFrom("/?schema");
-    }
-
-    @GetMapping("/v1/classifications")
-    public ResponseEntity<JsonNode> getClassifications(){
-        LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-        return consumer.getFrom(".json");
-    }
-
-    @GetMapping("/v1/classifications/{id}")
-    public ResponseEntity<JsonNode> getClassification(@PathVariable("id") String id){
-        if (Utils.isClean(id)) {
-            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-            return consumer.getFrom("/" + id + ".json");
-        }
-        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
 }
