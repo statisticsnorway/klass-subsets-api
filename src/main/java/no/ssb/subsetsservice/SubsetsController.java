@@ -10,8 +10,10 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 @CrossOrigin
 @RestController
@@ -110,32 +112,43 @@ public class SubsetsController {
             LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
             ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id+"?timeline");
             JsonNode responseBodyJSON = ldsRE.getBody();
-            ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
                     ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
-                    Map<String, Boolean> versionMap = new HashMap<>(versionsArrayNode.size() * 2, 0.51f);
+                    Map<Integer, JsonNode> versionLastupdatedMap = new HashMap<>(versionsArrayNode.size() * 2, 0.51f);
                     for (JsonNode versionNode : versionsArrayNode) {
                         ObjectNode subsetVersionDocument = versionNode.get("document").deepCopy();
                         JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
                         subsetVersionDocument.set("_links", self);
-                        String subsetMajorVersion = subsetVersionDocument.get("version").textValue().split("\\.")[0];
-                        if (!versionMap.containsKey(subsetMajorVersion)){ // Only include the latest update of any major version
-                            majorVersionsArrayNode.add(subsetVersionDocument);
-                            versionMap.put(subsetMajorVersion, true);
+                        int subsetMajorVersion = Integer.parseInt(subsetVersionDocument.get("version").textValue().split("\\.")[0]);
+                        String lastUpdatedDate = subsetVersionDocument.get("lastUpdatedDate").textValue();
+                        if (!versionLastupdatedMap.containsKey(subsetMajorVersion)){ // Only include the latest update of any major version
+                            versionLastupdatedMap.put(subsetMajorVersion, subsetVersionDocument);
+                        } else if (versionLastupdatedMap.get(subsetMajorVersion).get("lastUpdatedDate").textValue().compareTo(lastUpdatedDate) < 0) {
+                            versionLastupdatedMap.put(subsetMajorVersion, subsetVersionDocument);
                         }
                     }
-                    Utils.sortByVersion(majorVersionsArrayNode);
-                    JsonNode latestVersionNode = majorVersionsArrayNode.get(0);
-                    //JsonNode latestVersionNode = Utils.getLatestMajorVersion(majorVersionsArrayNode);
-                    JsonNode name = latestVersionNode.get("name");
-                    JsonNode shortName = latestVersionNode.get("shortName");
+                    Set<Integer> keySet = versionLastupdatedMap.keySet();
+                    Integer[] keyArray = keySet.toArray(new Integer[keySet.size()]);
+                    Arrays.sort(keyArray);
+                    ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
+                    for (int i = keyArray.length - 1; i >= 0; i--) {
+                        majorVersionsArrayNode.add(versionLastupdatedMap.get(keyArray[i]));
+                    }
+                    JsonNode latestPublishedVersionNode = Utils.getLatestMajorVersion(majorVersionsArrayNode, true);
+                    int latestPublishedVersion = Integer.parseInt(latestPublishedVersionNode.get("version").asText().split("\\.")[0]);
+
+                    JsonNode name = latestPublishedVersionNode.get("name");
+                    JsonNode shortName = latestPublishedVersionNode.get("shortName");
                     ArrayNode majorVersionsObjectNodeArray = mapper.createArrayNode();
                     for (JsonNode versionNode : majorVersionsArrayNode) {
                         ObjectNode objectNode = versionNode.deepCopy();
-                        objectNode.set("name", name);
-                        objectNode.set("shortName", shortName);
-                        objectNode.put("version", objectNode.get("version").asText().split("\\.")[0]);
+                        int version = Integer.parseInt(objectNode.get("version").asText().split("\\.")[0]);
+                        objectNode.put("version", version);
+                        if (version < latestPublishedVersion && objectNode.get("administrativeStatus").asText().equals("OPEN")){
+                            objectNode.set("name", name);
+                            objectNode.set("shortName", shortName);
+                        }
                         majorVersionsObjectNodeArray.add(objectNode);
                     }
                     return new ResponseEntity<>(majorVersionsObjectNodeArray, HttpStatus.OK);
@@ -169,7 +182,7 @@ public class SubsetsController {
                     if (responseBodyJSON.isArray()) {
                         ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
                         for (JsonNode arrayEntry : versionsArrayNode) {
-                            String subsetVersion = arrayEntry.get("version").textValue();
+                            String subsetVersion = arrayEntry.get("version").asText();
                             if (subsetVersion.startsWith(version)){
                                 return new ResponseEntity<>(arrayEntry, HttpStatus.OK);
                             }

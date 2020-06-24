@@ -42,8 +42,7 @@ public class Utils {
         TimeZone tz = TimeZone.getTimeZone("UTC");
         DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'"); // Quoted "Z" to indicate UTC, no timezone offset
         df.setTimeZone(tz);
-        String nowAsISO = df.format(new Date());
-        return nowAsISO;
+        return df.format(new Date());
     }
 
     public static JsonNode cleanSubsetVersion(JsonNode subset){
@@ -66,12 +65,12 @@ public class Utils {
         return clone;
     }
 
-    public static JsonNode getLatestMajorVersion(ArrayNode majorVersionsArrayNode){
+    public static JsonNode getLatestMajorVersion(ArrayNode majorVersionsArrayNode, boolean published){
         JsonNode latestVersionNode = null;
-        int latestVersion = 0;
+        int latestVersion = -1;
         for (JsonNode versionNode : majorVersionsArrayNode) {
             int thisVersion = Integer.parseInt(versionNode.get("version").asText().split("\\.")[0]);
-            if (latestVersionNode == null || thisVersion > latestVersion){
+            if ((!published || versionNode.get("administrativeStatus").asText().equals("OPEN")) && thisVersion > latestVersion ){
                 latestVersionNode = versionNode;
                 latestVersion = thisVersion;
             }
