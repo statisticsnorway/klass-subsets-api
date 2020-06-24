@@ -67,11 +67,11 @@ public class Utils {
     }
 
     public static JsonNode getLatestMajorVersion(ArrayNode majorVersionsArrayNode){
-        JsonNode latestVersionNode = majorVersionsArrayNode.get(0);
+        JsonNode latestVersionNode = null;
         int latestVersion = 0;
         for (JsonNode versionNode : majorVersionsArrayNode) {
             int thisVersion = Integer.parseInt(versionNode.get("version").asText().split("\\.")[0]);
-            if (thisVersion > latestVersion){
+            if (latestVersionNode == null || thisVersion > latestVersion){
                 latestVersionNode = versionNode;
                 latestVersion = thisVersion;
             }
