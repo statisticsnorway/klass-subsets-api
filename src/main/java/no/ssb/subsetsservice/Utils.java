@@ -2,7 +2,10 @@ package no.ssb.subsetsservice;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.text.DateFormat;
@@ -40,4 +43,38 @@ public class Utils {
         String nowAsISO = df.format(new Date());
         return nowAsISO;
     }
+
+    public static JsonNode cleanSubsetVersion(JsonNode subset){
+        if (subset.isArray()){
+            ArrayNode arrayNode = (ArrayNode) subset;
+            return cleanSubsetVersionsArray(arrayNode);
+        }
+        ObjectNode clone = subset.deepCopy();
+        String oldVersion = clone.get("version").asText();
+        String majorVersion = oldVersion.split("\\.")[0];
+        clone.put("version", majorVersion);
+        return clone;
+    }
+
+    private static ArrayNode cleanSubsetVersionsArray(ArrayNode subsetArray){
+        ArrayNode clone = subsetArray.deepCopy();
+        for (int i = 0; i < subsetArray.size(); i++) {
+            clone.set(i, cleanSubsetVersion(clone.get(i)));
+        }
+        return clone;
+    }
+
+    public static JsonNode getLatestMajorVersion(ArrayNode majorVersionsArrayNode){
+        JsonNode latestVersionNode = majorVersionsArrayNode.get(0);
+        int latestVersion = 0;
+        for (JsonNode versionNode : majorVersionsArrayNode) {
+            int thisVersion = Integer.parseInt(versionNode.get("version").asText().split("\\.")[0]);
+            if (thisVersion > latestVersion){
+                latestVersionNode = versionNode;
+                latestVersion = thisVersion;
+            }
+        }
+        return latestVersionNode;
+    }
+
 }
