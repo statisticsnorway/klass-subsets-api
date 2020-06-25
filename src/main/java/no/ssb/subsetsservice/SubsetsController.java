@@ -27,7 +27,7 @@ public class SubsetsController {
 
     private static String KLASS_CLASSIFICATIONS_API = "https://data.ssb.no/api/klass/v1/classifications";
 
-    private static final boolean prod = true;
+    private static final boolean prod = false;
 
     public SubsetsController(){
         updateLDSURL();
@@ -74,18 +74,20 @@ public class SubsetsController {
             if (ldsResponse.getStatusCodeValue() == 404)
                 return consumer.postTo("/" + id, Utils.cleanSubsetVersion(subsetJson));
         }
-        return ErrorHandler.newError("Can not POST subset with id that is already in use. Use PUT to update existing subsets", HttpStatus.BAD_REQUEST, LOG);
+        return ErrorHandler.newHttpError("Can not POST subset with id that is already in use. Use PUT to update existing subsets", HttpStatus.BAD_REQUEST, LOG);
     }
 
     @GetMapping("/v1/subsets/{id}")
     public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id) {
         if (Utils.isClean(id)){
             ResponseEntity<JsonNode> majorVersions = getVersions(id);
-            if (majorVersions.getBody().isArray()){
+            if (majorVersions.getStatusCodeValue() != 200)
+                return majorVersions;
+            else if (majorVersions.getBody().isArray()){
                 ArrayNode majorVersionsArray = (ArrayNode) majorVersions.getBody();
                 return new ResponseEntity<>(majorVersionsArray.get(0), HttpStatus.OK);
             } else {
-                return ErrorHandler.newError("internal call to /versions did not return array", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+                return ErrorHandler.newHttpError("internal call to /versions did not return array", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
             }
         }
         return ErrorHandler.illegalID(LOG);
@@ -111,6 +113,13 @@ public class SubsetsController {
         if (Utils.isClean(id)){
             LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
             ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id+"?timeline");
+            if (ldsRE.getStatusCodeValue() != 200){
+                return ldsRE;
+            }
+            else if (!ldsRE.getBody().has(0)){
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+            ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
             JsonNode responseBodyJSON = ldsRE.getBody();
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
@@ -149,11 +158,18 @@ public class SubsetsController {
                             objectNode.set("name", name);
                             objectNode.set("shortName", shortName);
                         }
+                        if (latestVersionNode.has("name")){
+                            objectNode.set("name", latestVersionNode.get("name"));
+                        }
+                        if (latestVersionNode.has("shortName")){
+                            objectNode.set("shortName", latestVersionNode.get("shortName"));
+                        }
+                        objectNode.put("version", objectNode.get("version").asText().split("\\.")[0]);
                         majorVersionsObjectNodeArray.add(objectNode);
                     }
                     return new ResponseEntity<>(majorVersionsObjectNodeArray, HttpStatus.OK);
                 } else {
-                    return ErrorHandler.newError("LDS response body was not JSON array", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+                    return ErrorHandler.newHttpError("LDS response body was not JSON array", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
                 }
             } else {
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
