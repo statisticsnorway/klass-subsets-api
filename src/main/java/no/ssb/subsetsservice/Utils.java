@@ -30,9 +30,8 @@ public class Utils {
     }
 
     public static JsonNode getSelfLinkObject(ObjectMapper mapper, ServletUriComponentsBuilder servletUriComponentsBuilder, JsonNode subset){
-        String subsetVersion = subset.get("version").textValue().split("\\.")[0];
         ObjectNode hrefNode = mapper.createObjectNode();
-        hrefNode.put("href", servletUriComponentsBuilder.toUriString()+"/"+subsetVersion);
+        hrefNode.put("href", servletUriComponentsBuilder.toUriString());
         ObjectNode self = mapper.createObjectNode();
         self.set("self", hrefNode);
         return self;
