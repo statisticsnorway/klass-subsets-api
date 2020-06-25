@@ -99,8 +99,19 @@ public class SubsetsController {
         if (Utils.isClean(id)) {
             ObjectNode editableSubset = subsetJson.deepCopy();
             editableSubset.put("lastUpdatedDate", Utils.getNowISO());
-            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-            return consumer.putTo("/" + id, editableSubset);
+            ResponseEntity<JsonNode> oldSubsetRE = getSubset(id);
+            if (oldSubsetRE.getStatusCodeValue() == 200){
+                String oldID = oldSubsetRE.getBody().get("id").asText();
+                String newID = subsetJson.get("id").asText();
+                if (oldID.equals(newID)){
+                    LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+                    return consumer.putTo("/" + id, editableSubset);
+                } else {
+                    return ErrorHandler.newHttpError("ID is immutable across versions", HttpStatus.BAD_REQUEST, LOG);
+                }
+            } else {
+                return ErrorHandler.newHttpError(oldSubsetRE.toString(), oldSubsetRE.getStatusCode(), LOG);
+            }
         } else {
             return ErrorHandler.illegalID(LOG);
         }
