@@ -110,7 +110,7 @@ class SubsetsServiceApplicationTests {
 			assertNotEquals(null, versions);
 			assertNotEquals(0, versions.size());
 			for (JsonNode version : versions) {
-				System.out.println("Version: "+version.get("version").asText());
+				System.out.println("Version: "+version.get("version").asText()+" adminstatus: "+version.get("administrativeStatus").asText()+" name:"+version.get("name").get(0).get("languageText").asText());
 			}
 
 		}
