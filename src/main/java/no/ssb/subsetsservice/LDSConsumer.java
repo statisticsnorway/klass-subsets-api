@@ -21,12 +21,9 @@ public class LDSConsumer {
 
     ResponseEntity<JsonNode> getFrom(String additional)
     {
-        // TODO: I am not sure if this is the right way of handling 404's from another server.
         try {
             return new RestTemplate().getForEntity(LDS_URL + additional, JsonNode.class);
-        } catch (HttpClientErrorException e){
-            return ErrorHandler.newHttpError("could not retrieve "+LDS_URL+additional+".", e.getStatusCode(), LOG);
-        } catch (HttpServerErrorException e){
+        } catch (HttpClientErrorException | HttpServerErrorException e){
             return ErrorHandler.newHttpError("could not retrieve "+LDS_URL+additional+".", e.getStatusCode(), LOG);
         }
     }
