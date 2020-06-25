@@ -25,10 +25,8 @@ public class LDSConsumer {
         try {
             return new RestTemplate().getForEntity(LDS_URL + additional, JsonNode.class);
         } catch (HttpClientErrorException e){
-            ErrorHandler.newHttpError("could not retrieve "+LDS_URL+additional+".", e.getStatusCode(), LOG);
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            return ErrorHandler.newHttpError("could not retrieve "+LDS_URL+additional+".", e.getStatusCode(), LOG);
         } catch (HttpServerErrorException e){
-            ErrorHandler.newJsonError("message", e, LOG);
             return ErrorHandler.newHttpError("could not retrieve "+LDS_URL+additional+".", e.getStatusCode(), LOG);
         }
     }

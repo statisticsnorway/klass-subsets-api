@@ -22,13 +22,13 @@ public class ErrorHandler {
         return new ResponseEntity<>(body, status);
     }
 
-    public static ObjectNode newJsonError(String userMessage, Exception e, Logger logger){
+    public static void newJsonError(String userMessage, Exception e, Logger logger){
         ObjectNode json = new ObjectMapper().createObjectNode();
         json.put("user message", userMessage);
         json.put("exception message", e.getMessage());
         json.put("timestamp", Utils.getNowISO());
         json.put("e.toString", e.toString());
-        return json;
+        logger.error(json.toPrettyString());
     }
 
     public static ResponseEntity<JsonNode> illegalID(Logger logger){
