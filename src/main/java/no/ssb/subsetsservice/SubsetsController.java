@@ -96,7 +96,6 @@ public class SubsetsController {
     @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> putSubset(@PathVariable("id") String id, @RequestBody JsonNode subsetJson) {
 
-        ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id)) {
             ObjectNode editableSubset = subsetJson.deepCopy();
             editableSubset.put("lastUpdatedDate", Utils.getNowISO());
