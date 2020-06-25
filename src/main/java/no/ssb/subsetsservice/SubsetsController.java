@@ -165,7 +165,8 @@ public class SubsetsController {
                         majorVersionsArrayNode.add(versionLastUpdatedMap.get(keyArray[i]));
                     }
                     JsonNode latestVersion = Utils.getLatestMajorVersion(majorVersionsArrayNode, false);
-                    // JsonNode latestPublishedVersionNode = Utils.getLatestMajorVersion(majorVersionsArrayNode, true);
+                    JsonNode latestPublishedVersionNode = Utils.getLatestMajorVersion(majorVersionsArrayNode, true);
+                    boolean publishedVersionExists = latestPublishedVersionNode != null;
                     int latestMajorVersion = Integer.parseInt(latestVersion.get("version").asText().split("\\.")[0]);
 
                     ArrayNode majorVersionsObjectNodeArray = mapper.createArrayNode();
@@ -173,12 +174,12 @@ public class SubsetsController {
                         ObjectNode objectNode = versionNode.deepCopy();
                         int version = Integer.parseInt(objectNode.get("version").asText().split("\\.")[0]);
                         objectNode.put("version", version);
-                        if (version < latestMajorVersion && objectNode.get("administrativeStatus").asText().equals("OPEN")){
-                            if (latestVersion.has("name")){
-                                objectNode.set("name", latestVersion.get("name"));
+                        if (publishedVersionExists && version < latestMajorVersion && objectNode.get("administrativeStatus").asText().equals("OPEN")){
+                            if (latestPublishedVersionNode.has("name")){
+                                objectNode.set("name", latestPublishedVersionNode.get("name"));
                             }
-                            if (latestVersion.has("shortName")){
-                                objectNode.set("shortName", latestVersion.get("shortName"));
+                            if (latestPublishedVersionNode.has("shortName")){
+                                objectNode.set("shortName", latestPublishedVersionNode.get("shortName"));
                             }
                         }
                         majorVersionsObjectNodeArray.add(objectNode);
