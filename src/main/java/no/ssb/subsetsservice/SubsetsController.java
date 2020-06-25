@@ -115,12 +115,11 @@ public class SubsetsController {
             if (ldsRE.getStatusCodeValue() != 200){
                 return ldsRE;
             }
-            else if (!ldsRE.getBody().has(0)){
-                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-            }
-
             JsonNode responseBodyJSON = ldsRE.getBody();
             if (responseBodyJSON != null){
+                if (!responseBodyJSON.has(0)){
+                    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+                }
                 if (responseBodyJSON.isArray()) {
                     ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
                     Map<Integer, JsonNode> versionLastUpdatedMap = new HashMap<>(versionsArrayNode.size() * 2, 0.51f);
