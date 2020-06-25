@@ -19,6 +19,7 @@ import java.util.Set;
 @RestController
 public class SubsetsController {
 
+    private static SubsetsController instance;
     private static final Logger LOG = LoggerFactory.getLogger(SubsetsController.class);
 
     static final String LDS_PROD = "http://lds-klass.klass.svc.cluster.local/ns/ClassificationSubset";
@@ -30,7 +31,12 @@ public class SubsetsController {
     private static final boolean prod = true;
 
     public SubsetsController(){
+        instance = this;
         updateLDSURL();
+    }
+
+    public static SubsetsController getInstance(){
+        return instance;
     }
 
     private void updateLDSURL(){

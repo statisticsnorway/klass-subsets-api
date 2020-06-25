@@ -3,17 +3,15 @@ package no.ssb.subsetsservice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.ResponseEntity;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.Scanner;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @SpringBootTest
 class SubsetsServiceApplicationTests {
@@ -31,65 +29,91 @@ class SubsetsServiceApplicationTests {
 	}
 
 	@Test
-	void postToLDSLocal() {
-		System.out.println("TESTING POST SUBSET BY ID '1' TO LDS LOCAL INSTANCE");
-		try {
-			String filename = "subset1.json";
-			String path = new File("").getAbsolutePath();
-			File myObj = new File(path +"\\src\\test\\java\\no\\ssb\\subsetsservice\\"+filename);
-			Scanner myReader = new Scanner(myObj);
-			StringBuilder sb = new StringBuilder();
-			while (myReader.hasNextLine()) {
-				sb.append(myReader.nextLine());
-			}
-			myReader.close();
-			String subsetJSONString = sb.toString();
-			ObjectMapper mapper = new ObjectMapper();
-			JsonNode jsonNode = mapper.readTree(subsetJSONString);
-			System.out.println(subsetJSONString);
-			LDSConsumer consumer = new LDSConsumer(ldsURL);
-			ResponseEntity<JsonNode> response = consumer.putTo("/1", jsonNode);
+	void getAllSubsets() {
+		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets();
 
-			System.out.println("RESPONSE HEADERS:");
-			System.out.println(response.getHeaders());
-			System.out.println("RESPONSE BODY");
-			System.out.println(response.getBody());
+		assertEquals(200, response.getStatusCodeValue());
+		System.out.println("RESPONSE HEADERS:");
+		System.out.println(response.getHeaders());
+		System.out.println("RESPONSE BODY");
+		System.out.println(response.getBody());
+		assertNotEquals(null, response.getBody());
+		assertNotEquals("[]", response.getBody());
+	}
 
-			assertEquals(response.getStatusCodeValue(), 201);
-		} catch (FileNotFoundException e) {
-			System.out.println("An error occurred.");
-			e.printStackTrace();
-		} catch (JsonProcessingException e) {
-			e.printStackTrace();
+	@Test
+	void getIllegalIdSubset() {
+		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubset("this-id-is-not-legal-¤%&#!§|`^¨~'*=)(/\\£$@{[]}");
+
+		System.out.println("STATUS CODE");
+		System.out.println(response.getStatusCodeValue());
+		assertEquals(400, response.getStatusCodeValue());
+		System.out.println("RESPONSE HEADERS:");
+		System.out.println(response.getHeaders());
+		System.out.println("RESPONSE BODY");
+		System.out.println(response.getBody());
+	}
+
+	@Test
+	void getNonExistingSubset() {
+		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubset("this-id-does-not-exist");
+
+		System.out.println("STATUS CODE");
+		System.out.println(response.getStatusCodeValue());
+		assertEquals(404, response.getStatusCodeValue());
+		System.out.println("RESPONSE HEADERS:");
+		System.out.println(response.getHeaders());
+		System.out.println("RESPONSE BODY");
+		System.out.println(response.getBody());
+	}
+
+	@Test
+	void getNonExistantSubsetVersions() {
+		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getVersions("this-id-does-not-exist");
+
+		System.out.println("STATUS CODE");
+		System.out.println(response.getStatusCodeValue());
+		assertEquals(404, response.getStatusCodeValue());
+		System.out.println("RESPONSE HEADERS:");
+		System.out.println(response.getHeaders());
+		System.out.println("RESPONSE BODY");
+		System.out.println(response.getBody());
+	}
+
+	@Test
+	void getAllIndividualSubsetsCompareIDs() {
+		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets();
+
+		System.out.println("All subsets:");
+		System.out.println(response.getBody());
+		System.out.println("IDs:");
+		for (JsonNode jsonNode : response.getBody()) {
+			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText()).getBody();
+			assertEquals(subset.get("id").asText(), jsonNode.get("id").asText());
+			System.out.println(subset.get("id"));
 		}
 	}
 
 	@Test
-	void getFromLDSLocal() {
-		System.out.println("TESTING GET SUBSET BY ID 1 FROM LDS LOCAL INSTANCE");
-		LDSConsumer consumer = new LDSConsumer(ldsURL);
-		ResponseEntity<JsonNode> response = consumer.getFrom( "/1");
+	void getAllVersionsOfAllSubsets() {
+		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets();
 
-		System.out.println("GET "+ldsURL+"/1");
-		System.out.println("RESPONSE HEADERS:");
-		System.out.println(response.getHeaders());
-		System.out.println("RESPONSE BODY");
-
+		System.out.println("All subsets:");
 		System.out.println(response.getBody());
-		assertEquals(response.getStatusCodeValue(), 200);
-	}
+		System.out.println("IDs:");
+		for (JsonNode jsonNode : response.getBody()) {
+			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText()).getBody();
+			assertEquals(subset.get("id").asText(), jsonNode.get("id").asText());
+			System.out.println("ID: "+subset.get("id"));
 
-	@Test
-	void getAllFromLDSLocal() {
-		System.out.println("TESTING GET ALL SUBSETS FROM LDS LOCAL INSTANCE");
-		LDSConsumer consumer = new LDSConsumer(ldsURL);
-		ResponseEntity<JsonNode> response = consumer.getFrom("");
-		System.out.println("GET "+ldsURL);
-		System.out.println("RESPONSE HEADERS:");
-		System.out.println(response.getHeaders());
-		System.out.println("RESPONSE BODY");
-		System.out.println(response.getBody());
-		assertEquals(response.getStatusCodeValue(), 200);
+			ArrayNode versions = (ArrayNode) SubsetsController.getInstance().getVersions(subset.get("id").asText()).getBody();
+			assertNotEquals(null, versions);
+			assertNotEquals(0, versions.size());
+			for (JsonNode version : versions) {
+				System.out.println("Version: "+version.get("version").asText());
+			}
+
+		}
 	}
 
 }
