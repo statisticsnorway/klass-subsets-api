@@ -164,20 +164,21 @@ public class SubsetsController {
                     for (int i = keyArray.length - 1; i >= 0; i--) {
                         majorVersionsArrayNode.add(versionLastUpdatedMap.get(keyArray[i]));
                     }
-                    JsonNode latestPublishedVersionNode = Utils.getLatestMajorVersion(majorVersionsArrayNode, true);
-                    int latestPublishedVersion = Integer.parseInt(latestPublishedVersionNode.get("version").asText().split("\\.")[0]);
+                    JsonNode latestVersion = Utils.getLatestMajorVersion(majorVersionsArrayNode, false);
+                    // JsonNode latestPublishedVersionNode = Utils.getLatestMajorVersion(majorVersionsArrayNode, true);
+                    int latestMajorVersion = Integer.parseInt(latestVersion.get("version").asText().split("\\.")[0]);
 
                     ArrayNode majorVersionsObjectNodeArray = mapper.createArrayNode();
                     for (JsonNode versionNode : majorVersionsArrayNode) {
                         ObjectNode objectNode = versionNode.deepCopy();
                         int version = Integer.parseInt(objectNode.get("version").asText().split("\\.")[0]);
                         objectNode.put("version", version);
-                        if (version < latestPublishedVersion && objectNode.get("administrativeStatus").asText().equals("OPEN")){
-                            if (latestPublishedVersionNode.has("name")){
-                                objectNode.set("name", latestPublishedVersionNode.get("name"));
+                        if (version < latestMajorVersion && objectNode.get("administrativeStatus").asText().equals("OPEN")){
+                            if (latestVersion.has("name")){
+                                objectNode.set("name", latestVersion.get("name"));
                             }
-                            if (latestPublishedVersionNode.has("shortName")){
-                                objectNode.set("shortName", latestPublishedVersionNode.get("shortName"));
+                            if (latestVersion.has("shortName")){
+                                objectNode.set("shortName", latestVersion.get("shortName"));
                             }
                         }
                         majorVersionsObjectNodeArray.add(objectNode);
