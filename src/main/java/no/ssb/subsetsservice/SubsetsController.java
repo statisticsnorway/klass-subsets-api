@@ -119,52 +119,47 @@ public class SubsetsController {
             else if (!ldsRE.getBody().has(0)){
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
-            ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
+
             JsonNode responseBodyJSON = ldsRE.getBody();
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
                     ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
-                    Map<Integer, JsonNode> versionLastupdatedMap = new HashMap<>(versionsArrayNode.size() * 2, 0.51f);
+                    Map<Integer, JsonNode> versionLastUpdatedMap = new HashMap<>(versionsArrayNode.size() * 2, 0.51f);
                     for (JsonNode versionNode : versionsArrayNode) {
                         ObjectNode subsetVersionDocument = versionNode.get("document").deepCopy();
                         JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
                         subsetVersionDocument.set("_links", self);
                         int subsetMajorVersion = Integer.parseInt(subsetVersionDocument.get("version").textValue().split("\\.")[0]);
                         String lastUpdatedDate = subsetVersionDocument.get("lastUpdatedDate").textValue();
-                        if (!versionLastupdatedMap.containsKey(subsetMajorVersion)){ // Only include the latest update of any major version
-                            versionLastupdatedMap.put(subsetMajorVersion, subsetVersionDocument);
-                        } else if (versionLastupdatedMap.get(subsetMajorVersion).get("lastUpdatedDate").textValue().compareTo(lastUpdatedDate) < 0) {
-                            versionLastupdatedMap.put(subsetMajorVersion, subsetVersionDocument);
+                        if (!versionLastUpdatedMap.containsKey(subsetMajorVersion)){ // Only include the latest update of any major version
+                            versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
+                        } else if (versionLastUpdatedMap.get(subsetMajorVersion).get("lastUpdatedDate").textValue().compareTo(lastUpdatedDate) < 0) {
+                            versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
                         }
                     }
-                    Set<Integer> keySet = versionLastupdatedMap.keySet();
+                    Set<Integer> keySet = versionLastUpdatedMap.keySet();
                     Integer[] keyArray = keySet.toArray(new Integer[keySet.size()]);
                     Arrays.sort(keyArray);
                     ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
                     for (int i = keyArray.length - 1; i >= 0; i--) {
-                        majorVersionsArrayNode.add(versionLastupdatedMap.get(keyArray[i]));
+                        majorVersionsArrayNode.add(versionLastUpdatedMap.get(keyArray[i]));
                     }
                     JsonNode latestPublishedVersionNode = Utils.getLatestMajorVersion(majorVersionsArrayNode, true);
                     int latestPublishedVersion = Integer.parseInt(latestPublishedVersionNode.get("version").asText().split("\\.")[0]);
 
-                    JsonNode name = latestPublishedVersionNode.get("name");
-                    JsonNode shortName = latestPublishedVersionNode.get("shortName");
                     ArrayNode majorVersionsObjectNodeArray = mapper.createArrayNode();
                     for (JsonNode versionNode : majorVersionsArrayNode) {
                         ObjectNode objectNode = versionNode.deepCopy();
                         int version = Integer.parseInt(objectNode.get("version").asText().split("\\.")[0]);
                         objectNode.put("version", version);
                         if (version < latestPublishedVersion && objectNode.get("administrativeStatus").asText().equals("OPEN")){
-                            objectNode.set("name", name);
-                            objectNode.set("shortName", shortName);
+                            if (latestPublishedVersionNode.has("name")){
+                                objectNode.set("name", latestPublishedVersionNode.get("name"));
+                            }
+                            if (latestPublishedVersionNode.has("shortName")){
+                                objectNode.set("shortName", latestPublishedVersionNode.get("shortName"));
+                            }
                         }
-                        if (latestVersionNode.has("name")){
-                            objectNode.set("name", latestVersionNode.get("name"));
-                        }
-                        if (latestVersionNode.has("shortName")){
-                            objectNode.set("shortName", latestVersionNode.get("shortName"));
-                        }
-                        objectNode.put("version", objectNode.get("version").asText().split("\\.")[0]);
                         majorVersionsObjectNodeArray.add(objectNode);
                     }
                     return new ResponseEntity<>(majorVersionsObjectNodeArray, HttpStatus.OK);
