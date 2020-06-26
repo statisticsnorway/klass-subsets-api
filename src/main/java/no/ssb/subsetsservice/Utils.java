@@ -30,9 +30,10 @@ public class Utils {
     }
 
     public static JsonNode getSelfLinkObject(ObjectMapper mapper, ServletUriComponentsBuilder servletUriComponentsBuilder, JsonNode subset){
-        String subsetVersion = subset.get("version").textValue().split("\\.")[0];
         ObjectNode hrefNode = mapper.createObjectNode();
-        hrefNode.put("href", servletUriComponentsBuilder.toUriString()+"/"+subsetVersion);
+        String urlBase = servletUriComponentsBuilder.toUriString().split("subsets")[0];
+        String resourceUrn = urlBase+"subsets/"+subset.get("id")+"/versions/"+subset.get("version");
+        hrefNode.put("href", resourceUrn);
         ObjectNode self = mapper.createObjectNode();
         self.set("self", hrefNode);
         return self;
@@ -42,8 +43,7 @@ public class Utils {
         TimeZone tz = TimeZone.getTimeZone("UTC");
         DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'"); // Quoted "Z" to indicate UTC, no timezone offset
         df.setTimeZone(tz);
-        String nowAsISO = df.format(new Date());
-        return nowAsISO;
+        return df.format(new Date());
     }
 
     public static JsonNode cleanSubsetVersion(JsonNode subset){
@@ -66,12 +66,12 @@ public class Utils {
         return clone;
     }
 
-    public static JsonNode getLatestMajorVersion(ArrayNode majorVersionsArrayNode){
+    public static JsonNode getLatestMajorVersion(ArrayNode majorVersionsArrayNode, boolean published){
         JsonNode latestVersionNode = null;
-        int latestVersion = 0;
+        int latestVersion = -1;
         for (JsonNode versionNode : majorVersionsArrayNode) {
             int thisVersion = Integer.parseInt(versionNode.get("version").asText().split("\\.")[0]);
-            if (latestVersionNode == null || thisVersion > latestVersion){
+            if ((!published || versionNode.get("administrativeStatus").asText().equals("OPEN")) && thisVersion > latestVersion ){
                 latestVersionNode = versionNode;
                 latestVersion = thisVersion;
             }

@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
@@ -20,12 +21,10 @@ public class LDSConsumer {
 
     ResponseEntity<JsonNode> getFrom(String additional)
     {
-        // TODO: I am not sure if this is the right way of handling 404's from another server.
         try {
-            ResponseEntity<JsonNode> response = new RestTemplate().getForEntity(LDS_URL + additional, JsonNode.class);
-            return response;
-        } catch (HttpClientErrorException e){
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            return new RestTemplate().getForEntity(LDS_URL + additional, JsonNode.class);
+        } catch (HttpClientErrorException | HttpServerErrorException e){
+            return ErrorHandler.newHttpError("could not retrieve "+LDS_URL+additional+".", e.getStatusCode(), LOG);
         }
     }
 

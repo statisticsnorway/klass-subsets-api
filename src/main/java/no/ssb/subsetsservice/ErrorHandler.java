@@ -12,7 +12,7 @@ public class ErrorHandler {
     public static final String ILLEGAL_ID = "id contains illegal characters";
     public static final String MALFORMED_VERSION = "malformed version";
 
-    public static ResponseEntity<JsonNode> newError(String message, HttpStatus status, Logger logger){
+    public static ResponseEntity<JsonNode> newHttpError(String message, HttpStatus status, Logger logger){
         ObjectNode body = new ObjectMapper().createObjectNode();
         body.put("status", status.value());
         body.put("error", status.toString());
@@ -22,11 +22,20 @@ public class ErrorHandler {
         return new ResponseEntity<>(body, status);
     }
 
+    public static void newJsonError(String userMessage, Exception e, Logger logger){
+        ObjectNode json = new ObjectMapper().createObjectNode();
+        json.put("user message", userMessage);
+        json.put("exception message", e.getMessage());
+        json.put("timestamp", Utils.getNowISO());
+        json.put("e.toString", e.toString());
+        logger.error(json.toPrettyString());
+    }
+
     public static ResponseEntity<JsonNode> illegalID(Logger logger){
-        return newError(ErrorHandler.ILLEGAL_ID, HttpStatus.BAD_REQUEST, logger);
+        return newHttpError(ErrorHandler.ILLEGAL_ID, HttpStatus.BAD_REQUEST, logger);
     }
 
     public static ResponseEntity<JsonNode> malformedVersion(Logger logger){
-        return newError(ErrorHandler.MALFORMED_VERSION, HttpStatus.BAD_REQUEST, logger);
+        return newHttpError(ErrorHandler.MALFORMED_VERSION, HttpStatus.BAD_REQUEST, logger);
     }
 }
