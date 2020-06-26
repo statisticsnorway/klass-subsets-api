@@ -80,7 +80,7 @@ public class SubsetsController {
             if (ldsResponse.getStatusCodeValue() == 404)
                 return consumer.postTo("/" + id, Utils.cleanSubsetVersion(subsetJson));
         }
-        return ErrorHandler.newHttpError("Can not POST subset with id that is already in use. Use PUT to update existing subsets", HttpStatus.BAD_REQUEST, LOG);
+        return ErrorHandler.newHttpError("Can not create subset. ID already in use", HttpStatus.BAD_REQUEST, LOG);
     }
 
     @GetMapping("/v1/subsets/{id}")
@@ -154,6 +154,11 @@ public class SubsetsController {
                         } else {
                             if (!subsetVersionDocument.has("lastUpdatedDate")){
                                 subsetVersionDocument.set("lastUpdatedDate", subsetVersionDocument.get("createdDate"));
+                            }
+                            ObjectNode versionStoredInMap = versionLastUpdatedMap.get(subsetMajorVersion).deepCopy();
+                            if (!versionStoredInMap.has("lastUpdatedDate")){
+                                versionStoredInMap.set("lastUpdatedDate",versionStoredInMap.get("createdDate"));
+                                versionLastUpdatedMap.put(subsetMajorVersion, versionStoredInMap);
                             }
                             String lastUpdatedDate = subsetVersionDocument.get("lastUpdatedDate").textValue();
                             if (versionLastUpdatedMap.get(subsetMajorVersion).get("lastUpdatedDate").textValue().compareTo(lastUpdatedDate) < 0) {
