@@ -84,14 +84,18 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets/{id}")
-    public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id) {
+    public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean publishedOnly) {
         if (Utils.isClean(id)){
             ResponseEntity<JsonNode> majorVersions = getVersions(id);
             if (majorVersions.getStatusCodeValue() != 200)
                 return majorVersions;
             else if (majorVersions.getBody().isArray()){
                 ArrayNode majorVersionsArray = (ArrayNode) majorVersions.getBody();
-                return new ResponseEntity<>(majorVersionsArray.get(0), HttpStatus.OK);
+                for (JsonNode version : majorVersionsArray) {
+                    if (!publishedOnly || version.get("administrativeStatus").asText().equals("OPEN")){
+                        return new ResponseEntity<>(majorVersionsArray.get(0), HttpStatus.OK);
+                    }
+                }
             } else {
                 return ErrorHandler.newHttpError("internal call to /versions did not return array", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
             }
@@ -105,7 +109,7 @@ public class SubsetsController {
         if (Utils.isClean(id)) {
             ObjectNode editableSubset = subsetJson.deepCopy();
             editableSubset.put("lastUpdatedDate", Utils.getNowISO());
-            ResponseEntity<JsonNode> oldSubsetRE = getSubset(id);
+            ResponseEntity<JsonNode> oldSubsetRE = getSubset(id, false);
             if (oldSubsetRE.getStatusCodeValue() == 200){
                 String oldID = oldSubsetRE.getBody().get("id").asText();
                 String newID = subsetJson.get("id").asText();
@@ -240,12 +244,12 @@ public class SubsetsController {
      * @return
      */
     @GetMapping("/v1/subsets/{id}/codes")
-    public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id, @RequestParam(required = false) String from, @RequestParam(required = false) String to) {
+    public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id, @RequestParam(required = false) String from, @RequestParam(required = false) String to, @RequestParam(defaultValue = "false") boolean publishedOnly) {
         LOG.debug("GET subsets/id/codes");
         if (Utils.isClean(id)){
             if (from == null && to == null){
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
-                ResponseEntity<JsonNode> subsetResponseEntity = getSubset(id);
+                ResponseEntity<JsonNode> subsetResponseEntity = getSubset(id, publishedOnly);
                 JsonNode responseBodyJSON = subsetResponseEntity.getBody();
                 if (responseBodyJSON != null){
                     ArrayNode codes = (ArrayNode) responseBodyJSON.get("codes");
@@ -295,28 +299,30 @@ public class SubsetsController {
 
                         if (isFirstValidAtOrBeforeFromDate && isLastValidAtOrAfterToDate) {
                             for (JsonNode arrayEntry : versionsArrayNode) {
-                                // if this version has any overlap with the valid interval . . .
-                                JsonNode subset = arrayEntry.get("document");
-                                String validFromDateString = subset.get("validFrom").textValue().split("T")[0];
-                                String validUntilDateString = subset.get("validUntil").textValue().split("T")[0];
+                                if (!publishedOnly || arrayEntry.get("administrativeStatus").asText().equals("OPEN")){
+                                    // if this version has any overlap with the valid interval . . .
+                                    JsonNode subset = arrayEntry.get("document");
+                                    String validFromDateString = subset.get("validFrom").textValue().split("T")[0];
+                                    String validUntilDateString = subset.get("validUntil").textValue().split("T")[0];
 
-                                boolean validUntilGTFrom = true;
-                                if (isFromDate)
-                                    validUntilGTFrom = validUntilDateString.compareTo(from) > 0;
+                                    boolean validUntilGTFrom = true;
+                                    if (isFromDate)
+                                        validUntilGTFrom = validUntilDateString.compareTo(from) > 0;
 
-                                boolean validFromLTTo = true;
-                                if (isToDate)
-                                    validFromLTTo = validFromDateString.compareTo(to) < 0;
+                                    boolean validFromLTTo = true;
+                                    if (isToDate)
+                                        validFromLTTo = validFromDateString.compareTo(to) < 0;
 
-                                if (validUntilGTFrom || validFromLTTo) {
-                                    LOG.debug("Version " + subset.get("version") + " is valid in the interval, so codes will be added to map");
-                                    // . . . using each code in this version as key, increment corresponding integer value in map
-                                    JsonNode codes = arrayEntry.get("document").get("codes");
-                                    ArrayNode codesArrayNode = (ArrayNode) codes;
-                                    LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
-                                    for (JsonNode jsonNode : codesArrayNode) {
-                                        String codeURN = jsonNode.get("urn").asText();
-                                        codeMap.merge(codeURN, 1, Integer::sum);
+                                    if (validUntilGTFrom || validFromLTTo) {
+                                        LOG.debug("Version " + subset.get("version") + " is valid in the interval, so codes will be added to map");
+                                        // . . . using each code in this version as key, increment corresponding integer value in map
+                                        JsonNode codes = arrayEntry.get("document").get("codes");
+                                        ArrayNode codesArrayNode = (ArrayNode) codes;
+                                        LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
+                                        for (JsonNode jsonNode : codesArrayNode) {
+                                            String codeURN = jsonNode.get("urn").asText();
+                                            codeMap.merge(codeURN, 1, Integer::sum);
+                                        }
                                     }
                                 }
                             }

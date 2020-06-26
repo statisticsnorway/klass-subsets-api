@@ -43,7 +43,7 @@ class SubsetsServiceApplicationTests {
 
 	@Test
 	void getIllegalIdSubset() {
-		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubset("this-id-is-not-legal-¤%&#!§|`^¨~'*=)(/\\£$@{[]}");
+		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubset("this-id-is-not-legal-¤%&#!§|`^¨~'*=)(/\\£$@{[]}", false);
 
 		System.out.println("STATUS CODE");
 		System.out.println(response.getStatusCodeValue());
@@ -56,7 +56,7 @@ class SubsetsServiceApplicationTests {
 
 	@Test
 	void getNonExistingSubset() {
-		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubset("this-id-does-not-exist");
+		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubset("this-id-does-not-exist", false);
 
 		System.out.println("STATUS CODE");
 		System.out.println(response.getStatusCodeValue());
@@ -88,7 +88,7 @@ class SubsetsServiceApplicationTests {
 		System.out.println(response.getBody());
 		System.out.println("IDs:");
 		for (JsonNode jsonNode : response.getBody()) {
-			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText()).getBody();
+			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText(), false).getBody();
 			assertEquals(subset.get("id").asText(), jsonNode.get("id").asText());
 			System.out.println(subset.get("id"));
 		}
@@ -102,7 +102,7 @@ class SubsetsServiceApplicationTests {
 		System.out.println(response.getBody());
 		System.out.println("IDs:");
 		for (JsonNode jsonNode : response.getBody()) {
-			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText()).getBody();
+			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText(), false).getBody();
 			assertEquals(subset.get("id").asText(), jsonNode.get("id").asText());
 			System.out.println("ID: "+subset.get("id"));
 
