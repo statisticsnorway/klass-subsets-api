@@ -155,6 +155,11 @@ public class SubsetsController {
                             if (!subsetVersionDocument.has("lastUpdatedDate")){
                                 subsetVersionDocument.set("lastUpdatedDate", subsetVersionDocument.get("createdDate"));
                             }
+                            ObjectNode versionStoredInMap = versionLastUpdatedMap.get(subsetMajorVersion).deepCopy();
+                            if (!versionStoredInMap.has("lastUpdatedDate")){
+                                versionStoredInMap.set("lastUpdatedDate",versionStoredInMap.get("createdDate"));
+                                versionLastUpdatedMap.put(subsetMajorVersion, versionStoredInMap);
+                            }
                             String lastUpdatedDate = subsetVersionDocument.get("lastUpdatedDate").textValue();
                             if (versionLastUpdatedMap.get(subsetMajorVersion).get("lastUpdatedDate").textValue().compareTo(lastUpdatedDate) < 0) {
                                 versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
