@@ -22,13 +22,13 @@ public class SubsetsController {
     private static SubsetsController instance;
     private static final Logger LOG = LoggerFactory.getLogger(SubsetsController.class);
 
-    static final String LDS_PROD = "http://lds-klass.klass.svc.cluster.local/ns/ClassificationSubset";
+    static final String LDS_PROD = "https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubset/";
     static final String LDS_LOCAL = "http://localhost:9090/ns/ClassificationSubset";
     private static String LDS_SUBSET_API = "";
 
     private static String KLASS_CLASSIFICATIONS_API = "https://data.ssb.no/api/klass/v1/classifications";
 
-    private static final boolean prod = true;
+    private static final boolean prod = false;
 
     public SubsetsController(){
         instance = this;
@@ -43,7 +43,7 @@ public class SubsetsController {
         if (prod){
             LDS_SUBSET_API = System.getenv().getOrDefault("API_LDS", LDS_PROD);
         } else {
-            LDS_SUBSET_API = LDS_LOCAL;
+            LDS_SUBSET_API = "https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubset/";
         }
         LOG.info("Running with LDS url "+LDS_SUBSET_API);
         KLASS_CLASSIFICATIONS_API = System.getenv().getOrDefault("API_KLASS", KLASS_CLASSIFICATIONS_API);
@@ -60,13 +60,18 @@ public class SubsetsController {
         return new ResponseEntity<>(ldsAllSubsetsArrayNode, HttpStatus.OK);
     }
 
+    @GetMapping("/v1/test")
+    public ResponseEntity<JsonNode> getTest() {
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
     /**
      * This method figures out what the 'id' of the subset is from the value inside the JSON
      * and then post to subsets/{id}
      * @param subsetJson
      * @return
      */
-    @PostMapping("/v1/subsets")
+        @PostMapping("/v1/subsets")
     public ResponseEntity<JsonNode> postSubset(@RequestBody JsonNode subsetJson) {
         if (subsetJson != null) {
             JsonNode idJN = subsetJson.get("id");
