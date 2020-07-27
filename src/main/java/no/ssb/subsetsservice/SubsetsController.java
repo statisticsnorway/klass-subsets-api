@@ -53,11 +53,20 @@ public class SubsetsController {
     public ResponseEntity<JsonNode> getSubsets() {
         LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
         ResponseEntity<JsonNode> ldsRE = consumer.getFrom("");
-        ArrayNode ldsAllSubsetsArrayNode = (ArrayNode) ldsRE.getBody();
-        for (int i = 0; i < ldsAllSubsetsArrayNode.size(); i++) {
-            ldsAllSubsetsArrayNode.set(i, getVersions(ldsAllSubsetsArrayNode.get(i).get("id").asText()).getBody().get(0));
+
+        JsonNode ldsREBody = ldsRE.getBody();
+        if (ldsRE.getStatusCodeValue() != 400){
+            return ErrorHandler.newHttpError("LDS returned a "+ldsRE.getStatusCodeValue()+" "+ldsRE.getStatusCode().toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+        } else {
+            if(ldsREBody != null && ldsREBody.isArray()){
+                ArrayNode ldsAllSubsetsArrayNode = (ArrayNode) ldsREBody;
+                for (int i = 0; i < ldsAllSubsetsArrayNode.size(); i++) {
+                    ldsAllSubsetsArrayNode.set(i, getVersions(ldsAllSubsetsArrayNode.get(i).get("id").asText()).getBody().get(0));
+                }
+                return new ResponseEntity<>(ldsAllSubsetsArrayNode, HttpStatus.OK);
+            }
+            return ErrorHandler.newHttpError("LDS returned OK, but a non-array body. This was unexpected.", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
         }
-        return new ResponseEntity<>(ldsAllSubsetsArrayNode, HttpStatus.OK);
     }
 
     /**
