@@ -28,7 +28,7 @@ public class SubsetsController {
 
     private static String KLASS_CLASSIFICATIONS_API = "https://data.ssb.no/api/klass/v1/classifications";
 
-    private static final boolean prod = true;
+    private static final boolean prod = false;
 
     public SubsetsController(){
         instance = this;
@@ -71,14 +71,16 @@ public class SubsetsController {
         if (subsetJson != null) {
             JsonNode idJN = subsetJson.get("id");
             String id = idJN.textValue();
-            ObjectNode editableSubset = subsetJson.deepCopy();
-            String isoNow = Utils.getNowISO();
-            editableSubset.put("lastUpdatedDate", isoNow);
-            editableSubset.put("createdDate", isoNow);
             LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
             ResponseEntity<JsonNode> ldsResponse = consumer.getFrom("/"+id);
-            if (ldsResponse.getStatusCodeValue() == 404)
-                return consumer.postTo("/" + id, Utils.cleanSubsetVersion(subsetJson));
+            if (ldsResponse.getStatusCodeValue() == 404){
+                ObjectNode editableSubset = subsetJson.deepCopy();
+                String isoNow = Utils.getNowISO();
+                editableSubset.put("lastUpdatedDate", isoNow);
+                editableSubset.put("createdDate", isoNow);
+                JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
+                return consumer.postTo("/" + id, cleanSubset);
+            }
         }
         return ErrorHandler.newHttpError("Can not create subset. ID already in use", HttpStatus.BAD_REQUEST, LOG);
     }
