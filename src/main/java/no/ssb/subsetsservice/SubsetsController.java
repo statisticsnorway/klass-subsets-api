@@ -28,7 +28,7 @@ public class SubsetsController {
 
     private static String KLASS_CLASSIFICATIONS_API = "https://data.ssb.no/api/klass/v1/classifications";
 
-    private static final boolean prod = false;
+    private static final boolean prod = true;
 
     public SubsetsController(){
         instance = this;
