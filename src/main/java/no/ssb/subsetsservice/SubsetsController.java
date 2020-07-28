@@ -130,13 +130,27 @@ public class SubsetsController {
             if (oldSubsetRE.getStatusCodeValue() == HttpStatus.OK.value()){
                 String oldID = oldSubset.get("id").asText();
                 String newID = subsetJson.get("id").asText();
+                boolean sameID = oldID.equals(newID);
+                boolean sameIDAsRequest = newID.equals(id);
                 JsonNode oldCodeList = oldSubset.get("codes");
                 JsonNode newCodeList = subsetJson.get("codes");
-                if (oldID.equals(newID) && oldCodeList.toString().equals(newCodeList.toString())){
+                boolean sameCodeList = oldCodeList.toString().equals(newCodeList.toString());
+                String oldVersion = oldSubset.get("version").asText();
+                String version = subsetJson.get("version").asText();
+                boolean sameVersion = oldVersion.split("\\.")[0].equals(version.split("\\.")[0]);
+                boolean changeCodesButNoVersionChange = sameVersion && !sameCodeList;
+                if (sameID && sameIDAsRequest && !changeCodesButNoVersionChange){
                     LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
                     return consumer.putTo("/" + id, editableSubset);
                 } else {
-                    return ErrorHandler.newHttpError("ID and code list are immutable across versions", HttpStatus.BAD_REQUEST, LOG);
+                    StringBuilder errorStringBuilder = new StringBuilder();
+                    if (!sameID)
+                        errorStringBuilder.append("ID of submitted subset (").append(newID).append(") was not same as id of stored subset(").append(oldID).append("). ");
+                    if(!sameIDAsRequest)
+                        errorStringBuilder.append("ID of submitted subset(").append(newID).append(") was not the same as id in request param (").append(id).append("). ");
+                    if (changeCodesButNoVersionChange)
+                        errorStringBuilder.append("No changes are allowed in the code list of a published version");
+                    return ErrorHandler.newHttpError(errorStringBuilder.toString(), HttpStatus.BAD_REQUEST, LOG);
                 }
             } else {
                 return ErrorHandler.newHttpError(oldSubsetRE.toString(), oldSubsetRE.getStatusCode(), LOG);
