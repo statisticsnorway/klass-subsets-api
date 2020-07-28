@@ -400,11 +400,20 @@ public class SubsetsController {
                             return new ResponseEntity<>(codeArray, HttpStatus.OK);
                         }
                     }
-                    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+                    return ErrorHandler.newHttpError("Subset w id "+id+" not found", HttpStatus.NOT_FOUND, LOG);
                 }
             }
         }
-        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        StringBuilder stringBuilder = new StringBuilder();
+        if (date == null){
+            stringBuilder.append("date == null. ");
+        } else if (!Utils.isYearMonthDay(date)){
+            stringBuilder.append("date ").append(date).append(" was wrong format");
+        }
+        if (!Utils.isClean(id)){
+            stringBuilder.append("id ").append(id).append(" was not clean");
+        }
+        return ErrorHandler.newHttpError(stringBuilder.toString(), HttpStatus.BAD_REQUEST, LOG);
     }
 
     @GetMapping("/v1/subsets/schema")
