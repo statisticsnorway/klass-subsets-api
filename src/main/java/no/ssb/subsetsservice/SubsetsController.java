@@ -55,8 +55,8 @@ public class SubsetsController {
         ResponseEntity<JsonNode> ldsRE = consumer.getFrom("");
 
         JsonNode ldsREBody = ldsRE.getBody();
-        if (ldsRE.getStatusCodeValue() != 400){
-            return ErrorHandler.newHttpError("LDS returned a "+ldsRE.getStatusCodeValue()+" "+ldsRE.getStatusCode().toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+        if (ldsRE.getStatusCodeValue() != HttpStatus.OK.value()){
+            return ErrorHandler.newHttpError("LDS returned a "+ldsRE.getStatusCode().toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
         } else {
             if(ldsREBody != null && ldsREBody.isArray()){
                 ArrayNode ldsAllSubsetsArrayNode = (ArrayNode) ldsREBody;
