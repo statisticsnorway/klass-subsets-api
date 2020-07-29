@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -19,6 +20,8 @@ import java.util.Set;
 @RestController
 public class SubsetsController {
 
+    private MetricsService metricsService;
+
     private static SubsetsController instance;
     private static final Logger LOG = LoggerFactory.getLogger(SubsetsController.class);
 
@@ -30,7 +33,9 @@ public class SubsetsController {
 
     private static final boolean prod = true;
 
-    public SubsetsController(){
+    @Autowired
+    public SubsetsController(MetricsService metricsService){
+        this.metricsService = metricsService;
         instance = this;
         updateLDSURL();
     }
@@ -51,6 +56,8 @@ public class SubsetsController {
 
     @GetMapping("/v1/subsets")
     public ResponseEntity<JsonNode> getSubsets() {
+        metricsService.incrementGETCounter();
+
         LOG.info("GET subsets");
         LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
         ResponseEntity<JsonNode> ldsRE = consumer.getFrom("");
@@ -78,6 +85,8 @@ public class SubsetsController {
      */
     @PostMapping("/v1/subsets")
     public ResponseEntity<JsonNode> postSubset(@RequestBody JsonNode subsetJson) {
+        metricsService.incrementPOSTCounter();
+
         if (subsetJson != null) {
             JsonNode idJN = subsetJson.get("id");
             String id = idJN.textValue();
@@ -99,7 +108,9 @@ public class SubsetsController {
 
     @GetMapping("/v1/subsets/{id}")
     public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean publishedOnly) {
+        metricsService.incrementGETCounter();
         LOG.info("GET subset with id "+id);
+
         if (Utils.isClean(id)){
             ResponseEntity<JsonNode> majorVersions = getVersions(id);
             if (majorVersions.getStatusCodeValue() != HttpStatus.OK.value())
@@ -121,13 +132,16 @@ public class SubsetsController {
 
     @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> putSubset(@PathVariable("id") String id, @RequestBody JsonNode subsetJson) {
+        metricsService.incrementPUTCounter();
         LOG.info("PUT subset with id "+id);
+
         if (Utils.isClean(id)) {
             ObjectNode editableSubset = subsetJson.deepCopy();
             editableSubset.put("lastUpdatedDate", Utils.getNowISO());
             ResponseEntity<JsonNode> oldSubsetRE = getSubset(id, false);
             JsonNode oldSubset = oldSubsetRE.getBody();
             if (oldSubsetRE.getStatusCodeValue() == HttpStatus.OK.value()){
+                assert oldSubset != null && oldSubset.has("id") : "no old subset with this id was found in body of response entity";
                 String oldID = oldSubset.get("id").asText();
                 String newID = subsetJson.get("id").asText();
                 boolean sameID = oldID.equals(newID);
@@ -162,7 +176,9 @@ public class SubsetsController {
 
     @GetMapping("/v1/subsets/{id}/versions")
     public ResponseEntity<JsonNode> getVersions(@PathVariable("id") String id) {
+        metricsService.incrementGETCounter();
         LOG.info("GET version of subset with id "+id);
+
         ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id)){
             LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
@@ -250,7 +266,9 @@ public class SubsetsController {
      */
     @GetMapping("/v1/subsets/{id}/versions/{version}")
     public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String id, @PathVariable("version") String version) {
+        metricsService.incrementGETCounter();
         LOG.info("GET version "+version+" of subset with id "+id);
+
         if (Utils.isClean(id) && Utils.isVersion(version)){
             if (Utils.isVersion(version)){
                 ResponseEntity<JsonNode> versionsRE = getVersions(id);
@@ -286,6 +304,8 @@ public class SubsetsController {
     @GetMapping("/v1/subsets/{id}/codes")
     public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id, @RequestParam(required = false) String from, @RequestParam(required = false) String to, @RequestParam(defaultValue = "false") boolean publishedOnly) {
         LOG.info("GET codes of subset with id "+id);
+        metricsService.incrementGETCounter();
+
         if (Utils.isClean(id)){
             if (from == null && to == null){
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
@@ -395,7 +415,9 @@ public class SubsetsController {
      */
     @GetMapping("/v1/subsets/{id}/codesAt")
     public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id, @RequestParam String date) {
+        metricsService.incrementGETCounter();
         LOG.info("GET codes valid at date "+date+" for subset with id "+id);
+
         if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
             ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id);
             JsonNode responseBodyJSON = versionsResponseEntity.getBody();
@@ -432,7 +454,9 @@ public class SubsetsController {
 
     @GetMapping("/v1/subsets/schema")
     public ResponseEntity<JsonNode> getSchema(){
+        metricsService.incrementGETCounter();
         LOG.info("GET schema for subsets");
+        
         LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
         return consumer.getFrom("/?schema");
     }
