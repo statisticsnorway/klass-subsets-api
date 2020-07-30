@@ -1,14 +1,8 @@
 package no.ssb.subsetsservice;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -16,19 +10,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class MetricsService {
 
     private MeterRegistry meterRegistry;
+
     AtomicInteger getCounter;
     AtomicInteger putCounter;
     AtomicInteger postCounter;
     AtomicInteger testCounter;
 
 
+    @Autowired
     public MetricsService(MeterRegistry meterRegistry){
         this.meterRegistry = meterRegistry;
-        initMetrics();
-    }
-
-    @Autowired
-    public MetricsService(){
         initMetrics();
     }
 
