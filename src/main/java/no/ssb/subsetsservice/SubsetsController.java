@@ -11,10 +11,8 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.Map.Entry;
 
 @CrossOrigin
 @RestController
@@ -192,9 +190,9 @@ public class SubsetsController {
                     return new ResponseEntity<>(HttpStatus.NOT_FOUND);
                 }
                 if (responseBodyJSON.isArray()) {
-                    ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
-                    Map<Integer, JsonNode> versionLastUpdatedMap = new HashMap<>(versionsArrayNode.size() * 2, 0.51f);
-                    for (JsonNode versionNode : versionsArrayNode) {
+                    ArrayNode timelineArrayNode = (ArrayNode) responseBodyJSON;
+                    Map<Integer, JsonNode> versionLastUpdatedMap = new HashMap<>(timelineArrayNode.size() * 2, 0.51f);
+                    for (JsonNode versionNode : timelineArrayNode) {
                         ObjectNode subsetVersionDocument = versionNode.get("document").deepCopy();
                         JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
                         subsetVersionDocument.set("_links", self);
@@ -216,13 +214,14 @@ public class SubsetsController {
                             }
                         }
                     }
-                    Set<Integer> keySet = versionLastUpdatedMap.keySet();
-                    Integer[] keyArray = keySet.toArray(new Integer[keySet.size()]);
-                    Arrays.sort(keyArray);
+
+                    ArrayList<JsonNode> versionList = new ArrayList<>(versionLastUpdatedMap.size());
+                    versionLastUpdatedMap.forEach((key, value) -> versionList.add(value));
+                    versionList.sort(Comparator.comparing(v -> v.get("versionValidFrom").asText()));
+
                     ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
-                    for (int i = keyArray.length - 1; i >= 0; i--) {
-                        majorVersionsArrayNode.add(versionLastUpdatedMap.get(keyArray[i]));
-                    }
+                    versionList.forEach(majorVersionsArrayNode::add);
+
                     JsonNode latestVersion = Utils.getLatestMajorVersion(majorVersionsArrayNode, false);
                     JsonNode latestPublishedVersionNode = Utils.getLatestMajorVersion(majorVersionsArrayNode, true);
                     boolean publishedVersionExists = latestPublishedVersionNode != null;
