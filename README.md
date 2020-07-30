@@ -22,8 +22,6 @@ This API mimics the [KLASS Classifications API](https://data.ssb.no/api/klass/v1
 
 ### Misc
 In addition, we support getting the subset schema at "/v1/subsets?schema"
-And routing GET requests for codes to Klass codes API at "/v1/codes" or "/v1/codes/{id}"
-
 
 # Testing against LDS locally
 
