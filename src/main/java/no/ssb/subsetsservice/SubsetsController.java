@@ -87,18 +87,21 @@ public class SubsetsController {
         if (subsetJson != null) {
             JsonNode idJN = subsetJson.get("id");
             String id = idJN.textValue();
-            LOG.info("POST subset with id "+id);
-            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-            ResponseEntity<JsonNode> ldsResponse = consumer.getFrom("/"+id);
-            if (ldsResponse.getStatusCodeValue() == HttpStatus.NOT_FOUND.value()){
-                ObjectNode editableSubset = subsetJson.deepCopy();
-                String isoNow = Utils.getNowISO();
-                editableSubset.put("lastUpdatedDate", isoNow);
-                editableSubset.put("createdDate", isoNow);
-                JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
-                return consumer.postTo("/" + id, cleanSubset);
+            if (Utils.isClean(id)){
+                LOG.info("POST subset with id "+id);
+                LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+                ResponseEntity<JsonNode> ldsResponse = consumer.getFrom("/"+id);
+                if (ldsResponse.getStatusCodeValue() == HttpStatus.NOT_FOUND.value()){
+                    ObjectNode editableSubset = subsetJson.deepCopy();
+                    String isoNow = Utils.getNowISO();
+                    editableSubset.put("lastUpdatedDate", isoNow);
+                    editableSubset.put("createdDate", isoNow);
+                    JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
+                    return consumer.postTo("/" + id, cleanSubset);
+                }
+                return ErrorHandler.newHttpError("POST: Can not create subset. ID already in use", HttpStatus.BAD_REQUEST, LOG);
             }
-            return ErrorHandler.newHttpError("POST: Can not create subset. ID already in use", HttpStatus.BAD_REQUEST, LOG);
+            return ErrorHandler.illegalID(LOG);
         }
         return ErrorHandler.newHttpError("POST: Can not create subset from empty body", HttpStatus.BAD_REQUEST, LOG);
     }
