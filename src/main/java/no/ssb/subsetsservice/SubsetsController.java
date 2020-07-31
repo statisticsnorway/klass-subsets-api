@@ -148,6 +148,7 @@ public class SubsetsController {
                 String newID = subsetJson.get("id").asText();
                 boolean sameID = oldID.equals(newID);
                 boolean sameIDAsRequest = newID.equals(id);
+                boolean consistentID = oldID.equals(newID) && newID.equals(id);
 
                 JsonNode oldCodeList = mostRecentSubset.get("codes");
                 JsonNode newCodeList = subsetJson.get("codes");
@@ -156,25 +157,22 @@ public class SubsetsController {
                 String newVersionValidFrom = subsetJson.get("versionValidFrom").asText();
                 ArrayNode versionsArrayNode = Utils.cleanSubsetVersion(oldVersionsRE.getBody()).deepCopy();
 
-                String version = subsetJson.get("version").asText();
+                String newVersionString = subsetJson.get("version").asText();
 
                 boolean sameVersionValidFrom = false;
                 for (JsonNode jsonNode : versionsArrayNode) {
-                    if (!jsonNode.get("version").asText().equals(version) && jsonNode.get("versionValidFrom").asText().equals(newVersionValidFrom)) {
+                    if (!jsonNode.get("version").asText().equals(newVersionString) && jsonNode.get("versionValidFrom").asText().equals(newVersionValidFrom)) {
                         sameVersionValidFrom = true;
                         break;
                     }
                 }
 
-                ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, version);
+                ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, newVersionString);
                 boolean thisVersionExistsFromBefore = prevPatchOfThisVersionRE.getStatusCodeValue() == 200;
-                boolean thisVersionIsPublishedFromBefore = false;
-                if (thisVersionExistsFromBefore){
-                    thisVersionIsPublishedFromBefore = prevPatchOfThisVersionRE.getBody().get("administrativeStatus").asText().equals("OPEN");
-                }
+                boolean thisVersionIsPublishedFromBefore = thisVersionExistsFromBefore && prevPatchOfThisVersionRE.getBody().get("administrativeStatus").asText().equals("OPEN");
 
                 boolean attemptToChangeCodesOfPublishedVersion = thisVersionIsPublishedFromBefore && !sameCodeList;
-                if (sameID && sameIDAsRequest && !attemptToChangeCodesOfPublishedVersion && !sameVersionValidFrom){
+                if (consistentID && !attemptToChangeCodesOfPublishedVersion && !sameVersionValidFrom){
                     LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
                     return consumer.putTo("/" + id, editableSubset);
                 } else {
