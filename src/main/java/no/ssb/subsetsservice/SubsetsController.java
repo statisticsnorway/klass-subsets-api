@@ -171,10 +171,10 @@ public class SubsetsController {
                     boolean thisVersionIsPublishedFromBefore = prevPatchOfThisVersion.get("administrativeStatus").asText().equals("OPEN");
 
                     if (thisVersionIsPublishedFromBefore){
-                        JsonNode oldCodeList = prevPatchOfThisVersion.get("codes");
-                        JsonNode newCodeList = subsetJson.get("codes");
-                        boolean sameCodeList = oldCodeList.toString().equals(newCodeList.toString());
-                        attemptToChangeCodesOfPublishedVersion = thisVersionIsPublishedFromBefore && !sameCodeList;
+                        String oldCodeList = prevPatchOfThisVersion.get("codes").asText();
+                        String newCodeList = subsetJson.get("codes").asText();
+                        boolean differentCodeList = oldCodeList.equals(newCodeList);
+                        attemptToChangeCodesOfPublishedVersion = !differentCodeList;
 
                         Iterator<String> prevPatchFieldNames = prevPatchOfThisVersion.fieldNames();
                         Iterator<String> newPatchFieldNames = subsetJson.fieldNames();
