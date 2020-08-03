@@ -170,11 +170,49 @@ public class SubsetsController {
                     JsonNode prevPatchOfThisVersion = prevPatchOfThisVersionRE.getBody();
                     boolean thisVersionIsPublishedFromBefore = prevPatchOfThisVersion.get("administrativeStatus").asText().equals("OPEN");
 
-                    JsonNode oldCodeList = prevPatchOfThisVersion.get("codes");
-                    JsonNode newCodeList = subsetJson.get("codes");
-                    boolean sameCodeList = oldCodeList.toString().equals(newCodeList.toString());
+                    if (thisVersionIsPublishedFromBefore){
+                        JsonNode oldCodeList = prevPatchOfThisVersion.get("codes");
+                        JsonNode newCodeList = subsetJson.get("codes");
+                        boolean sameCodeList = oldCodeList.toString().equals(newCodeList.toString());
+                        attemptToChangeCodesOfPublishedVersion = thisVersionIsPublishedFromBefore && !sameCodeList;
 
-                    attemptToChangeCodesOfPublishedVersion = thisVersionIsPublishedFromBefore && !sameCodeList;
+                        Iterator<String> prevPatchFieldNames = prevPatchOfThisVersion.fieldNames();
+                        Iterator<String> newPatchFieldNames = subsetJson.fieldNames();
+
+                        boolean allSameFields = true;
+                        while (allSameFields && prevPatchFieldNames.hasNext()){
+                            String field = prevPatchFieldNames.next();
+                            if (!subsetJson.has(field)) {
+                                allSameFields = false;
+                            }
+                        }
+
+                        while (allSameFields && newPatchFieldNames.hasNext()){
+                            String field = newPatchFieldNames.next();
+                            if (!prevPatchOfThisVersion.has(field)) {
+                                allSameFields = false;
+                            }
+                        }
+
+                        if (!allSameFields){
+                            return ErrorHandler.newHttpError("The submitted version does not contain all the same fields as the already published version that it attempts to override", HttpStatus.BAD_REQUEST, LOG);
+                        }
+
+                        boolean allSameValuesExceptValidUntilAndVersionRationale = true;
+                        newPatchFieldNames = subsetJson.fieldNames();
+                        while (allSameValuesExceptValidUntilAndVersionRationale && newPatchFieldNames.hasNext()){
+                            String field = newPatchFieldNames.next();
+                            if (! (field.equals("validUntil") || field.equals("versionRationale"))){
+                                if (!prevPatchOfThisVersion.get(field).asText().equals(subsetJson.get(field).asText())) {
+                                    allSameValuesExceptValidUntilAndVersionRationale = false;
+                                }
+                            }
+                        }
+
+                        if (!allSameValuesExceptValidUntilAndVersionRationale){
+                            return ErrorHandler.newHttpError("The version of the subset you are trying to change is published, which means you can only change validUntil and versionRationale.", HttpStatus.BAD_REQUEST, LOG);
+                        }
+                    }
                 }
 
                 if (consistentID && !attemptToChangeCodesOfPublishedVersion && !sameVersionValidFrom){
@@ -183,13 +221,13 @@ public class SubsetsController {
                 } else {
                     StringBuilder errorStringBuilder = new StringBuilder();
                     if (!sameID)
-                        errorStringBuilder.append("ID of submitted subset (").append(newID).append(") was not same as id of stored subset(").append(oldID).append("). ");
+                        errorStringBuilder.append("- ID of submitted subset (").append(newID).append(") was not same as id of stored subset(").append(oldID).append("). ");
                     if(!sameIDAsRequest)
-                        errorStringBuilder.append("ID of submitted subset(").append(newID).append(") was not the same as id in request param (").append(id).append("). ");
+                        errorStringBuilder.append("- ID of submitted subset(").append(newID).append(") was not the same as id in request param (").append(id).append("). ");
                     if (attemptToChangeCodesOfPublishedVersion)
-                        errorStringBuilder.append("No changes are allowed in the code list of a published version. ");
+                        errorStringBuilder.append("- No changes are allowed in the code list of a published version. ");
                     if (sameVersionValidFrom)
-                        errorStringBuilder.append("A new version was created with a versionValidFrom equal to that of another version. ");
+                        errorStringBuilder.append("- It is not allowed to submit a version with versionValidFrom equal to that of an existing version. ");
                     return ErrorHandler.newHttpError(errorStringBuilder.toString(), HttpStatus.BAD_REQUEST, LOG);
                 }
             } else {
