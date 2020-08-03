@@ -150,10 +150,6 @@ public class SubsetsController {
                 boolean sameIDAsRequest = newID.equals(id);
                 boolean consistentID = oldID.equals(newID) && newID.equals(id);
 
-                JsonNode oldCodeList = mostRecentSubset.get("codes");
-                JsonNode newCodeList = subsetJson.get("codes");
-                boolean sameCodeList = oldCodeList.toString().equals(newCodeList.toString());
-
                 String newVersionValidFrom = subsetJson.get("versionValidFrom").asText();
                 ArrayNode versionsArrayNode = Utils.cleanSubsetVersion(oldVersionsRE.getBody()).deepCopy();
 
@@ -169,9 +165,18 @@ public class SubsetsController {
 
                 ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, newVersionString);
                 boolean thisVersionExistsFromBefore = prevPatchOfThisVersionRE.getStatusCodeValue() == 200;
-                boolean thisVersionIsPublishedFromBefore = thisVersionExistsFromBefore && prevPatchOfThisVersionRE.getBody().get("administrativeStatus").asText().equals("OPEN");
+                boolean attemptToChangeCodesOfPublishedVersion = false;
+                if (thisVersionExistsFromBefore){
+                    JsonNode prevPatchOfThisVersion = prevPatchOfThisVersionRE.getBody();
+                    boolean thisVersionIsPublishedFromBefore = prevPatchOfThisVersion.get("administrativeStatus").asText().equals("OPEN");
 
-                boolean attemptToChangeCodesOfPublishedVersion = thisVersionIsPublishedFromBefore && !sameCodeList;
+                    JsonNode oldCodeList = prevPatchOfThisVersion.get("codes");
+                    JsonNode newCodeList = subsetJson.get("codes");
+                    boolean sameCodeList = oldCodeList.toString().equals(newCodeList.toString());
+
+                    attemptToChangeCodesOfPublishedVersion = thisVersionIsPublishedFromBefore && !sameCodeList;
+                }
+
                 if (consistentID && !attemptToChangeCodesOfPublishedVersion && !sameVersionValidFrom){
                     LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
                     return consumer.putTo("/" + id, editableSubset);
