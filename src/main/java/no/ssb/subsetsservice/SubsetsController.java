@@ -198,22 +198,17 @@ public class SubsetsController {
                             return ErrorHandler.newHttpError("The submitted version does not contain all the same fields as the already published version that it attempts to override", HttpStatus.BAD_REQUEST, LOG);
                         }
 
-                        boolean allSameValuesExceptValidUntilAndVersionRationale = true;
                         newPatchFieldNames = subsetJson.fieldNames();
-                        while (allSameValuesExceptValidUntilAndVersionRationale && newPatchFieldNames.hasNext()){
+                        while (newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
                             String[] changeableFields = {"versionRationale", "validUntil", "lastUpdatedBy", "lastUpdatedDate"};
                             ArrayList<String> changeableFieldsList = new ArrayList<>();
                             Collections.addAll(changeableFieldsList, changeableFields);
                             if (!changeableFieldsList.contains(field)){
                                 if (!prevPatchOfThisVersion.get(field).asText().equals(subsetJson.get(field).asText())) {
-                                    allSameValuesExceptValidUntilAndVersionRationale = false;
+                                    return ErrorHandler.newHttpError("The version of the subset you are trying to change is published, which means you can only change validUntil and versionRationale.", HttpStatus.BAD_REQUEST, LOG);
                                 }
                             }
-                        }
-
-                        if (!allSameValuesExceptValidUntilAndVersionRationale){
-                            return ErrorHandler.newHttpError("The version of the subset you are trying to change is published, which means you can only change validUntil and versionRationale.", HttpStatus.BAD_REQUEST, LOG);
                         }
                     }
                 }
