@@ -11,10 +11,7 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @CrossOrigin
 @RestController
@@ -90,18 +87,21 @@ public class SubsetsController {
         if (subsetJson != null) {
             JsonNode idJN = subsetJson.get("id");
             String id = idJN.textValue();
-            LOG.info("POST subset with id "+id);
-            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-            ResponseEntity<JsonNode> ldsResponse = consumer.getFrom("/"+id);
-            if (ldsResponse.getStatusCodeValue() == HttpStatus.NOT_FOUND.value()){
-                ObjectNode editableSubset = subsetJson.deepCopy();
-                String isoNow = Utils.getNowISO();
-                editableSubset.put("lastUpdatedDate", isoNow);
-                editableSubset.put("createdDate", isoNow);
-                JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
-                return consumer.postTo("/" + id, cleanSubset);
+            if (Utils.isClean(id)){
+                LOG.info("POST subset with id "+id);
+                LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
+                ResponseEntity<JsonNode> ldsResponse = consumer.getFrom("/"+id);
+                if (ldsResponse.getStatusCodeValue() == HttpStatus.NOT_FOUND.value()){
+                    ObjectNode editableSubset = subsetJson.deepCopy();
+                    String isoNow = Utils.getNowISO();
+                    editableSubset.put("lastUpdatedDate", isoNow);
+                    editableSubset.put("createdDate", isoNow);
+                    JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
+                    return consumer.postTo("/" + id, cleanSubset);
+                }
+                return ErrorHandler.newHttpError("POST: Can not create subset. ID already in use", HttpStatus.BAD_REQUEST, LOG);
             }
-            return ErrorHandler.newHttpError("POST: Can not create subset. ID already in use", HttpStatus.BAD_REQUEST, LOG);
+            return ErrorHandler.illegalID(LOG);
         }
         return ErrorHandler.newHttpError("POST: Can not create subset from empty body", HttpStatus.BAD_REQUEST, LOG);
     }
@@ -136,24 +136,43 @@ public class SubsetsController {
         LOG.info("PUT subset with id "+id);
 
         if (Utils.isClean(id)) {
-            ObjectNode editableSubset = subsetJson.deepCopy();
+            ObjectNode editableSubset = Utils.cleanSubsetVersion(subsetJson).deepCopy();
             editableSubset.put("lastUpdatedDate", Utils.getNowISO());
-            ResponseEntity<JsonNode> oldSubsetRE = getSubset(id, false);
-            JsonNode oldSubset = oldSubsetRE.getBody();
-            if (oldSubsetRE.getStatusCodeValue() == HttpStatus.OK.value()){
-                assert oldSubset != null && oldSubset.has("id") : "no old subset with this id was found in body of response entity";
-                String oldID = oldSubset.get("id").asText();
+            ResponseEntity<JsonNode> mostRecentVersionRE = getSubset(id, false);
+            ResponseEntity<JsonNode> oldVersionsRE = getVersions(id);
+            JsonNode mostRecentSubset = mostRecentVersionRE.getBody();
+            if (mostRecentVersionRE.getStatusCodeValue() == HttpStatus.OK.value()){
+                assert mostRecentSubset != null && mostRecentSubset.has("id") : "no old subset with this id was found in body of response entity";
+
+                String oldID = mostRecentSubset.get("id").asText();
                 String newID = subsetJson.get("id").asText();
                 boolean sameID = oldID.equals(newID);
                 boolean sameIDAsRequest = newID.equals(id);
-                JsonNode oldCodeList = oldSubset.get("codes");
+                boolean consistentID = oldID.equals(newID) && newID.equals(id);
+
+                JsonNode oldCodeList = mostRecentSubset.get("codes");
                 JsonNode newCodeList = subsetJson.get("codes");
                 boolean sameCodeList = oldCodeList.toString().equals(newCodeList.toString());
-                String oldVersion = oldSubset.get("version").asText();
-                String version = subsetJson.get("version").asText();
-                boolean sameVersion = oldVersion.split("\\.")[0].equals(version.split("\\.")[0]);
-                boolean changeCodesButNoVersionChange = sameVersion && !sameCodeList;
-                if (sameID && sameIDAsRequest && !changeCodesButNoVersionChange){
+
+                String newVersionValidFrom = subsetJson.get("versionValidFrom").asText();
+                ArrayNode versionsArrayNode = Utils.cleanSubsetVersion(oldVersionsRE.getBody()).deepCopy();
+
+                String newVersionString = subsetJson.get("version").asText();
+
+                boolean sameVersionValidFrom = false;
+                for (JsonNode jsonNode : versionsArrayNode) {
+                    if (!jsonNode.get("version").asText().equals(newVersionString) && jsonNode.get("versionValidFrom").asText().equals(newVersionValidFrom)) {
+                        sameVersionValidFrom = true;
+                        break;
+                    }
+                }
+
+                ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, newVersionString);
+                boolean thisVersionExistsFromBefore = prevPatchOfThisVersionRE.getStatusCodeValue() == 200;
+                boolean thisVersionIsPublishedFromBefore = thisVersionExistsFromBefore && prevPatchOfThisVersionRE.getBody().get("administrativeStatus").asText().equals("OPEN");
+
+                boolean attemptToChangeCodesOfPublishedVersion = thisVersionIsPublishedFromBefore && !sameCodeList;
+                if (consistentID && !attemptToChangeCodesOfPublishedVersion && !sameVersionValidFrom){
                     LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
                     return consumer.putTo("/" + id, editableSubset);
                 } else {
@@ -162,12 +181,14 @@ public class SubsetsController {
                         errorStringBuilder.append("ID of submitted subset (").append(newID).append(") was not same as id of stored subset(").append(oldID).append("). ");
                     if(!sameIDAsRequest)
                         errorStringBuilder.append("ID of submitted subset(").append(newID).append(") was not the same as id in request param (").append(id).append("). ");
-                    if (changeCodesButNoVersionChange)
-                        errorStringBuilder.append("No changes are allowed in the code list of a published version");
+                    if (attemptToChangeCodesOfPublishedVersion)
+                        errorStringBuilder.append("No changes are allowed in the code list of a published version. ");
+                    if (sameVersionValidFrom)
+                        errorStringBuilder.append("A new version was created with a versionValidFrom equal to that of another version. ");
                     return ErrorHandler.newHttpError(errorStringBuilder.toString(), HttpStatus.BAD_REQUEST, LOG);
                 }
             } else {
-                return ErrorHandler.newHttpError(oldSubsetRE.toString(), oldSubsetRE.getStatusCode(), LOG);
+                return ErrorHandler.newHttpError(mostRecentVersionRE.toString(), mostRecentVersionRE.getStatusCode(), LOG);
             }
         } else {
             return ErrorHandler.illegalID(LOG);
@@ -192,9 +213,9 @@ public class SubsetsController {
                     return new ResponseEntity<>(HttpStatus.NOT_FOUND);
                 }
                 if (responseBodyJSON.isArray()) {
-                    ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
-                    Map<Integer, JsonNode> versionLastUpdatedMap = new HashMap<>(versionsArrayNode.size() * 2, 0.51f);
-                    for (JsonNode versionNode : versionsArrayNode) {
+                    ArrayNode timelineArrayNode = (ArrayNode) responseBodyJSON;
+                    Map<Integer, JsonNode> versionLastUpdatedMap = new HashMap<>(timelineArrayNode.size() * 2, 0.51f);
+                    for (JsonNode versionNode : timelineArrayNode) {
                         ObjectNode subsetVersionDocument = versionNode.get("document").deepCopy();
                         JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
                         subsetVersionDocument.set("_links", self);
@@ -216,13 +237,14 @@ public class SubsetsController {
                             }
                         }
                     }
-                    Set<Integer> keySet = versionLastUpdatedMap.keySet();
-                    Integer[] keyArray = keySet.toArray(new Integer[keySet.size()]);
-                    Arrays.sort(keyArray);
+
+                    ArrayList<JsonNode> versionList = new ArrayList<>(versionLastUpdatedMap.size());
+                    versionLastUpdatedMap.forEach((key, value) -> versionList.add(value));
+                    versionList.sort(Comparator.comparing(v -> v.get("versionValidFrom").asText()));
+
                     ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
-                    for (int i = keyArray.length - 1; i >= 0; i--) {
-                        majorVersionsArrayNode.add(versionLastUpdatedMap.get(keyArray[i]));
-                    }
+                    versionList.forEach(majorVersionsArrayNode::add);
+
                     JsonNode latestVersion = Utils.getLatestMajorVersion(majorVersionsArrayNode, false);
                     JsonNode latestPublishedVersionNode = Utils.getLatestMajorVersion(majorVersionsArrayNode, true);
                     boolean publishedVersionExists = latestPublishedVersionNode != null;

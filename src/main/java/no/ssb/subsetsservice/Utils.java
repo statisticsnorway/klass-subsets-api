@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.text.DateFormat;
@@ -68,24 +68,30 @@ public class Utils {
 
     public static JsonNode getLatestMajorVersion(ArrayNode majorVersionsArrayNode, boolean published){
         JsonNode latestVersionNode = null;
-        int latestVersion = -1;
+        String latestVersionValidFrom = "0";
         for (JsonNode versionNode : majorVersionsArrayNode) {
-            int thisVersion = Integer.parseInt(versionNode.get("version").asText().split("\\.")[0]);
-            if ((!published || versionNode.get("administrativeStatus").asText().equals("OPEN")) && thisVersion > latestVersion ){
+            String thisVersionValidFrom = versionNode.get("versionValidFrom").asText();
+            boolean isOpen = versionNode.get("administrativeStatus").asText().equals("OPEN");
+            int compareThisToLatest = thisVersionValidFrom.compareTo(latestVersionValidFrom);
+            if (compareThisToLatest == 0){
+                Logger logger = LoggerFactory.getLogger(Utils.class);
+                logger.error("Two major versions of a subset have the same 'versionValidFrom' values. The versions are '"+versionNode.get("version")+"' and '"+latestVersionNode.get("version")+"'");
+            }
+            if ((!published || isOpen) && thisVersionValidFrom.compareTo(latestVersionValidFrom) > 0 ){
                 latestVersionNode = versionNode;
-                latestVersion = thisVersion;
+                latestVersionValidFrom = thisVersionValidFrom;
             }
         }
         return latestVersionNode;
     }
 
-    public static void sortByVersion(ArrayNode subsetArrayNode){
+    public static ArrayNode sortByVersionValidFrom(ArrayNode subsetArrayNode){
         List<JsonNode> subsetList = new ArrayList<>(subsetArrayNode.size());
         subsetArrayNode.forEach(subsetList::add);
-        subsetList.sort((s1, s2) -> Integer.compare(Integer.parseInt(s2.get("version").asText().split("\\.")[0]), Integer.parseInt(s1.get("version").asText().split("\\.")[0])));
-        for (int i = 0; i < subsetList.size(); i++) {
-            subsetArrayNode.set(i, subsetList.get(i));
-        }
+        subsetList.sort((s1, s2) -> s2.get("versionValidFrom").asText().compareTo(s1.get("versionValidFrom").asText()));
+        ArrayNode newArrayNode = new ObjectMapper().createArrayNode();
+        subsetList.forEach(newArrayNode::add);
+        return newArrayNode;
     }
 
 }

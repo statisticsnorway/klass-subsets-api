@@ -21,7 +21,7 @@ public class MetricController {
         this.metricsService = metricsService;
     }
 
-    @GetMapping("/metrics")
+    @GetMapping("/customMetrics")
     public ResponseEntity<JsonNode> getMetrics() {
         ObjectNode metricsNode = new ObjectMapper().createObjectNode();
         metricsNode.put("GET counter", metricsService.getCounter.intValue());
