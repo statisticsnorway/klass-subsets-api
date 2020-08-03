@@ -202,7 +202,10 @@ public class SubsetsController {
                         newPatchFieldNames = subsetJson.fieldNames();
                         while (allSameValuesExceptValidUntilAndVersionRationale && newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
-                            if (! (field.equals("validUntil") || field.equals("versionRationale"))){
+                            String[] changeableFields = {"versionRationale", "validUntil", "lastUpdatedBy", "lastUpdatedDate"};
+                            ArrayList<String> changeableFieldsList = new ArrayList<>();
+                            Collections.addAll(changeableFieldsList, changeableFields);
+                            if (!changeableFieldsList.contains(field)){
                                 if (!prevPatchOfThisVersion.get(field).asText().equals(subsetJson.get(field).asText())) {
                                     allSameValuesExceptValidUntilAndVersionRationale = false;
                                 }
