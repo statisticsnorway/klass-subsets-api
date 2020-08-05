@@ -96,10 +96,11 @@ public class SubsetsController {
                     String isoNow = Utils.getNowISO();
                     editableSubset.put(Field.LAST_UPDATED_DATE, isoNow);
                     editableSubset.put(Field.CREATED_DATE, isoNow);
-                    // TODO: validFrom must be equal versionValidFrom
                     String versionValidFrom = editableSubset.get(Field.VERSION_VALID_FROM).asText();
                     String validFrom = editableSubset.get(Field.VALID_FROM).asText();
-
+                    if (!versionValidFrom.equals(validFrom)){
+                        return ErrorHandler.newHttpError("validFrom must be equal versionValidFrom for the first version of the subset (this one)", HttpStatus.BAD_REQUEST, LOG);
+                    }
                     JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
                     return consumer.postTo("/" + id, cleanSubset);
                 }
@@ -135,29 +136,29 @@ public class SubsetsController {
     }
 
     @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> putSubset(@PathVariable("id") String id, @RequestBody JsonNode subsetJson) {
+    public ResponseEntity<JsonNode> putSubset(@PathVariable("id") String id, @RequestBody JsonNode newVersionOfSubset) {
         metricsService.incrementPUTCounter();
         LOG.info("PUT subset with id "+id);
 
         if (Utils.isClean(id)) {
-            ObjectNode editableSubset = Utils.cleanSubsetVersion(subsetJson).deepCopy();
+            ObjectNode editableSubset = Utils.cleanSubsetVersion(newVersionOfSubset).deepCopy();
             editableSubset.put(Field.LAST_UPDATED_DATE, Utils.getNowISO());
             ResponseEntity<JsonNode> mostRecentVersionRE = getSubset(id, false);
             ResponseEntity<JsonNode> oldVersionsRE = getVersions(id);
-            JsonNode mostRecentSubset = mostRecentVersionRE.getBody();
+            JsonNode mostRecentVersionOfThisSubset = mostRecentVersionRE.getBody();
             if (mostRecentVersionRE.getStatusCodeValue() == HttpStatus.OK.value()){
-                assert mostRecentSubset != null && mostRecentSubset.has(Field.ID) : "no old subset with this id was found in body of response entity";
+                assert mostRecentVersionOfThisSubset != null && mostRecentVersionOfThisSubset.has(Field.ID) : "no old subset with this id was found in body of response entity";
 
-                String oldID = mostRecentSubset.get(Field.ID).asText();
-                String newID = subsetJson.get(Field.ID).asText();
+                String oldID = mostRecentVersionOfThisSubset.get(Field.ID).asText();
+                String newID = newVersionOfSubset.get(Field.ID).asText();
                 boolean sameID = oldID.equals(newID);
                 boolean sameIDAsRequest = newID.equals(id);
                 boolean consistentID = oldID.equals(newID) && newID.equals(id);
 
-                String newVersionValidFrom = subsetJson.get(Field.VERSION_VALID_FROM).asText();
-                ArrayNode versionsArrayNode = Utils.cleanSubsetVersion(oldVersionsRE.getBody()).deepCopy();
+                String newVersionValidFrom = newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText();
+                ArrayNode versionsArrayNode = Utils.sortByVersionValidFrom(Utils.cleanSubsetVersion(oldVersionsRE.getBody()).deepCopy());
 
-                String newVersionString = subsetJson.get(Field.VERSION).asText();
+                String newVersionString = newVersionOfSubset.get(Field.VERSION).asText();
 
                 boolean sameVersionValidFrom = false;
                 for (JsonNode jsonNode : versionsArrayNode) {
@@ -167,7 +168,26 @@ public class SubsetsController {
                     }
                 }
 
-                //TODO: If this new version is now the first version, the subset validFrom must be equal versionValidFrom
+
+                String mostRecentVersionValidFrom = mostRecentVersionOfThisSubset.get(Field.VERSION_VALID_FROM).asText();
+                int newAndMostRecentVersionValidFromComparison = newVersionValidFrom.compareTo(mostRecentVersionValidFrom);
+                if (newAndMostRecentVersionValidFromComparison < 0){
+                    // Then the new version validFrom must also be smaller than the previous first version validFrom in order to be valid
+                    JsonNode firstVersion = versionsArrayNode.get(versionsArrayNode.size() - 1);
+                    String firstVersionValidFrom = firstVersion.get(Field.VERSION_VALID_FROM).asText();
+                    if (newVersionValidFrom.compareTo(firstVersionValidFrom) < 0){
+                        // New version is valid from before the previous version
+
+                        //TODO: If this new version is now the first version, the subset validFrom must be equal versionValidFrom
+                        if (!newVersionOfSubset.get(Field.VALID_FROM).asText().equals(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText())){
+                            return ErrorHandler.newHttpError("'versionValidFrom' can not be earlier than subset 'validFrom'", HttpStatus.BAD_REQUEST, LOG);
+                        }
+                    }
+                } else if (newAndMostRecentVersionValidFromComparison == 0){
+                    // then it is NOT valid. But this case is accounted for later in the code
+                } else {
+                    // Then it is valid, and we continue as usual
+                }
 
                 ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, newVersionString);
                 boolean thisVersionExistsFromBefore = prevPatchOfThisVersionRE.getStatusCodeValue() == 200;
@@ -178,17 +198,17 @@ public class SubsetsController {
 
                     if (thisVersionIsPublishedFromBefore){
                         String oldCodeList = prevPatchOfThisVersion.get(Field.CODES).asText();
-                        String newCodeList = subsetJson.get(Field.CODES).asText();
+                        String newCodeList = newVersionOfSubset.get(Field.CODES).asText();
                         boolean differentCodeList = oldCodeList.equals(newCodeList);
                         attemptToChangeCodesOfPublishedVersion = !differentCodeList;
 
                         Iterator<String> prevPatchFieldNames = prevPatchOfThisVersion.fieldNames();
-                        Iterator<String> newPatchFieldNames = subsetJson.fieldNames();
+                        Iterator<String> newPatchFieldNames = newVersionOfSubset.fieldNames();
 
                         boolean allSameFields = true;
                         while (allSameFields && prevPatchFieldNames.hasNext()){
                             String field = prevPatchFieldNames.next();
-                            if (!subsetJson.has(field)) {
+                            if (!newVersionOfSubset.has(field)) {
                                 allSameFields = false;
                             }
                         }
@@ -204,14 +224,14 @@ public class SubsetsController {
                             return ErrorHandler.newHttpError("The submitted version does not contain all the same fields as the already published version that it attempts to override", HttpStatus.BAD_REQUEST, LOG);
                         }
 
-                        newPatchFieldNames = subsetJson.fieldNames();
+                        newPatchFieldNames = newVersionOfSubset.fieldNames();
                         while (newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
                             String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, "lastUpdatedBy", Field.LAST_UPDATED_DATE};
                             ArrayList<String> changeableFieldsList = new ArrayList<>();
                             Collections.addAll(changeableFieldsList, changeableFieldsInPublishedVersion);
                             if (!changeableFieldsList.contains(field)){
-                                if (!prevPatchOfThisVersion.get(field).asText().equals(subsetJson.get(field).asText())) {
+                                if (!prevPatchOfThisVersion.get(field).asText().equals(newVersionOfSubset.get(field).asText())) {
                                     return ErrorHandler.newHttpError("The version of the subset you are trying to change is published, which means you can only change validUntil and versionRationale.", HttpStatus.BAD_REQUEST, LOG);
                                 }
                             }
@@ -303,7 +323,7 @@ public class SubsetsController {
                     for (JsonNode versionNode : majorVersionsArrayNode) {
                         ObjectNode objectNode = versionNode.deepCopy();
                         int version = Integer.parseInt(objectNode.get(Field.VERSION).asText().split("\\.")[0]);
-                        objectNode.put(Field.VERSION, version);
+                        objectNode.put(Field.VERSION, Integer.toString(version));
                         if (publishedVersionExists && version < latestMajorVersion && objectNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
                             if (latestPublishedVersionNode.has(Field.NAME)){
                                 objectNode.set(Field.NAME, latestPublishedVersionNode.get(Field.NAME));
