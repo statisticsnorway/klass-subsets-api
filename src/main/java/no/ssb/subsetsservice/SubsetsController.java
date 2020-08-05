@@ -219,7 +219,19 @@ public class SubsetsController {
                         ObjectNode subsetVersionDocument = versionNode.get("document").deepCopy();
                         JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
                         subsetVersionDocument.set("_links", self);
-                        int subsetMajorVersion = Integer.parseInt(subsetVersionDocument.get("version").asText().split("\\.")[0]);
+                        JsonNode versionStringJsonNode = subsetVersionDocument.get("version");
+                        LOG.info("versionStringJsonNode.toString(): "+versionStringJsonNode.toString());
+                        String versionString = "";
+                        if (versionStringJsonNode.isInt()) {
+                            versionString = Integer.toString(versionStringJsonNode.asInt());
+                            LOG.info("version jsonNode was an int");
+                        }
+                        else {
+                            versionString = versionStringJsonNode.textValue();
+                        }
+                        String firstNumber = versionString.split("\\.")[0];
+                        LOG.info("first number in version was: "+firstNumber);
+                        int subsetMajorVersion = Integer.parseInt(firstNumber);
                         if (!versionLastUpdatedMap.containsKey(subsetMajorVersion)){ // Only include the latest update of any major version
                             versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
                         } else {
