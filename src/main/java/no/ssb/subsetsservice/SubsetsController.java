@@ -28,7 +28,7 @@ public class SubsetsController {
 
     private static String KLASS_CLASSIFICATIONS_API = "https://data.ssb.no/api/klass/v1/classifications";
 
-    private static final boolean prod = true;
+    private static final boolean prod = false;
 
     @Autowired
     public SubsetsController(MetricsService metricsService){
@@ -198,7 +198,7 @@ public class SubsetsController {
     @GetMapping("/v1/subsets/{id}/versions")
     public ResponseEntity<JsonNode> getVersions(@PathVariable("id") String id) {
         metricsService.incrementGETCounter();
-        LOG.info("GET version of subset with id "+id);
+        LOG.info("GET all versions of subset with id "+id);
 
         ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id)){
@@ -217,35 +217,25 @@ public class SubsetsController {
                     Map<Integer, JsonNode> versionLastUpdatedMap = new HashMap<>(timelineArrayNode.size() * 2, 0.51f);
                     for (JsonNode versionNode : timelineArrayNode) {
                         ObjectNode subsetVersionDocument = versionNode.get("document").deepCopy();
-                        JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
-                        subsetVersionDocument.set("_links", self);
-                        JsonNode versionStringJsonNode = subsetVersionDocument.get("version");
-                        LOG.info("versionStringJsonNode.toString(): "+versionStringJsonNode.toString());
-                        String versionString = "";
-                        if (versionStringJsonNode.isInt()) {
-                            versionString = Integer.toString(versionStringJsonNode.asInt());
-                            LOG.info("version jsonNode was an int");
-                        }
-                        else {
-                            versionString = versionStringJsonNode.textValue();
-                        }
-                        String firstNumber = versionString.split("\\.")[0];
-                        LOG.info("first number in version was: "+firstNumber);
-                        int subsetMajorVersion = Integer.parseInt(firstNumber);
-                        if (!versionLastUpdatedMap.containsKey(subsetMajorVersion)){ // Only include the latest update of any major version
-                            versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
-                        } else {
-                            if (!subsetVersionDocument.has("lastUpdatedDate")){
-                                subsetVersionDocument.set("lastUpdatedDate", subsetVersionDocument.get("createdDate"));
-                            }
-                            ObjectNode versionStoredInMap = versionLastUpdatedMap.get(subsetMajorVersion).deepCopy();
-                            if (!versionStoredInMap.has("lastUpdatedDate")){
-                                versionStoredInMap.set("lastUpdatedDate",versionStoredInMap.get("createdDate"));
-                                versionLastUpdatedMap.put(subsetMajorVersion, versionStoredInMap);
-                            }
-                            String lastUpdatedDate = subsetVersionDocument.get("lastUpdatedDate").textValue();
-                            if (versionLastUpdatedMap.get(subsetMajorVersion).get("lastUpdatedDate").textValue().compareTo(lastUpdatedDate) < 0) {
+                        if (!subsetVersionDocument.isEmpty()){
+                            JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
+                            subsetVersionDocument.set("_links", self);
+                            int subsetMajorVersion = Integer.parseInt(subsetVersionDocument.get("version").textValue().split("\\.")[0]);
+                            if (!versionLastUpdatedMap.containsKey(subsetMajorVersion)){ // Only include the latest update of any major version
                                 versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
+                            } else {
+                                if (!subsetVersionDocument.has("lastUpdatedDate")){
+                                    subsetVersionDocument.set("lastUpdatedDate", subsetVersionDocument.get("createdDate"));
+                                }
+                                ObjectNode versionStoredInMap = versionLastUpdatedMap.get(subsetMajorVersion).deepCopy();
+                                if (!versionStoredInMap.has("lastUpdatedDate")){
+                                    versionStoredInMap.set("lastUpdatedDate",versionStoredInMap.get("createdDate"));
+                                    versionLastUpdatedMap.put(subsetMajorVersion, versionStoredInMap);
+                                }
+                                String lastUpdatedDate = subsetVersionDocument.get("lastUpdatedDate").textValue();
+                                if (versionLastUpdatedMap.get(subsetMajorVersion).get("lastUpdatedDate").textValue().compareTo(lastUpdatedDate) < 0) {
+                                    versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
+                                }
                             }
                         }
                     }
