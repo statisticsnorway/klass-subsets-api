@@ -66,11 +66,12 @@ public class SubsetsController {
             if(ldsREBody != null && ldsREBody.isArray()){
                 ArrayNode ldsAllSubsetsArrayNode = (ArrayNode) ldsREBody;
                 for (int i = 0; i < ldsAllSubsetsArrayNode.size(); i++) {
-                    ldsAllSubsetsArrayNode.set(i, getVersions(ldsAllSubsetsArrayNode.get(i).get(Field.ID).asText()).getBody().get(0));
+                    JsonNode subset = getVersions(ldsAllSubsetsArrayNode.get(i).get(Field.ID).asText()).getBody().get(0);
+                    ldsAllSubsetsArrayNode.set(i, subset);
                 }
                 return new ResponseEntity<>(ldsAllSubsetsArrayNode, HttpStatus.OK);
             }
-            return ErrorHandler.newHttpError("LDS returned OK, but a non-array body. This was unexpected.", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+            return ErrorHandler.newHttpError("LDS returned 200 OK, but a non-array body. This was unexpected.", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
         }
     }
 
@@ -310,8 +311,14 @@ public class SubsetsController {
                     }
 
                     ArrayList<JsonNode> versionList = new ArrayList<>(versionLastUpdatedMap.size());
-                    versionLastUpdatedMap.forEach((key, value) -> versionList.add(value));
+                    versionLastUpdatedMap.forEach((versionInt, versionJsonNode) -> versionList.add(versionJsonNode));
                     versionList.sort(Comparator.comparing(v -> v.get(Field.VERSION_VALID_FROM).asText()));
+                    String validTo = "";
+                    for (JsonNode jsonNode : versionList) {
+                        ObjectNode editableSubset = jsonNode.deepCopy();
+                        editableSubset.set(Field.CODES, resolveURNs(editableSubset, validTo));
+                        validTo = editableSubset.get(Field.VERSION_VALID_FROM).asText();
+                    }
 
                     ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
                     versionList.forEach(majorVersionsArrayNode::add);
@@ -552,6 +559,15 @@ public class SubsetsController {
         
         LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
         return consumer.getFrom("/?schema");
+    }
+
+    private ArrayNode resolveURNs(JsonNode subset, String to){
+        ArrayNode codes = (ArrayNode)subset.get(Field.CODES);
+        List<String> codeURNs = new ArrayList<>(codes.size());
+        codes.forEach(c->codeURNs.add(c.get(Field.URN).asText()));
+        String versionValidFrom = subset.get(Field.VERSION_VALID_FROM).asText();
+        ArrayNode codesArrayNode = KlassURNResolver.resolveURNs(codeURNs, versionValidFrom, to);
+        return codesArrayNode;
     }
 
 }
