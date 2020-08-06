@@ -55,6 +55,10 @@ public class KlassURNResolver {
 
         String fromDate = from.split("T")[0];
         String toDate = to.split("T")[0];
+
+        if (fromDate.compareTo(toDate) >= 0)
+            throw new IllegalArgumentException("fromDate must be before toDate, but was the same as or after");
+
         List<ArrayNode> codesArrayNodeList = new ArrayList<>();
         classificationCodesMap.forEach((classification, codes) -> codesArrayNodeList.add((ArrayNode)(getFrom(makeURL(classification, fromDate, toDate, codes)).getBody().get(Field.CODES))));
         ArrayNode allCodesArrayNode = new ObjectMapper().createArrayNode();

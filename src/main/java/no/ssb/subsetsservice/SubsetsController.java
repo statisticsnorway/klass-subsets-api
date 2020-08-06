@@ -28,7 +28,7 @@ public class SubsetsController {
 
     private static String KLASS_CLASSIFICATIONS_API = "https://data.ssb.no/api/klass/v1/classifications";
 
-    private static final boolean prod = true;
+    private static final boolean prod = false;
 
     @Autowired
     public SubsetsController(MetricsService metricsService){
@@ -563,7 +563,7 @@ public class SubsetsController {
             ArrayNode codesArrayNode = KlassURNResolver.resolveURNs(codeURNs, versionValidFrom, to);
             return codesArrayNode;
         } catch (Exception | Error e){
-            LOG.info("Could not resolve code URNs against KLASS. Returning subset with URNs only.");
+            LOG.error(e.toString());
             return codes;
         }
     }
