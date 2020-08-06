@@ -98,7 +98,7 @@ public class Utils {
     public static ArrayNode sortByVersionValidFrom(ArrayNode subsetArrayNode){
         List<JsonNode> subsetList = new ArrayList<>(subsetArrayNode.size());
         subsetArrayNode.forEach(subsetList::add);
-        subsetList.sort((s1, s2) -> s2.get(Field.VERSION_VALID_FROM).asText().compareTo(s1.get(Field.VERSION_VALID_FROM).asText()));
+        subsetList.sort((s1, s2) -> s1.get(Field.VERSION_VALID_FROM).asText().compareTo(s2.get(Field.VERSION_VALID_FROM).asText()));
         ArrayNode newArrayNode = new ObjectMapper().createArrayNode();
         subsetList.forEach(newArrayNode::add);
         return newArrayNode;
