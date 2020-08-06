@@ -1,8 +1,6 @@
 package no.ssb.subsetsservice;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -30,7 +28,7 @@ class SubsetsServiceApplicationTests {
 
 	@Test
 	void getAllSubsets() {
-		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets();
+		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets(true, true);
 
 		assertEquals(200, response.getStatusCodeValue());
 		System.out.println("RESPONSE HEADERS:");
@@ -69,7 +67,7 @@ class SubsetsServiceApplicationTests {
 
 	@Test
 	void getNonExistantSubsetVersions() {
-		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getVersions("this-id-does-not-exist");
+		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getVersions("this-id-does-not-exist", true, true);
 
 		System.out.println("STATUS CODE");
 		System.out.println(response.getStatusCodeValue());
@@ -82,7 +80,7 @@ class SubsetsServiceApplicationTests {
 
 	@Test
 	void getAllIndividualSubsetsCompareIDs() {
-		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets();
+		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets(true, true);
 
 		System.out.println("All subsets:");
 		System.out.println(response.getBody());
@@ -96,7 +94,7 @@ class SubsetsServiceApplicationTests {
 
 	@Test
 	void getAllVersionsOfAllSubsets() {
-		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets();
+		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets( true, true);
 
 		System.out.println("All subsets:");
 		System.out.println(response.getBody());
@@ -106,7 +104,7 @@ class SubsetsServiceApplicationTests {
 			assertEquals(subset.get("id").asText(), jsonNode.get("id").asText());
 			System.out.println("ID: "+subset.get("id"));
 
-			ArrayNode versions = (ArrayNode) SubsetsController.getInstance().getVersions(subset.get("id").asText()).getBody();
+			ArrayNode versions = (ArrayNode) SubsetsController.getInstance().getVersions(subset.get("id").asText(), true, true).getBody();
 			assertNotEquals(null, versions);
 			assertNotEquals(0, versions.size());
 			for (JsonNode version : versions) {

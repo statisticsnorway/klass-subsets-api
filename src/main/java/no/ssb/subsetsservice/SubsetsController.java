@@ -52,7 +52,7 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets")
-    public ResponseEntity<JsonNode> getSubsets() {
+    public ResponseEntity<JsonNode> getSubsets( @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean includeDrafts) {
         metricsService.incrementGETCounter();
 
         LOG.info("GET subsets");
@@ -66,7 +66,7 @@ public class SubsetsController {
             if(ldsREBody != null && ldsREBody.isArray()){
                 ArrayNode ldsAllSubsetsArrayNode = (ArrayNode) ldsREBody;
                 for (int i = 0; i < ldsAllSubsetsArrayNode.size(); i++) {
-                    JsonNode subset = getVersions(ldsAllSubsetsArrayNode.get(i).get(Field.ID).asText()).getBody().get(0);
+                    JsonNode subset = getVersions(ldsAllSubsetsArrayNode.get(i).get(Field.ID).asText(), includeFuture, includeDrafts).getBody().get(0);
                     ldsAllSubsetsArrayNode.set(i, subset);
                 }
                 return new ResponseEntity<>(ldsAllSubsetsArrayNode, HttpStatus.OK);
@@ -113,21 +113,22 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets/{id}")
-    public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id, @RequestParam(defaultValue = "true") boolean publishedOnly, @RequestParam(defaultValue = "false") boolean includeFuture) {
+    public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean includeFuture) {
         metricsService.incrementGETCounter();
         LOG.info("GET subset with id "+id);
 
         if (Utils.isClean(id)){
-            ResponseEntity<JsonNode> majorVersions = getVersions(id);
+            ResponseEntity<JsonNode> majorVersions = getVersions(id, includeFuture, includeDrafts);
             if (majorVersions.getStatusCodeValue() != HttpStatus.OK.value())
                 return majorVersions;
             JsonNode majorVersionsBody = majorVersions.getBody();
             if (majorVersionsBody != null && majorVersionsBody.isArray()){
                 ArrayNode majorVersionsArray = (ArrayNode) majorVersionsBody;
+                //TODO: Take into account includeFuture. Also, if only future versions exist, return the one that is valid soonest.
                 for (JsonNode version : majorVersionsArray) {
                     String versionValidFrom = version.get(Field.VERSION_VALID_FROM).asText();
                     String nowDateTime = Utils.getNowISO();
-                    if (versionValidFrom.compareTo(nowDateTime) < 0 && (!publishedOnly || version.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN))){
+                    if (versionValidFrom.compareTo(nowDateTime) < 0 && (includeDrafts || version.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN))){
                         return new ResponseEntity<>(majorVersionsArray.get(0), HttpStatus.OK);
                     }
                 }
@@ -146,8 +147,8 @@ public class SubsetsController {
         if (Utils.isClean(id)) {
             ObjectNode editableSubset = Utils.cleanSubsetVersion(newVersionOfSubset).deepCopy();
             editableSubset.put(Field.LAST_UPDATED_DATE, Utils.getNowISO());
-            ResponseEntity<JsonNode> mostRecentVersionRE = getSubset(id, false, true);
-            ResponseEntity<JsonNode> oldVersionsRE = getVersions(id);
+            ResponseEntity<JsonNode> mostRecentVersionRE = getSubset(id, true, true);
+            ResponseEntity<JsonNode> oldVersionsRE = getVersions(id, true, true);
             JsonNode mostRecentVersionOfThisSubset = mostRecentVersionRE.getBody();
             if (mostRecentVersionRE.getStatusCodeValue() == HttpStatus.OK.value()){
                 assert mostRecentVersionOfThisSubset != null && mostRecentVersionOfThisSubset.has(Field.ID) : "no old subset with this id was found in body of response entity";
@@ -259,7 +260,7 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets/{id}/versions")
-    public ResponseEntity<JsonNode> getVersions(@PathVariable("id") String id) {
+    public ResponseEntity<JsonNode> getVersions(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean includeDrafts) {
         metricsService.incrementGETCounter();
         LOG.info("GET all versions of subset with id "+id);
 
@@ -281,23 +282,29 @@ public class SubsetsController {
                     for (JsonNode versionNode : timelineArrayNode) {
                         ObjectNode subsetVersionDocument = versionNode.get(Field.DOCUMENT).deepCopy();
                         if (!subsetVersionDocument.isEmpty()) {
-                            JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
-                            subsetVersionDocument.set("_links", self);
-                            int subsetMajorVersion = Integer.parseInt(subsetVersionDocument.get(Field.VERSION).textValue().split("\\.")[0]);
-                            if (!versionLastUpdatedMap.containsKey(subsetMajorVersion)) { // Only include the latest update of any major version
-                                versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
-                            } else {
-                                if (!subsetVersionDocument.has(Field.LAST_UPDATED_DATE)) {
-                                    subsetVersionDocument.set(Field.LAST_UPDATED_DATE, subsetVersionDocument.get(Field.CREATED_DATE));
-                                }
-                                ObjectNode versionStoredInMap = versionLastUpdatedMap.get(subsetMajorVersion).deepCopy();
-                                if (!versionStoredInMap.has(Field.LAST_UPDATED_DATE)) {
-                                    versionStoredInMap.set(Field.LAST_UPDATED_DATE, versionStoredInMap.get(Field.CREATED_DATE));
-                                    versionLastUpdatedMap.put(subsetMajorVersion, versionStoredInMap);
-                                }
-                                String lastUpdatedDate = subsetVersionDocument.get(Field.LAST_UPDATED_DATE).textValue();
-                                if (versionLastUpdatedMap.get(subsetMajorVersion).get(Field.LAST_UPDATED_DATE).textValue().compareTo(lastUpdatedDate) < 0) {
-                                    versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
+                            //TODO: Check if published
+                            if (includeDrafts || subsetVersionDocument.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
+                                //TODO: Check if future
+                                if (includeFuture || subsetVersionDocument.get(Field.VERSION_VALID_FROM).asText().compareTo(Utils.getNowISO()) < 0) {
+                                    if (!subsetVersionDocument.has(Field.LAST_UPDATED_DATE)) {
+                                        subsetVersionDocument.set(Field.LAST_UPDATED_DATE, subsetVersionDocument.get(Field.CREATED_DATE));
+                                    }
+                                    JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
+                                    subsetVersionDocument.set("_links", self);
+                                    int subsetMajorVersion = Integer.parseInt(subsetVersionDocument.get(Field.VERSION).textValue().split("\\.")[0]);
+                                    if (!versionLastUpdatedMap.containsKey(subsetMajorVersion)) { // Only include the latest update of any major version
+                                        versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
+                                    } else {
+                                        ObjectNode versionStoredInMap = versionLastUpdatedMap.get(subsetMajorVersion).deepCopy();
+                                        if (!versionStoredInMap.has(Field.LAST_UPDATED_DATE)) {
+                                            versionStoredInMap.set(Field.LAST_UPDATED_DATE, versionStoredInMap.get(Field.CREATED_DATE));
+                                            versionLastUpdatedMap.put(subsetMajorVersion, versionStoredInMap);
+                                        }
+                                        String lastUpdatedDate = subsetVersionDocument.get(Field.LAST_UPDATED_DATE).textValue();
+                                        if (versionLastUpdatedMap.get(subsetMajorVersion).get(Field.LAST_UPDATED_DATE).textValue().compareTo(lastUpdatedDate) < 0) {
+                                            versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -365,7 +372,7 @@ public class SubsetsController {
 
         if (Utils.isClean(id) && Utils.isVersion(version)){
             if (Utils.isVersion(version)){
-                ResponseEntity<JsonNode> versionsRE = getVersions(id);
+                ResponseEntity<JsonNode> versionsRE = getVersions(id, true, true);
                 JsonNode responseBodyJSON = versionsRE.getBody();
                 if (responseBodyJSON != null){
                     if (responseBodyJSON.isArray()) {
@@ -396,14 +403,14 @@ public class SubsetsController {
      * @return
      */
     @GetMapping("/v1/subsets/{id}/codes")
-    public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id, @RequestParam(required = false) String from, @RequestParam(required = false) String to, @RequestParam(defaultValue = "true") boolean publishedOnly, @RequestParam(defaultValue = "false") boolean includeFuture) {
+    public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id, @RequestParam(required = false) String from, @RequestParam(required = false) String to, @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean includeFuture) {
         LOG.info("GET codes of subset with id "+id);
         metricsService.incrementGETCounter();
 
         if (Utils.isClean(id)){
             if (from == null && to == null){
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
-                ResponseEntity<JsonNode> subsetResponseEntity = getSubset(id, publishedOnly, includeFuture);
+                ResponseEntity<JsonNode> subsetResponseEntity = getSubset(id, includeDrafts, includeFuture);
                 JsonNode responseBodyJSON = subsetResponseEntity.getBody();
                 if (responseBodyJSON != null){
                     ArrayNode codes = (ArrayNode) responseBodyJSON.get(Field.CODES);
@@ -421,7 +428,7 @@ public class SubsetsController {
             boolean isToDate = to != null;
             if ((!isFromDate || Utils.isYearMonthDay(from)) && (!isToDate || Utils.isYearMonthDay(to))){ // If a date is given as param, it must be valid format
                 // If a date interval is specified using 'from' and 'to' query parameters
-                ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id);
+                ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts);
                 JsonNode responseBodyJSON = versionsResponseEntity.getBody();
                 LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
                 ObjectMapper mapper = new ObjectMapper();
@@ -453,7 +460,7 @@ public class SubsetsController {
 
                         if (isFirstValidAtOrBeforeFromDate && isLastValidAtOrAfterToDate) {
                             for (JsonNode arrayEntry : versionsArrayNode) {
-                                if (!publishedOnly || arrayEntry.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
+                                if (includeDrafts || arrayEntry.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
                                     // if this version has any overlap with the valid interval . . .
                                     JsonNode subset = arrayEntry.get(Field.DOCUMENT);
                                     String validFromDateString = subset.get(Field.VALID_FROM).textValue().split("T")[0];
@@ -508,12 +515,12 @@ public class SubsetsController {
      * @return
      */
     @GetMapping("/v1/subsets/{id}/codesAt")
-    public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id, @RequestParam String date) {
+    public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id, @RequestParam String date, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean includeDrafts) {
         metricsService.incrementGETCounter();
         LOG.info("GET codes valid at date "+date+" for subset with id "+id);
 
         if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
-            ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id);
+            ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts);
             JsonNode responseBodyJSON = versionsResponseEntity.getBody();
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
