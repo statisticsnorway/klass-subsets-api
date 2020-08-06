@@ -25,6 +25,8 @@ public class KlassURNResolver {
         String[] urnSplitColon = codeURN.split(":");
         String classificationID = urnSplitColon[3];
         String code = urnSplitColon[5];
+        from = from.split("T")[0];
+        to = to.split("T")[0];
         String url = makeURL(classificationID, from, to, code);
         ResponseEntity<JsonNode> selectCodesRE = getFrom(url);
         JsonNode codes = selectCodesRE.getBody();
@@ -39,8 +41,11 @@ public class KlassURNResolver {
             String code = urnSplitColon[5];
             classificationCodesMap.merge(classificationID, code, (c1, c2)-> c1+","+c2);
         }
+
+        String fromDate = from.split("T")[0];
+        String toDate = to.split("T")[0];
         List<ArrayNode> codesArrayNodeList = new ArrayList<>();
-        classificationCodesMap.forEach((classification, codes) -> codesArrayNodeList.add((ArrayNode)(getFrom(makeURL(classification, from, to, codes)).getBody().get(Field.CODES))));
+        classificationCodesMap.forEach((classification, codes) -> codesArrayNodeList.add((ArrayNode)(getFrom(makeURL(classification, fromDate, toDate, codes)).getBody().get(Field.CODES))));
         ArrayNode allCodesArrayNode = new ObjectMapper().createArrayNode();
         for (ArrayNode codes : codesArrayNodeList) {
             codes.forEach(allCodesArrayNode::add);
