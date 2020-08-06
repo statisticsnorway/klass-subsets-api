@@ -23,8 +23,18 @@ public class KlassURNResolver {
     public static JsonNode resolveURN(String codeURN, String from, String to){
         LOG.info("Attempting to resolve the KLASS code URN "+codeURN);
         String[] urnSplitColon = codeURN.split(":");
-        String classificationID = urnSplitColon[3];
-        String code = urnSplitColon[5];
+        String classificationID = "";
+        String code = "";
+        for (int i = 0; i < urnSplitColon.length; i++) {
+            String value = urnSplitColon[i];
+            if (value.equals("code")){
+                if (urnSplitColon.length > i+1)
+                    code = urnSplitColon[i+1];
+            } else if (value.equals("classifications")){
+                if (urnSplitColon.length > i+1)
+                    classificationID = urnSplitColon[i+1];
+            }
+        }
         from = from.split("T")[0];
         to = to.split("T")[0];
         String url = makeURL(classificationID, from, to, code);
