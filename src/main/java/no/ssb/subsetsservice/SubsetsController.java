@@ -28,7 +28,7 @@ public class SubsetsController {
 
     private static String KLASS_CLASSIFICATIONS_API = "https://data.ssb.no/api/klass/v1/classifications";
 
-    private static final boolean prod = false;
+    private static final boolean prod = true;
 
     @Autowired
     public SubsetsController(MetricsService metricsService){
@@ -555,17 +555,20 @@ public class SubsetsController {
     }
 
     private ArrayNode resolveURNs(JsonNode subset, String to){
-        ArrayNode codes = (ArrayNode)subset.get(Field.CODES);
-        List<String> codeURNs = new ArrayList<>(codes.size());
-        codes.forEach(c->codeURNs.add(c.get(Field.URN).asText()));
-        String versionValidFrom = subset.get(Field.VERSION_VALID_FROM).asText();
-        try {
-            ArrayNode codesArrayNode = KlassURNResolver.resolveURNs(codeURNs, versionValidFrom, to);
-            return codesArrayNode;
-        } catch (Exception | Error e){
-            LOG.error(e.toString());
-            return codes;
+        if (to.equals("") || Utils.isYearMonthDay(to)){
+            ArrayNode codes = (ArrayNode)subset.get(Field.CODES);
+            List<String> codeURNs = new ArrayList<>(codes.size());
+            codes.forEach(c->codeURNs.add(c.get(Field.URN).asText()));
+            String versionValidFrom = subset.get(Field.VERSION_VALID_FROM).asText();
+            try {
+                ArrayNode codesArrayNode = KlassURNResolver.resolveURNs(codeURNs, versionValidFrom, to);
+                return codesArrayNode;
+            } catch (Exception | Error e){
+                LOG.error(e.toString());
+                return codes;
+            }
         }
+        throw new IllegalArgumentException("'to' must be empty string or on the form YYYY-MM-DD");
     }
 
 }

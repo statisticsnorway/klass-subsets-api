@@ -33,7 +33,7 @@ public class KlassURNResolver {
         return codes;
     }
 
-    public static ArrayNode resolveURNs(List<String> codeURNs, String from, String to){
+    public static ArrayNode resolveURNs(List<String> codeURNs, String from, String to) {
         LOG.info("Resolving all code URNs in a subset");
         Map<String, String> classificationCodesMap = new HashMap<>();
         for (String codeURN : codeURNs) {
