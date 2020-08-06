@@ -118,20 +118,14 @@ public class SubsetsController {
         LOG.info("GET subset with id "+id);
 
         if (Utils.isClean(id)){
-            ResponseEntity<JsonNode> majorVersions = getVersions(id, includeFuture, includeDrafts);
-            if (majorVersions.getStatusCodeValue() != HttpStatus.OK.value())
-                return majorVersions;
-            JsonNode majorVersionsBody = majorVersions.getBody();
+            ResponseEntity<JsonNode> majorVersionsRE = getVersions(id, includeFuture, includeDrafts);
+            if (majorVersionsRE.getStatusCodeValue() != HttpStatus.OK.value())
+                return majorVersionsRE;
+            JsonNode majorVersionsBody = majorVersionsRE.getBody();
             if (majorVersionsBody != null && majorVersionsBody.isArray()){
-                ArrayNode majorVersionsArray = (ArrayNode) majorVersionsBody;
-                //TODO: Take into account includeFuture. Also, if only future versions exist, return the one that is valid soonest.
-                for (JsonNode version : majorVersionsArray) {
-                    String versionValidFrom = version.get(Field.VERSION_VALID_FROM).asText();
-                    String nowDateTime = Utils.getNowISO();
-                    if (versionValidFrom.compareTo(nowDateTime) < 0 && (includeDrafts || version.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN))){
-                        return new ResponseEntity<>(majorVersionsArray.get(0), HttpStatus.OK);
-                    }
-                }
+                if (majorVersionsBody.has(0))
+                    return new ResponseEntity<>(majorVersionsBody.get(0), HttpStatus.OK);
+                return ErrorHandler.newHttpError("No subset matched the parameters", HttpStatus.NOT_FOUND, LOG);
             } else {
                 return ErrorHandler.newHttpError("internal call to /versions did not return array", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
             }
@@ -282,9 +276,7 @@ public class SubsetsController {
                     for (JsonNode versionNode : timelineArrayNode) {
                         ObjectNode subsetVersionDocument = versionNode.get(Field.DOCUMENT).deepCopy();
                         if (!subsetVersionDocument.isEmpty()) {
-                            //TODO: Check if published
                             if (includeDrafts || subsetVersionDocument.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
-                                //TODO: Check if future
                                 if (includeFuture || subsetVersionDocument.get(Field.VERSION_VALID_FROM).asText().compareTo(Utils.getNowISO()) < 0) {
                                     if (!subsetVersionDocument.has(Field.LAST_UPDATED_DATE)) {
                                         subsetVersionDocument.set(Field.LAST_UPDATED_DATE, subsetVersionDocument.get(Field.CREATED_DATE));
