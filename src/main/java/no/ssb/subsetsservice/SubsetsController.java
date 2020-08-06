@@ -113,7 +113,7 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets/{id}")
-    public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean publishedOnly) {
+    public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id, @RequestParam(defaultValue = "true") boolean publishedOnly) {
         metricsService.incrementGETCounter();
         LOG.info("GET subset with id "+id);
 
@@ -125,7 +125,9 @@ public class SubsetsController {
             if (majorVersionsBody != null && majorVersionsBody.isArray()){
                 ArrayNode majorVersionsArray = (ArrayNode) majorVersionsBody;
                 for (JsonNode version : majorVersionsArray) {
-                    if (!publishedOnly || version.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
+                    String versionValidFrom = version.get(Field.VERSION_VALID_FROM).asText();
+                    String nowDateTime = Utils.getNowISO();
+                    if (versionValidFrom.compareTo(nowDateTime) < 0 && (!publishedOnly || version.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN))){
                         return new ResponseEntity<>(majorVersionsArray.get(0), HttpStatus.OK);
                     }
                 }
@@ -394,7 +396,7 @@ public class SubsetsController {
      * @return
      */
     @GetMapping("/v1/subsets/{id}/codes")
-    public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id, @RequestParam(required = false) String from, @RequestParam(required = false) String to, @RequestParam(defaultValue = "false") boolean publishedOnly) {
+    public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id, @RequestParam(required = false) String from, @RequestParam(required = false) String to, @RequestParam(defaultValue = "true") boolean publishedOnly) {
         LOG.info("GET codes of subset with id "+id);
         metricsService.incrementGETCounter();
 
