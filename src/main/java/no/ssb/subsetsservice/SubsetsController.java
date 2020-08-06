@@ -267,7 +267,7 @@ public class SubsetsController {
     @GetMapping("/v1/subsets/{id}/versions")
     public ResponseEntity<JsonNode> getVersions(@PathVariable("id") String id) {
         metricsService.incrementGETCounter();
-        LOG.info("GET version of subset with id "+id);
+        LOG.info("GET all versions of subset with id "+id);
 
         ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id)){
@@ -286,23 +286,25 @@ public class SubsetsController {
                     Map<Integer, JsonNode> versionLastUpdatedMap = new HashMap<>(timelineArrayNode.size() * 2, 0.51f);
                     for (JsonNode versionNode : timelineArrayNode) {
                         ObjectNode subsetVersionDocument = versionNode.get(Field.DOCUMENT).deepCopy();
-                        JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
-                        subsetVersionDocument.set("_links", self);
-                        int subsetMajorVersion = Integer.parseInt(subsetVersionDocument.get(Field.VERSION).textValue().split("\\.")[0]);
-                        if (!versionLastUpdatedMap.containsKey(subsetMajorVersion)){ // Only include the latest update of any major version
-                            versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
-                        } else {
-                            if (!subsetVersionDocument.has(Field.LAST_UPDATED_DATE)){
-                                subsetVersionDocument.set(Field.LAST_UPDATED_DATE, subsetVersionDocument.get(Field.CREATED_DATE));
-                            }
-                            ObjectNode versionStoredInMap = versionLastUpdatedMap.get(subsetMajorVersion).deepCopy();
-                            if (!versionStoredInMap.has(Field.LAST_UPDATED_DATE)){
-                                versionStoredInMap.set(Field.LAST_UPDATED_DATE,versionStoredInMap.get(Field.CREATED_DATE));
-                                versionLastUpdatedMap.put(subsetMajorVersion, versionStoredInMap);
-                            }
-                            String lastUpdatedDate = subsetVersionDocument.get(Field.LAST_UPDATED_DATE).textValue();
-                            if (versionLastUpdatedMap.get(subsetMajorVersion).get(Field.LAST_UPDATED_DATE).textValue().compareTo(lastUpdatedDate) < 0) {
+                        if (!subsetVersionDocument.isEmpty()) {
+                            JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
+                            subsetVersionDocument.set("_links", self);
+                            int subsetMajorVersion = Integer.parseInt(subsetVersionDocument.get(Field.VERSION).textValue().split("\\.")[0]);
+                            if (!versionLastUpdatedMap.containsKey(subsetMajorVersion)) { // Only include the latest update of any major version
                                 versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
+                            } else {
+                                if (!subsetVersionDocument.has(Field.LAST_UPDATED_DATE)) {
+                                    subsetVersionDocument.set(Field.LAST_UPDATED_DATE, subsetVersionDocument.get(Field.CREATED_DATE));
+                                }
+                                ObjectNode versionStoredInMap = versionLastUpdatedMap.get(subsetMajorVersion).deepCopy();
+                                if (!versionStoredInMap.has(Field.LAST_UPDATED_DATE)) {
+                                    versionStoredInMap.set(Field.LAST_UPDATED_DATE, versionStoredInMap.get(Field.CREATED_DATE));
+                                    versionLastUpdatedMap.put(subsetMajorVersion, versionStoredInMap);
+                                }
+                                String lastUpdatedDate = subsetVersionDocument.get(Field.LAST_UPDATED_DATE).textValue();
+                                if (versionLastUpdatedMap.get(subsetMajorVersion).get(Field.LAST_UPDATED_DATE).textValue().compareTo(lastUpdatedDate) < 0) {
+                                    versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
+                                }
                             }
                         }
                     }
