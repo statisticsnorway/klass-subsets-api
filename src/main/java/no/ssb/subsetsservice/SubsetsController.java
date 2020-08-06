@@ -113,7 +113,7 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets/{id}")
-    public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id, @RequestParam(defaultValue = "true") boolean publishedOnly) {
+    public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id, @RequestParam(defaultValue = "true") boolean publishedOnly, @RequestParam(defaultValue = "false") boolean includeFuture) {
         metricsService.incrementGETCounter();
         LOG.info("GET subset with id "+id);
 
@@ -146,7 +146,7 @@ public class SubsetsController {
         if (Utils.isClean(id)) {
             ObjectNode editableSubset = Utils.cleanSubsetVersion(newVersionOfSubset).deepCopy();
             editableSubset.put(Field.LAST_UPDATED_DATE, Utils.getNowISO());
-            ResponseEntity<JsonNode> mostRecentVersionRE = getSubset(id, false);
+            ResponseEntity<JsonNode> mostRecentVersionRE = getSubset(id, false, true);
             ResponseEntity<JsonNode> oldVersionsRE = getVersions(id);
             JsonNode mostRecentVersionOfThisSubset = mostRecentVersionRE.getBody();
             if (mostRecentVersionRE.getStatusCodeValue() == HttpStatus.OK.value()){
@@ -396,14 +396,14 @@ public class SubsetsController {
      * @return
      */
     @GetMapping("/v1/subsets/{id}/codes")
-    public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id, @RequestParam(required = false) String from, @RequestParam(required = false) String to, @RequestParam(defaultValue = "true") boolean publishedOnly) {
+    public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id, @RequestParam(required = false) String from, @RequestParam(required = false) String to, @RequestParam(defaultValue = "true") boolean publishedOnly, @RequestParam(defaultValue = "false") boolean includeFuture) {
         LOG.info("GET codes of subset with id "+id);
         metricsService.incrementGETCounter();
 
         if (Utils.isClean(id)){
             if (from == null && to == null){
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
-                ResponseEntity<JsonNode> subsetResponseEntity = getSubset(id, publishedOnly);
+                ResponseEntity<JsonNode> subsetResponseEntity = getSubset(id, publishedOnly, includeFuture);
                 JsonNode responseBodyJSON = subsetResponseEntity.getBody();
                 if (responseBodyJSON != null){
                     ArrayNode codes = (ArrayNode) responseBodyJSON.get(Field.CODES);
