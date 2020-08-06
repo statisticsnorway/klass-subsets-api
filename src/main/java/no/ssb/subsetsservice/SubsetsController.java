@@ -169,25 +169,16 @@ public class SubsetsController {
                     }
                 }
 
-
                 String mostRecentVersionValidFrom = mostRecentVersionOfThisSubset.get(Field.VERSION_VALID_FROM).asText();
                 int newAndMostRecentVersionValidFromComparison = newVersionValidFrom.compareTo(mostRecentVersionValidFrom);
                 if (newAndMostRecentVersionValidFromComparison < 0){
-                    // Then the new version validFrom must also be smaller than the previous first version validFrom in order to be valid
                     JsonNode firstVersion = versionsArrayNode.get(versionsArrayNode.size() - 1);
                     String firstVersionValidFrom = firstVersion.get(Field.VERSION_VALID_FROM).asText();
                     if (newVersionValidFrom.compareTo(firstVersionValidFrom) < 0){
-                        // New version is valid from before the previous version
-
-                        //TODO: If this new version is now the first version, the subset validFrom must be equal versionValidFrom
                         if (!newVersionOfSubset.get(Field.VALID_FROM).asText().equals(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText())){
                             return ErrorHandler.newHttpError("'versionValidFrom' can not be earlier than subset 'validFrom'", HttpStatus.BAD_REQUEST, LOG);
                         }
                     }
-                } else if (newAndMostRecentVersionValidFromComparison == 0){
-                    // then it is NOT valid. But this case is accounted for later in the code
-                } else {
-                    // Then it is valid, and we continue as usual
                 }
 
                 ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, newVersionString);
@@ -228,7 +219,7 @@ public class SubsetsController {
                         newPatchFieldNames = newVersionOfSubset.fieldNames();
                         while (newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
-                            String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, "lastUpdatedBy", Field.LAST_UPDATED_DATE};
+                            String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, Field.LAST_UPDATED_BY, Field.LAST_UPDATED_DATE};
                             ArrayList<String> changeableFieldsList = new ArrayList<>();
                             Collections.addAll(changeableFieldsList, changeableFieldsInPublishedVersion);
                             if (!changeableFieldsList.contains(field)){
@@ -343,7 +334,8 @@ public class SubsetsController {
                         }
                         majorVersionsObjectNodeArray.add(objectNode);
                     }
-                    return new ResponseEntity<>(majorVersionsObjectNodeArray, HttpStatus.OK);
+                    ArrayNode sorted = Utils.sortByVersionValidFrom(majorVersionsArrayNode);
+                    return new ResponseEntity<>(sorted, HttpStatus.OK);
                 } else {
                     return ErrorHandler.newHttpError("LDS response body was not JSON array", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
                 }
@@ -566,8 +558,13 @@ public class SubsetsController {
         List<String> codeURNs = new ArrayList<>(codes.size());
         codes.forEach(c->codeURNs.add(c.get(Field.URN).asText()));
         String versionValidFrom = subset.get(Field.VERSION_VALID_FROM).asText();
-        ArrayNode codesArrayNode = KlassURNResolver.resolveURNs(codeURNs, versionValidFrom, to);
-        return codesArrayNode;
+        try {
+            ArrayNode codesArrayNode = KlassURNResolver.resolveURNs(codeURNs, versionValidFrom, to);
+            return codesArrayNode;
+        } catch (Exception | Error e){
+            LOG.info("Could not resolve code URNs against KLASS. Returning subset with URNs only.");
+            return codes;
+        }
     }
 
 }

@@ -34,11 +34,22 @@ public class KlassURNResolver {
     }
 
     public static ArrayNode resolveURNs(List<String> codeURNs, String from, String to){
+        LOG.info("Resolving all code URNs in a subset");
         Map<String, String> classificationCodesMap = new HashMap<>();
         for (String codeURN : codeURNs) {
             String[] urnSplitColon = codeURN.split(":");
-            String classificationID = urnSplitColon[3];
-            String code = urnSplitColon[5];
+            String classificationID = "";
+            String code = "";
+            for (int i = 0; i < urnSplitColon.length; i++) {
+                String value = urnSplitColon[i];
+                if (value.equals("code")){
+                    if (urnSplitColon.length > i+1)
+                        code = urnSplitColon[i+1];
+                } else if (value.equals("classifications")){
+                    if (urnSplitColon.length > i+1)
+                        classificationID = urnSplitColon[i+1];
+                }
+            }
             classificationCodesMap.merge(classificationID, code, (c1, c2)-> c1+","+c2);
         }
 

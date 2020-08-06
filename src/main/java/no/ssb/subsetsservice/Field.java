@@ -17,5 +17,6 @@ public class Field {
     public static final String ADMINISTRATIVE_STATUS = "administrativeStatus";
     public static final String OPEN = "OPEN";
     public static final String DRAFT = "DRAFT";
+    public static final String LAST_UPDATED_BY = "lastUpdatedBy";
 
 }
