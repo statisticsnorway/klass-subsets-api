@@ -104,4 +104,24 @@ public class Utils {
         return newArrayNode;
     }
 
+    public static boolean isNumeric(String string){
+        if (string == null)
+            return false;
+
+        try {
+            Double.parseDouble(string);
+            return true;
+        } catch (NumberFormatException e){
+            return false;
+        }
+    }
+
+    public static boolean isInteger(String string){
+        if (isNumeric(string)){
+            double d = Double.parseDouble(string);
+            return (d % 1) == 0 && !Double.isInfinite(d);
+        }
+        return false;
+    }
+
 }
