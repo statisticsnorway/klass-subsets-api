@@ -93,7 +93,7 @@ public class SubsetsController {
 
         if (Utils.isClean(id)){
             ResponseEntity<JsonNode> majorVersionsRE = getVersions(id, includeFuture, includeDrafts);
-            if (majorVersionsRE.getStatusCodeValue() != HttpStatus.OK.value()) {
+            if (majorVersionsRE.getStatusCode() != HttpStatus.OK) {
                 LOG.error("Failed to get version of subset "+id);
                 return majorVersionsRE;
             }
@@ -257,7 +257,8 @@ public class SubsetsController {
                                     if (!subsetVersionDocument.has(Field.LAST_UPDATED_DATE)) {
                                         subsetVersionDocument.set(Field.LAST_UPDATED_DATE, subsetVersionDocument.get(Field.CREATED_DATE));
                                     }
-                                    JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
+                                    //JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
+                                    JsonNode self = new ObjectMapper().createObjectNode();
                                     subsetVersionDocument.set("_links", self);
                                     int subsetMajorVersion = Integer.parseInt(subsetVersionDocument.get(Field.VERSION).textValue().split("\\.")[0]);
                                     if (!versionLastUpdatedMap.containsKey(subsetMajorVersion)) { // Only include the latest update of any major version
@@ -287,7 +288,6 @@ public class SubsetsController {
                     for (int i = 0; i < versionList.size(); i++) {
                         ObjectNode editableSubset = versionList.get(i).deepCopy();
                         ArrayNode resolvedCodes = resolveURNs(editableSubset, validTo);
-                        ArrayNode currentCodeList = editableSubset.get(Field.CODES).deepCopy();
                         editableSubset.set(Field.CODES, resolvedCodes);
                         validTo = editableSubset.get(Field.VERSION_VALID_FROM).asText();
                         versionList.set(i, editableSubset.deepCopy());
@@ -298,7 +298,7 @@ public class SubsetsController {
                     versionList.forEach(majorVersionsArrayNode::add);
                     LOG.debug("majorVersionsArrayNode size: "+majorVersionsArrayNode.size());
                     if (majorVersionsArrayNode.isEmpty())
-                        return new ResponseEntity<>(majorVersionsArrayNode, HttpStatus.OK);
+                        return ErrorHandler.newHttpError("No versions of the subset "+id+" exist with the given constraints includeDrafts="+includeDrafts+" and includeFuture="+includeFuture, HttpStatus.NOT_FOUND, LOG);
 
                     JsonNode latestVersion = Utils.getLatestMajorVersion(majorVersionsArrayNode, false);
                     LOG.debug("gotten latestVersion");
