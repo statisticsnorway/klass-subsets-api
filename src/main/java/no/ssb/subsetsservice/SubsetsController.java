@@ -93,8 +93,10 @@ public class SubsetsController {
 
         if (Utils.isClean(id)){
             ResponseEntity<JsonNode> majorVersionsRE = getVersions(id, includeFuture, includeDrafts);
-            if (majorVersionsRE.getStatusCodeValue() != HttpStatus.OK.value())
+            if (majorVersionsRE.getStatusCodeValue() != HttpStatus.OK.value()) {
+                LOG.error("Failed to get version of subset "+id);
                 return majorVersionsRE;
+            }
             JsonNode majorVersionsBody = majorVersionsRE.getBody();
             if (majorVersionsBody != null && majorVersionsBody.isArray()){
                 if (majorVersionsBody.has(0))
@@ -229,7 +231,7 @@ public class SubsetsController {
     @GetMapping("/v1/subsets/{id}/versions")
     public ResponseEntity<JsonNode> getVersions(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean includeDrafts) {
         metricsService.incrementGETCounter();
-        LOG.info("GET all versions of subset with id "+id);
+        LOG.info("GET all versions of subset with id: "+id+" includeFuture: "+includeFuture+" includeDrafts: "+includeDrafts);
 
         ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id)){
@@ -243,7 +245,9 @@ public class SubsetsController {
                     return new ResponseEntity<>(HttpStatus.NOT_FOUND);
                 }
                 if (responseBodyJSON.isArray()) {
+                    LOG.debug("versions responsebody json is array");
                     ArrayNode timelineArrayNode = (ArrayNode) responseBodyJSON;
+                    LOG.debug("timelineArrayNode size: "+timelineArrayNode.size());
                     Map<Integer, JsonNode> versionLastUpdatedMap = new HashMap<>(timelineArrayNode.size() * 2, 0.51f);
                     for (JsonNode versionNode : timelineArrayNode) {
                         ObjectNode subsetVersionDocument = versionNode.get(Field.DOCUMENT).deepCopy();
@@ -273,31 +277,43 @@ public class SubsetsController {
                             }
                         }
                     }
+                    LOG.debug("versionLastUpdatedMap size: "+versionLastUpdatedMap.size());
 
                     ArrayList<JsonNode> versionList = new ArrayList<>(versionLastUpdatedMap.size());
                     versionLastUpdatedMap.forEach((versionInt, versionJsonNode) -> versionList.add(versionJsonNode));
-                    versionList.sort(Comparator.comparing(v -> v.get(Field.VERSION_VALID_FROM).asText()));
-                    String validTo = "";
+                    LOG.debug("versionList size: "+versionList.size());
+                    versionList.sort(Comparator.comparing(v -> v.get(Field.VERSION_VALID_FROM).asText())); // TODO: This is sorted wrong way around
+                    String validTo = ""; //TODO: This is a mistake.
                     for (JsonNode jsonNode : versionList) {
                         ObjectNode editableSubset = jsonNode.deepCopy();
                         editableSubset.set(Field.CODES, resolveURNs(editableSubset, validTo));
                         validTo = editableSubset.get(Field.VERSION_VALID_FROM).asText();
                     }
+                    LOG.debug("URNs are resolved");
 
                     ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
                     versionList.forEach(majorVersionsArrayNode::add);
+                    LOG.debug("majorVersionsArrayNode size: "+majorVersionsArrayNode.size());
+                    if (majorVersionsArrayNode.isEmpty())
+                        return new ResponseEntity<>(majorVersionsArrayNode, HttpStatus.OK);
 
                     JsonNode latestVersion = Utils.getLatestMajorVersion(majorVersionsArrayNode, false);
+                    LOG.debug("gotten latestVersion");
+                    boolean latestVersionExist = latestVersion != null;
+                    LOG.debug("latest version exist? "+ latestVersionExist);
                     JsonNode latestPublishedVersionNode = Utils.getLatestMajorVersion(majorVersionsArrayNode, true);
+                    LOG.debug("gotten lastestPublishedVersion");
                     boolean publishedVersionExists = latestPublishedVersionNode != null;
-                    int latestMajorVersion = Integer.parseInt(latestVersion.get(Field.VERSION).asText().split("\\.")[0]);
+                    LOG.debug("published version exists? "+publishedVersionExists);
+                    int latestMajorVersionInt = Integer.parseInt(latestVersion.get(Field.VERSION).asText().split("\\.")[0]);
+                    LOG.debug("latest major version id as int: "+latestMajorVersionInt);
 
                     ArrayNode majorVersionsObjectNodeArray = mapper.createArrayNode();
                     for (JsonNode versionNode : majorVersionsArrayNode) {
                         ObjectNode objectNode = versionNode.deepCopy();
                         int version = Integer.parseInt(objectNode.get(Field.VERSION).asText().split("\\.")[0]);
                         objectNode.put(Field.VERSION, Integer.toString(version));
-                        if (publishedVersionExists && version < latestMajorVersion && objectNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
+                        if (publishedVersionExists && version < latestMajorVersionInt && objectNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
                             if (latestPublishedVersionNode.has(Field.NAME)){
                                 objectNode.set(Field.NAME, latestPublishedVersionNode.get(Field.NAME));
                             }
@@ -307,7 +323,9 @@ public class SubsetsController {
                         }
                         majorVersionsObjectNodeArray.add(objectNode);
                     }
+                    LOG.debug("sorting by versionValidFrom");
                     ArrayNode sorted = Utils.sortByVersionValidFrom(majorVersionsArrayNode);
+                    LOG.debug("returning sorted");
                     return new ResponseEntity<>(sorted, HttpStatus.OK);
                 } else {
                     return ErrorHandler.newHttpError("LDS response body was not JSON array", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
