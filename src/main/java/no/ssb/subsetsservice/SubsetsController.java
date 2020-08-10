@@ -284,10 +284,13 @@ public class SubsetsController {
                     LOG.debug("versionList size: "+versionList.size());
                     versionList.sort(Comparator.comparing(v -> v.get(Field.VERSION_VALID_FROM).asText())); // TODO: This is sorted wrong way around
                     String validTo = ""; //TODO: This is a mistake.
-                    for (JsonNode jsonNode : versionList) {
-                        ObjectNode editableSubset = jsonNode.deepCopy();
-                        editableSubset.set(Field.CODES, resolveURNs(editableSubset, validTo));
+                    for (int i = 0; i < versionList.size(); i++) {
+                        ObjectNode editableSubset = versionList.get(i).deepCopy();
+                        ArrayNode resolvedCodes = resolveURNs(editableSubset, validTo);
+                        ArrayNode currentCodeList = editableSubset.get(Field.CODES).deepCopy();
+                        editableSubset.set(Field.CODES, resolvedCodes);
                         validTo = editableSubset.get(Field.VERSION_VALID_FROM).asText();
+                        versionList.set(i, editableSubset.deepCopy());
                     }
                     LOG.debug("URNs are resolved");
 
@@ -551,7 +554,9 @@ public class SubsetsController {
             String versionValidFrom = subset.get(Field.VERSION_VALID_FROM).asText();
             versionValidFrom = versionValidFrom.split("T")[0];
             try {
-                return new KlassURNResolver().resolveURNs(codeURNs, versionValidFrom, to);
+                ArrayNode codeURNArrayNode = new KlassURNResolver().resolveURNs(codeURNs, versionValidFrom, to);
+                System.out.println(codeURNArrayNode.toPrettyString());
+                return codeURNArrayNode;
             } catch (Exception | Error e){
                 LOG.error(e.toString());
                 return codes;
