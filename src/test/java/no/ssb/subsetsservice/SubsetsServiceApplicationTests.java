@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 class SubsetsServiceApplicationTests {
 
 	private static final Logger LOG = LoggerFactory.getLogger(SubsetsServiceApplicationTests.class);
-	String ldsURL = SubsetsController.LDS_LOCAL;
 
 	@Test
 	void logTest(){

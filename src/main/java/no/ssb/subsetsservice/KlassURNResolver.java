@@ -18,9 +18,13 @@ import java.util.Map;
 public class KlassURNResolver {
 
     private static final Logger LOG = LoggerFactory.getLogger(KlassURNResolver.class);
-    public static final String klassBaseURL = "https://data.ssb.no/api/klass/v1/classifications/";
+    public static String klassBaseURL = "https://data.ssb.no/api/klass/v1/classifications/";
 
-    public static JsonNode resolveURN(String codeURN, String from, String to){
+    public static String getURL(){
+        return System.getenv().getOrDefault("API_KLASS", klassBaseURL);
+    }
+
+    public JsonNode resolveURN(String codeURN, String from, String to){
         LOG.info("Attempting to resolve the KLASS code URN "+codeURN);
         String[] urnSplitColon = codeURN.split(":");
         String classificationID = "";
@@ -43,7 +47,7 @@ public class KlassURNResolver {
         return codes;
     }
 
-    public static ArrayNode resolveURNs(List<String> codeURNs, String from, String to) {
+    public ArrayNode resolveURNs(List<String> codeURNs, String from, String to) {
         LOG.info("Resolving all code URNs in a subset");
         Map<String, String> classificationCodesMap = new HashMap<>();
         for (String codeURN : codeURNs) {
@@ -78,11 +82,12 @@ public class KlassURNResolver {
         return allCodesArrayNode;
     }
 
-    private static String makeURL(String classificationID, String from, String to, String codes){
+    private String makeURL(String classificationID, String from, String to, String codes){
+        klassBaseURL = getURL();
         return String.format("%s%s/codes.json?from=%s&to=%s&selectCodes=%s", klassBaseURL, classificationID, from, to, codes);
     }
 
-    static ResponseEntity<JsonNode> getFrom(String url)
+    private ResponseEntity<JsonNode> getFrom(String url)
     {
         LOG.info("Attempting to GET "+url);
         try {

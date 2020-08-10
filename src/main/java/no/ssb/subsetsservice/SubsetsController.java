@@ -22,57 +22,32 @@ public class SubsetsController {
     private static SubsetsController instance;
     private static final Logger LOG = LoggerFactory.getLogger(SubsetsController.class);
 
-    static final String LDS_PROD = "http://lds-klass.klass.svc.cluster.local/ns/ClassificationSubset";
-    static final String LDS_LOCAL = "http://localhost:9090/ns/ClassificationSubset";
-    private static String LDS_SUBSET_API = "";
-
-    private static String KLASS_CLASSIFICATIONS_API = "https://data.ssb.no/api/klass/v1/classifications";
-
-    private static final boolean prod = true;
-
     @Autowired
     public SubsetsController(MetricsService metricsService){
         this.metricsService = metricsService;
         instance = this;
-        updateLDSURL();
     }
 
     public static SubsetsController getInstance(){
         return instance;
     }
 
-    private void updateLDSURL(){
-        if (prod){
-            LDS_SUBSET_API = System.getenv().getOrDefault("API_LDS", LDS_PROD);
-        } else {
-            LDS_SUBSET_API = LDS_LOCAL;
-        }
-        LOG.info("Running with LDS url "+LDS_SUBSET_API);
-        KLASS_CLASSIFICATIONS_API = System.getenv().getOrDefault("API_KLASS", KLASS_CLASSIFICATIONS_API);
-    }
-
     @GetMapping("/v1/subsets")
-    public ResponseEntity<JsonNode> getSubsets( @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean includeDrafts) {
+    public ResponseEntity<JsonNode> getSubsets( @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean includeFuture) {
         metricsService.incrementGETCounter();
 
         LOG.info("GET subsets");
-        LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-        ResponseEntity<JsonNode> ldsRE = consumer.getFrom("");
-
-        JsonNode ldsREBody = ldsRE.getBody();
-        if (ldsRE.getStatusCodeValue() != HttpStatus.OK.value()){
-            return ErrorHandler.newHttpError("LDS returned a "+ldsRE.getStatusCode().toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
-        } else {
-            if(ldsREBody != null && ldsREBody.isArray()){
-                ArrayNode ldsAllSubsetsArrayNode = (ArrayNode) ldsREBody;
-                for (int i = 0; i < ldsAllSubsetsArrayNode.size(); i++) {
-                    JsonNode subset = getVersions(ldsAllSubsetsArrayNode.get(i).get(Field.ID).asText(), includeFuture, includeDrafts).getBody().get(0);
-                    ldsAllSubsetsArrayNode.set(i, subset);
-                }
-                return new ResponseEntity<>(ldsAllSubsetsArrayNode, HttpStatus.OK);
-            }
-            return ErrorHandler.newHttpError("LDS returned 200 OK, but a non-array body. This was unexpected.", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+        LDSInterface ldsInterface = new LDSInterface();
+        List<String> subsetIDsList = ldsInterface.getAllSubsetIDs();
+        ArrayNode arrayNode = new ObjectMapper().createArrayNode();
+        for (String id : subsetIDsList) {
+            ResponseEntity<JsonNode> subsetRE = getSubset(id, includeDrafts, includeFuture);
+            if (subsetRE.getStatusCode() == HttpStatus.OK)
+                arrayNode.add(subsetRE.getBody());
+            else
+                ErrorHandler.newHttpError("On GET subsets, attempt to retrieve subset with ID "+id+" returned from LDS with "+subsetRE.getStatusCode().toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
         }
+        return new ResponseEntity<>(arrayNode, HttpStatus.OK);
     }
 
     /**
@@ -90,9 +65,8 @@ public class SubsetsController {
             String id = idJN.textValue();
             if (Utils.isClean(id)){
                 LOG.info("POST subset with id "+id);
-                LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-                ResponseEntity<JsonNode> ldsResponse = consumer.getFrom("/"+id);
-                if (ldsResponse.getStatusCodeValue() == HttpStatus.NOT_FOUND.value()){
+                boolean subsetExists = new LDSInterface().existsSubsetWithID(id);
+                if (!subsetExists){
                     ObjectNode editableSubset = subsetJson.deepCopy();
                     String isoNow = Utils.getNowISO();
                     editableSubset.put(Field.LAST_UPDATED_DATE, isoNow);
@@ -103,7 +77,7 @@ public class SubsetsController {
                         return ErrorHandler.newHttpError("validFrom must be equal versionValidFrom for the first version of the subset (this one)", HttpStatus.BAD_REQUEST, LOG);
                     }
                     JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
-                    return consumer.postTo("/" + id, cleanSubset);
+                    return new LDSInterface().createSubset(cleanSubset, id);
                 }
                 return ErrorHandler.newHttpError("POST: Can not create subset. ID already in use", HttpStatus.BAD_REQUEST, LOG);
             }
@@ -231,8 +205,7 @@ public class SubsetsController {
                 // If there is a version which is previous to this version that is still a DRAFT, you can not publish this version.
 
                 if (consistentID && !attemptToChangeCodesOfPublishedVersion && !sameVersionValidFrom){
-                    LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-                    return consumer.putTo("/" + id, editableSubset);
+                    return new LDSInterface().editSubset(editableSubset, id);
                 } else {
                     StringBuilder errorStringBuilder = new StringBuilder();
                     if (!sameID)
@@ -260,8 +233,7 @@ public class SubsetsController {
 
         ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id)){
-            LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-            ResponseEntity<JsonNode> ldsRE = consumer.getFrom("/"+id+"?timeline");
+            ResponseEntity<JsonNode> ldsRE = new LDSInterface().getTimelineOfSubset(id);
             if (ldsRE.getStatusCodeValue() != HttpStatus.OK.value()){
                 return ldsRE;
             }
@@ -549,9 +521,7 @@ public class SubsetsController {
     public ResponseEntity<JsonNode> getSchema(){
         metricsService.incrementGETCounter();
         LOG.info("GET schema for subsets");
-        
-        LDSConsumer consumer = new LDSConsumer(LDS_SUBSET_API);
-        return consumer.getFrom("/?schema");
+        return new LDSInterface().getClassificationSubsetSchema();
     }
 
     private ArrayNode resolveURNs(JsonNode subset, String to){
@@ -561,8 +531,7 @@ public class SubsetsController {
             codes.forEach(c->codeURNs.add(c.get(Field.URN).asText()));
             String versionValidFrom = subset.get(Field.VERSION_VALID_FROM).asText();
             try {
-                ArrayNode codesArrayNode = KlassURNResolver.resolveURNs(codeURNs, versionValidFrom, to);
-                return codesArrayNode;
+                return new KlassURNResolver().resolveURNs(codeURNs, versionValidFrom, to);
             } catch (Exception | Error e){
                 LOG.error(e.toString());
                 return codes;
