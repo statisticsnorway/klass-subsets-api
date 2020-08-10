@@ -283,7 +283,7 @@ public class SubsetsController {
                     ArrayList<JsonNode> versionList = new ArrayList<>(versionLastUpdatedMap.size());
                     versionLastUpdatedMap.forEach((versionInt, versionJsonNode) -> versionList.add(versionJsonNode));
                     LOG.debug("versionList size: "+versionList.size());
-                    versionList.sort((s1, s2) -> s2.get(Field.VERSION_VALID_FROM).asText().compareTo(s1.get(Field.VERSION_VALID_FROM).asText())); // TODO: This is repeated code
+                    versionList.sort(Utils::versionComparator);
                     String validTo = ""; //TODO: This is potentially a mistake.
                     for (int i = 0; i < versionList.size(); i++) {
                         ObjectNode editableSubset = versionList.get(i).deepCopy();

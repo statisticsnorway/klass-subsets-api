@@ -10,10 +10,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.TimeZone;
+import java.util.*;
 
 public class Utils {
 
@@ -98,7 +95,7 @@ public class Utils {
     public static ArrayNode sortByVersionValidFrom(ArrayNode subsetArrayNode){
         List<JsonNode> subsetList = new ArrayList<>(subsetArrayNode.size());
         subsetArrayNode.forEach(subsetList::add);
-        subsetList.sort((s1, s2) -> s2.get(Field.VERSION_VALID_FROM).asText().compareTo(s1.get(Field.VERSION_VALID_FROM).asText()));
+        subsetList.sort(Utils::versionComparator);
         ArrayNode newArrayNode = new ObjectMapper().createArrayNode();
         subsetList.forEach(newArrayNode::add);
         return newArrayNode;
@@ -122,6 +119,10 @@ public class Utils {
             return (d % 1) == 0 && !Double.isInfinite(d);
         }
         return false;
+    }
+
+    public static int versionComparator(JsonNode s1, JsonNode s2){
+        return s2.get(Field.VERSION_VALID_FROM).asText().compareTo(s1.get(Field.VERSION_VALID_FROM).asText());
     }
 
 }
