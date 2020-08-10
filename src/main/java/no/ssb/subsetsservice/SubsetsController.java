@@ -525,11 +525,13 @@ public class SubsetsController {
     }
 
     private ArrayNode resolveURNs(JsonNode subset, String to){
+        to = to.split("T")[0];
         if (to.equals("") || Utils.isYearMonthDay(to)){
             ArrayNode codes = (ArrayNode)subset.get(Field.CODES);
             List<String> codeURNs = new ArrayList<>(codes.size());
             codes.forEach(c->codeURNs.add(c.get(Field.URN).asText()));
             String versionValidFrom = subset.get(Field.VERSION_VALID_FROM).asText();
+            versionValidFrom = versionValidFrom.split("T")[0];
             try {
                 return new KlassURNResolver().resolveURNs(codeURNs, versionValidFrom, to);
             } catch (Exception | Error e){
@@ -537,7 +539,7 @@ public class SubsetsController {
                 return codes;
             }
         }
-        throw new IllegalArgumentException("'to' must be empty string or on the form YYYY-MM-DD");
+        throw new IllegalArgumentException("'to' must be empty string or on the form YYYY-MM-DD, but was "+to);
     }
 
 }
