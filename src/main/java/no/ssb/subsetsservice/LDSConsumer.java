@@ -13,10 +13,12 @@ import java.util.Collections;
 public class LDSConsumer {
 
     private static final Logger LOG = LoggerFactory.getLogger(LDSConsumer.class);
+    static final String LDS_PROD = "http://lds-klass.klass.svc.cluster.local/ns/ClassificationSubset";
+    static String LDS_LOCAL = "http://localhost:9090/ns/ClassificationSubset";
     static String LDS_URL;
 
-    public LDSConsumer(String ldsSubsetApi) {
-        LDS_URL = ldsSubsetApi;
+    LDSConsumer(){
+        LDS_URL = System.getenv().getOrDefault("API_LDS", LDS_LOCAL);
     }
 
     ResponseEntity<JsonNode> getFrom(String additional)
