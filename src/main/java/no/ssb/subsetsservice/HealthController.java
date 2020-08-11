@@ -16,7 +16,7 @@ public class HealthController {
 
     @RequestMapping("/health/ready")
     public ResponseEntity<String> ready() {
-        ResponseEntity<JsonNode> responseEntity = SubsetsController.getInstance().getSubsets();
+        ResponseEntity<JsonNode> responseEntity = SubsetsController.getInstance().getSubsets(false, false);
         if (responseEntity.getStatusCodeValue() == 200)
             return new ResponseEntity<>("The service is ready!", HttpStatus.OK);
         return new ResponseEntity<>("The service is not ready yet.", HttpStatus.SERVICE_UNAVAILABLE);
