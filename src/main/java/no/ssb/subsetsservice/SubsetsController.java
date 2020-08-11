@@ -284,7 +284,7 @@ public class SubsetsController {
                     versionLastUpdatedMap.forEach((versionInt, versionJsonNode) -> versionList.add(versionJsonNode));
                     LOG.debug("versionList size: "+versionList.size());
                     versionList.sort(Utils::versionComparator);
-                    String validTo = ""; //TODO: This is potentially a mistake.
+                    String validTo = ""; //FIXME: This means the most recent version does not have a validTo. Is it potentially a mistake?
                     for (int i = 0; i < versionList.size(); i++) {
                         ObjectNode editableSubset = versionList.get(i).deepCopy();
                         ArrayNode resolvedCodes = resolveURNs(editableSubset, validTo);

@@ -11,6 +11,15 @@ import java.util.List;
 
 public class LDSInterface {
 
+    String API_LDS = "";
+
+    LDSInterface(){
+    }
+
+    LDSInterface(String API_LDS){
+        this.API_LDS = API_LDS;
+    }
+
     public List<String> getAllSubsetIDs() throws HttpClientErrorException {
 
         ResponseEntity<JsonNode> allSubsetsRE = getLastUpdatedVersionOfAllSubsets();
@@ -36,11 +45,11 @@ public class LDSInterface {
     }
 
     public ResponseEntity<JsonNode> getTimelineOfSubset(String id){
-        return new LDSConsumer().getFrom("/"+id+"?timeline");
+        return new LDSConsumer(API_LDS).getFrom("/"+id+"?timeline");
     }
 
     public boolean existsSubsetWithID(String id){
-        return new LDSConsumer().getFrom("/"+id).getStatusCode().equals(HttpStatus.OK);
+        return new LDSConsumer(API_LDS).getFrom("/"+id).getStatusCode().equals(HttpStatus.OK);
     }
 
     public ResponseEntity<JsonNode> getClassificationSubsetSchema(){
@@ -48,10 +57,10 @@ public class LDSInterface {
     }
 
     public ResponseEntity<JsonNode> editSubset(JsonNode subset, String id){
-        return new LDSConsumer().putTo("/" + id, subset);
+        return new LDSConsumer(API_LDS).putTo("/" + id, subset);
     }
 
     public ResponseEntity<JsonNode> createSubset(JsonNode subset, String id){
-        return new LDSConsumer().postTo("/" + id, subset);
+        return new LDSConsumer(API_LDS).postTo("/" + id, subset);
     }
 }
