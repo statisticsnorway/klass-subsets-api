@@ -18,7 +18,7 @@ import java.util.Map;
 public class KlassURNResolver {
 
     private static final Logger LOG = LoggerFactory.getLogger(KlassURNResolver.class);
-    public static String klassBaseURL = "https://data.ssb.no/api/klass/v1/classifications/";
+    public static String klassBaseURL = "https://data.ssb.no/api/klass/v1/classifications";
 
     public static String getURL(){
         return System.getenv().getOrDefault("API_KLASS", klassBaseURL);
@@ -84,7 +84,7 @@ public class KlassURNResolver {
 
     private String makeURL(String classificationID, String from, String to, String codes){
         klassBaseURL = getURL();
-        return String.format("%s%s/codes.json?from=%s&to=%s&selectCodes=%s", klassBaseURL, classificationID, from, to, codes);
+        return String.format("%s/%s/codes.json?from=%s&to=%s&selectCodes=%s", klassBaseURL, classificationID, from, to, codes);
     }
 
     private ResponseEntity<JsonNode> getFrom(String url)
