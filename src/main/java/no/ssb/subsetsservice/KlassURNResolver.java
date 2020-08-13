@@ -3,6 +3,7 @@ package no.ssb.subsetsservice;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -74,6 +75,23 @@ public class KlassURNResolver {
             throw new IllegalArgumentException("fromDate "+fromDate+" must be before toDate "+toDate+", but was the same as or after the toDate. ");
 
         List<ArrayNode> codesArrayNodeList = new ArrayList<>();
+        for (Map.Entry<String, String> classificationCodesEntry : classificationCodesMap.entrySet()) {
+            String classification = classificationCodesEntry.getKey();
+            String codesString = classificationCodesEntry.getValue();
+            String URL = makeURL(classification, fromDate, toDate, codesString);
+            ArrayNode codesFromClassification = (ArrayNode)(getFrom(URL).getBody().get(Field.CODES));
+            String[] codesArray = codesString.split(",");
+            for (int i = 0; i < codesFromClassification.size(); i++) {
+                ObjectNode editableCode = codesFromClassification.get(i).deepCopy();
+                editableCode.put("classification", classification);
+                editableCode.put(Field.URN, Utils.generateURN(classification, editableCode.get("code").asText()));
+                ArrayNode links = new ObjectMapper().createArrayNode();
+                String selfURL = makeURL(classification, fromDate, toDate, codesArray[i]);
+                links.add(new ObjectMapper().createObjectNode().put("_self", selfURL));
+                editableCode.set("links", links);
+                codesFromClassification.set(i, editableCode);
+            }
+        }
         classificationCodesMap.forEach((classification, codes) -> codesArrayNodeList.add((ArrayNode)(getFrom(makeURL(classification, fromDate, toDate, codes)).getBody().get(Field.CODES))));
         ArrayNode allCodesArrayNode = new ObjectMapper().createArrayNode();
         for (ArrayNode codes : codesArrayNodeList) {
