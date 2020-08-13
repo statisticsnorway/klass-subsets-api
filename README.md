@@ -28,10 +28,8 @@ In addition, we support getting the subset schema at "/v1/subsets?schema"
 This service needs to be able to connect to the LDS instance's API, and the KLASS Classifications API.
 
 Two environment variables pointing to these APIs are required  
-    - name: "API_LDS"
-      value: "http://{exampleurl}/ns/ClassificationSubset"
-    - name: "API_KLASS"
-      value: "https://data.ssb.no/api/klass/v1/classifications"
+- name: "API_LDS", value: "http://{exampleurl}/ns/ClassificationSubset"
+- name: "API_KLASS", value: "https://data.ssb.no/api/klass/v1/classifications"
 
 The `{exampleurl}` part of API_LDS value given above must be replaced with the apropriate address of the LDS instance you are using (i.e. `localhost:9090`)
 The `API_KLASS API` value given is correct and reachable from anywhere as of time of writing (13. August 2020) and is expected to stay that way.
