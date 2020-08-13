@@ -9,12 +9,11 @@ import org.springframework.web.client.HttpClientErrorException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LDSFacade {
+public class LDSFacade implements LDSInterface {
 
     String API_LDS = "";
 
-    LDSFacade(){
-    }
+    LDSFacade(){}
 
     LDSFacade(String API_LDS){
         this.API_LDS = API_LDS;
