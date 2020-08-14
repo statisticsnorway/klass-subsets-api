@@ -3,6 +3,7 @@ package no.ssb.subsetsservice;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -47,38 +48,71 @@ public class KlassURNResolver {
         return codes;
     }
 
-    public ArrayNode resolveURNs(List<String> codeURNs, String from, String to) {
+    /**
+     * Get the Code list as an ArrayNode, containing KLASS information, URN, URL and Rank.
+     * @param subset
+     * @param to
+     * @return
+     */
+    public ArrayNode resolveURNs(JsonNode subset, String to) {
         LOG.info("Resolving all code URNs in a subset");
-        Map<String, String> classificationCodesMap = new HashMap<>();
-        for (String codeURN : codeURNs) {
-            String[] urnSplitColon = codeURN.split(":");
-            String classificationID = "";
-            String code = "";
-            for (int i = 0; i < urnSplitColon.length; i++) {
-                String value = urnSplitColon[i];
-                if (value.equals("code")){
-                    if (urnSplitColon.length > i+1)
-                        code = urnSplitColon[i+1];
-                } else if (value.equals("classifications")){
-                    if (urnSplitColon.length > i+1)
-                        classificationID = urnSplitColon[i+1];
-                }
-            }
-            classificationCodesMap.merge(classificationID, code, (c1, c2)-> c1+","+c2);
-        }
 
+        ArrayNode codes = (ArrayNode)subset.get(Field.CODES);
+        List<String> codeURNs = new ArrayList<>(codes.size());
+        codes.forEach(c->codeURNs.add(c.get(Field.URN).asText()));
+        String from = subset.get(Field.VERSION_VALID_FROM).asText();
         String fromDate = from.split("T")[0];
         String toDate = to.split("T")[0];
+
+        Map<String, String> classificationCodesMap = new HashMap<>();
+        Map<String, ObjectNode> urnCodeMap = new HashMap<>();
+
+        for (int i = 0; i < codes.size(); i++) {
+            ObjectNode code = codes.get(i).deepCopy();
+            String URN = code.get(Field.URN).asText();
+            String[] urnSplitColon = URN.split(":");
+            String classificationID = "";
+            String codeString = "";
+            for (int i1 = 0; i1 < urnSplitColon.length; i1++) {
+                String value = urnSplitColon[i1];
+                if (value.equals("code")){
+                    if (urnSplitColon.length > i1+1)
+                        codeString = urnSplitColon[i1+1];
+                } else if (value.equals("classifications")){
+                    if (urnSplitColon.length > i1+1)
+                        classificationID = urnSplitColon[i1+1];
+                }
+            }
+            code.put(Field.CLASSIFICATION_ID, classificationID);
+            code.put(Field.CODE, codeString);
+            ArrayNode links = new ObjectMapper().createArrayNode();
+            String selfURL = makeURL(classificationID, fromDate, toDate, codeString);
+            links.add(new ObjectMapper().createObjectNode().put(Field.SELF, selfURL));
+            code.set(Field._LINKS, links);
+            classificationCodesMap.merge(classificationID, codeString, (c1, c2)-> c1+","+c2);
+            urnCodeMap.put(URN, code);
+        }
 
         if (fromDate.compareTo(toDate) >= 0 && !toDate.equals(""))
             throw new IllegalArgumentException("fromDate "+fromDate+" must be before toDate "+toDate+", but was the same as or after the toDate. ");
 
-        List<ArrayNode> codesArrayNodeList = new ArrayList<>();
-        classificationCodesMap.forEach((classification, codes) -> codesArrayNodeList.add((ArrayNode)(getFrom(makeURL(classification, fromDate, toDate, codes)).getBody().get(Field.CODES))));
-        ArrayNode allCodesArrayNode = new ObjectMapper().createArrayNode();
-        for (ArrayNode codes : codesArrayNodeList) {
-            codes.forEach(allCodesArrayNode::add);
+        for (Map.Entry<String, String> classificationCodesEntry : classificationCodesMap.entrySet()) {
+            String classification = classificationCodesEntry.getKey();
+            String codesString = classificationCodesEntry.getValue();
+            String URL = makeURL(classification, fromDate, toDate, codesString);
+            ArrayNode codesFromClassification = (ArrayNode)(getFrom(URL).getBody().get(Field.CODES));
+            for (int i = 0; i < codesFromClassification.size(); i++) {
+                JsonNode codeNode = codesFromClassification.get(i);
+                String URN = Utils.generateURN(classification, codeNode.get(Field.CODE).asText());
+                ObjectNode editableCode = urnCodeMap.get(URN);
+                codeNode.fields().forEachRemaining(e -> editableCode.set(e.getKey(), e.getValue()));
+                codesFromClassification.set(i, editableCode);
+                urnCodeMap.put(URN, editableCode);
+            }
         }
+        
+        ArrayNode allCodesArrayNode = new ObjectMapper().createArrayNode();
+        allCodesArrayNode.addAll(urnCodeMap.values());
         return allCodesArrayNode;
     }
 

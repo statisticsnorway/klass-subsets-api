@@ -1,57 +1,67 @@
 package no.ssb.subsetsservice;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public class LDSInterface {
+/**
+ * This interface presents some operations that can be made against a connection
+ * to an instance of Linked Data Store
+ */
+public interface LDSInterface {
 
-    public List<String> getAllSubsetIDs() throws HttpClientErrorException {
+    /**
+     * Get a list of all the IDs of existing subsets
+     * @return
+     * @throws HttpClientErrorException
+     */
+    List<String> getAllSubsetIDs() throws HttpClientErrorException;
 
-        ResponseEntity<JsonNode> allSubsetsRE = getLastUpdatedVersionOfAllSubsets();
+    /**
+     * GET a list of all the version of each subset that was last UPDATED by the user.
+     * This does NOT necessarily return the version with the most recent subsetValidFrom,
+     * or the version that was most recently created.
+     * This is the way resources are accessed by default in LDS.
+     * @return
+     */
+    ResponseEntity<JsonNode> getLastUpdatedVersionOfAllSubsets();
 
-        if (allSubsetsRE.getStatusCodeValue() == HttpStatus.OK.value()) {
-            JsonNode ldsREBody = allSubsetsRE.getBody();
-            if (ldsREBody != null) {
-                if (ldsREBody.isArray()) {
-                    ArrayNode ldsAllSubsetsArrayNode = (ArrayNode) ldsREBody;
-                    List<String> idList = new ArrayList<>(ldsAllSubsetsArrayNode.size());
-                    for (JsonNode jsonNode : ldsAllSubsetsArrayNode) {
-                        idList.add(jsonNode.get(Field.ID).asText());
-                    }
-                    return idList;
-                }
-            }
-        }
-        throw new HttpClientErrorException(allSubsetsRE.getStatusCode());
-    }
+    /**
+     * Get a timeline of all patches to all versions of this subset, in chronological order.
+     * @param id
+     * @return
+     */
+    ResponseEntity<JsonNode> getTimelineOfSubset(String id);
 
-    public ResponseEntity<JsonNode> getLastUpdatedVersionOfAllSubsets(){
-        return new LDSConsumer().getFrom("");
-    }
+    /**
+     * Check if a subset with the given ID exists
+     * @param id
+     * @return
+     */
+    boolean existsSubsetWithID(String id);
 
-    public ResponseEntity<JsonNode> getTimelineOfSubset(String id){
-        return new LDSConsumer().getFrom("/"+id+"?timeline");
-    }
+    /**
+     * Retrieve the schema of the ClassificationSubset resource type
+     * @return
+     */
+    ResponseEntity<JsonNode> getClassificationSubsetSchema();
 
-    public boolean existsSubsetWithID(String id){
-        return new LDSConsumer().getFrom("/"+id).getStatusCode().equals(HttpStatus.OK);
-    }
+    /**
+     * Submit a complete version of an existing subset, that contains changes to that subset
+     * @param subset
+     * @param id
+     * @return
+     */
+    ResponseEntity<JsonNode> editSubset(JsonNode subset, String id);
 
-    public ResponseEntity<JsonNode> getClassificationSubsetSchema(){
-        return new LDSConsumer().getFrom("/?schema");
-    }
+    /**
+     * Submit a subset with a previously unused ID
+     * @param subset
+     * @param id
+     * @return
+     */
+    ResponseEntity<JsonNode> createSubset(JsonNode subset, String id);
 
-    public ResponseEntity<JsonNode> editSubset(JsonNode subset, String id){
-        return new LDSConsumer().putTo("/" + id, subset);
-    }
-
-    public ResponseEntity<JsonNode> createSubset(JsonNode subset, String id){
-        return new LDSConsumer().postTo("/" + id, subset);
-    }
 }

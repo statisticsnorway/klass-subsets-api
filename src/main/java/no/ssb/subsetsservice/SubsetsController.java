@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.*;
 
@@ -37,8 +36,8 @@ public class SubsetsController {
         metricsService.incrementGETCounter();
 
         LOG.info("GET subsets");
-        LDSInterface ldsInterface = new LDSInterface();
-        List<String> subsetIDsList = ldsInterface.getAllSubsetIDs();
+        LDSFacade ldsFacade = new LDSFacade();
+        List<String> subsetIDsList = ldsFacade.getAllSubsetIDs();
         ArrayNode arrayNode = new ObjectMapper().createArrayNode();
         for (String id : subsetIDsList) {
             ResponseEntity<JsonNode> subsetRE = getSubset(id, includeDrafts, includeFuture);
@@ -65,7 +64,7 @@ public class SubsetsController {
             String id = idJN.textValue();
             if (Utils.isClean(id)){
                 LOG.info("POST subset with id "+id);
-                boolean subsetExists = new LDSInterface().existsSubsetWithID(id);
+                boolean subsetExists = new LDSFacade().existsSubsetWithID(id);
                 if (!subsetExists){
                     ObjectNode editableSubset = subsetJson.deepCopy();
                     String isoNow = Utils.getNowISO();
@@ -77,7 +76,7 @@ public class SubsetsController {
                         return ErrorHandler.newHttpError("validFrom must be equal versionValidFrom for the first version of the subset (this one)", HttpStatus.BAD_REQUEST, LOG);
                     }
                     JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
-                    return new LDSInterface().createSubset(cleanSubset, id);
+                    return new LDSFacade().createSubset(cleanSubset, id);
                 }
                 return ErrorHandler.newHttpError("POST: Can not create subset. ID already in use", HttpStatus.BAD_REQUEST, LOG);
             }
@@ -207,7 +206,7 @@ public class SubsetsController {
                 // If there is a version which is previous to this version that is still a DRAFT, you can not publish this version.
 
                 if (consistentID && !attemptToChangeCodesOfPublishedVersion && !sameVersionValidFrom){
-                    return new LDSInterface().editSubset(editableSubset, id);
+                    return new LDSFacade().editSubset(editableSubset, id);
                 } else {
                     StringBuilder errorStringBuilder = new StringBuilder();
                     if (!sameID)
@@ -235,7 +234,7 @@ public class SubsetsController {
 
         ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id)){
-            ResponseEntity<JsonNode> ldsRE = new LDSInterface().getTimelineOfSubset(id);
+            ResponseEntity<JsonNode> ldsRE = new LDSFacade().getTimelineOfSubset(id);
             if (ldsRE.getStatusCodeValue() != HttpStatus.OK.value()){
                 return ldsRE;
             }
@@ -284,7 +283,7 @@ public class SubsetsController {
                     versionLastUpdatedMap.forEach((versionInt, versionJsonNode) -> versionList.add(versionJsonNode));
                     LOG.debug("versionList size: "+versionList.size());
                     versionList.sort(Utils::versionComparator);
-                    String validTo = ""; //TODO: This is potentially a mistake.
+                    String validTo = ""; //FIXME: This means the most recent version does not have a validTo. Is it potentially a mistake?
                     for (int i = 0; i < versionList.size(); i++) {
                         ObjectNode editableSubset = versionList.get(i).deepCopy();
                         ArrayNode resolvedCodes = resolveURNs(editableSubset, validTo);
@@ -542,27 +541,22 @@ public class SubsetsController {
     public ResponseEntity<JsonNode> getSchema(){
         metricsService.incrementGETCounter();
         LOG.info("GET schema for subsets");
-        return new LDSInterface().getClassificationSubsetSchema();
+        return new LDSFacade().getClassificationSubsetSchema();
     }
 
     private ArrayNode resolveURNs(JsonNode subset, String to){
         to = to.split("T")[0];
         if (to.equals("") || Utils.isYearMonthDay(to)){
-            ArrayNode codes = (ArrayNode)subset.get(Field.CODES);
-            List<String> codeURNs = new ArrayList<>(codes.size());
-            codes.forEach(c->codeURNs.add(c.get(Field.URN).asText()));
-            String versionValidFrom = subset.get(Field.VERSION_VALID_FROM).asText();
-            versionValidFrom = versionValidFrom.split("T")[0];
             try {
-                ArrayNode codeURNArrayNode = new KlassURNResolver().resolveURNs(codeURNs, versionValidFrom, to);
+                ArrayNode codeURNArrayNode = new KlassURNResolver().resolveURNs(subset, to);
                 System.out.println(codeURNArrayNode.toPrettyString());
                 return codeURNArrayNode;
             } catch (Exception | Error e){
                 LOG.error(e.toString());
-                return codes;
+                return (ArrayNode)subset.get(Field.CODES);
             }
         }
-        throw new IllegalArgumentException("'to' must be empty string or on the form YYYY-MM-DD, but was "+to);
+        throw new IllegalArgumentException("'to' must be empty string '' or on the form YYYY-MM-DD, but was "+to);
     }
 
 }
