@@ -21,6 +21,10 @@ This API mimics the [KLASS Classifications API](https://data.ssb.no/api/klass/v1
 - `GET /v1/subsets/{id}/versions/{version}` to retrieve a list of versions that start with {version}
 - Where it makes sense there are optional `includeDraft` and `includeFuture` boolean parameters. `includeDraft` includes versions of subsets that are not currently published. `includeFuture` includes versions of subsets that will only be valid from a future date.
 
+### Health
+at `GET /health/alive` you can check whether the service is running.
+at `GET /health/ready` you can cehck whether the service can reach LDS and KLASS, and that itself returns 200 OK when attempting to return all of the subsets.
+
 ### Misc
 In addition, we support getting the subset schema at "/v1/subsets?schema"
 
