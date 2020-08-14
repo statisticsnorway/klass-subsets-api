@@ -22,8 +22,12 @@ This API mimics the [KLASS Classifications API](https://data.ssb.no/api/klass/v1
 - Where it makes sense there are optional `includeDraft` and `includeFuture` boolean parameters. `includeDraft` includes versions of subsets that are not currently published. `includeFuture` includes versions of subsets that will only be valid from a future date.
 
 ### Health
-at `GET /health/alive` you can check whether the service is running.
-at `GET /health/ready` you can cehck whether the service can reach LDS and KLASS, and that itself returns 200 OK when attempting to return all of the subsets.
+- at `GET /health/alive` you can check whether the service is running.
+- at `GET /health/ready` you can cehck whether the service can reach LDS and KLASS, and that itself returns 200 OK when attempting to return all of the subsets.
+
+### Metrics
+- at `GET /customMetrics` you can see how many subsets API calls have been made since deployment
+- at `GET /testCounter` you can see how many call to the Metrics api (including /testCounter) have been made since deployment
 
 ### Misc
 In addition, we support getting the subset schema at "/v1/subsets?schema"
