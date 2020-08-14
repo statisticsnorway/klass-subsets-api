@@ -125,4 +125,7 @@ public class Utils {
         return s2.get(Field.VERSION_VALID_FROM).asText().compareTo(s1.get(Field.VERSION_VALID_FROM).asText());
     }
 
+    public static String generateURN(String classification, String code) {
+        return String.format("urn:ssb:klass-api:classifications:%s:code:%s", classification, code);
+    }
 }
