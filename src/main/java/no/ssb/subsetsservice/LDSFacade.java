@@ -62,4 +62,9 @@ public class LDSFacade implements LDSInterface {
     public ResponseEntity<JsonNode> createSubset(JsonNode subset, String id){
         return new LDSConsumer(API_LDS).postTo("/" + id, subset);
     }
+
+    @Override
+    public boolean pingLDSSubsets() {
+        return getLastUpdatedVersionOfAllSubsets().getStatusCode().equals(HttpStatus.OK);
+    }
 }

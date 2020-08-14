@@ -16,9 +16,11 @@ public class HealthController {
 
     @RequestMapping("/health/ready")
     public ResponseEntity<String> ready() {
-        ResponseEntity<JsonNode> responseEntity = SubsetsController.getInstance().getSubsets(false, false);
-        if (responseEntity.getStatusCodeValue() == 200)
+        ResponseEntity<JsonNode> getSubsetsResponseEntity = SubsetsController.getInstance().getSubsets(false, false);
+        boolean klassReady = new KlassURNResolver().pingKLASSClassifications();
+        boolean ldsReady = new LDSFacade().pingLDSSubsets();
+        if (klassReady && ldsReady && getSubsetsResponseEntity.getStatusCode().equals(HttpStatus.OK))
             return new ResponseEntity<>("The service is ready!", HttpStatus.OK);
-        return new ResponseEntity<>("The service is not ready yet.", HttpStatus.SERVICE_UNAVAILABLE);
+        return new ResponseEntity<>("The service is not ready yet.\n KLASS ready: "+klassReady+" \n", HttpStatus.SERVICE_UNAVAILABLE);
     }
 }
