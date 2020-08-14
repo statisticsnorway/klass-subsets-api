@@ -18,5 +18,9 @@ public class Field {
     public static final String OPEN = "OPEN";
     public static final String DRAFT = "DRAFT";
     public static final String LAST_UPDATED_BY = "lastUpdatedBy";
-
+    public static final String RANK = "rank";
+    public static final String CLASSIFICATION_ID = "classificationId";
+    public static final String CODE = "code";
+    public static final String _LINKS = "_links";
+    public static final String SELF = "self";
 }
