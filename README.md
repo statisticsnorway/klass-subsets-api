@@ -3,7 +3,7 @@ KLASS Subsets REST Service, implemented in Spring Boot.
 
 This API serves to store, search and maintain KLASS subsets ("uttrekk").
 
-As a database we use an instance of Lpinked Data Store (LDS documentation: https://github.com/statisticsnorway/linked-data-store-documentation/tree/master/docs Docker Hub: https://hub.docker.com/r/statisticsnorway/lds-server/tags) with a Postgres backend.
+As a database we use an instance of Linked Data Store (LDS documentation: https://github.com/statisticsnorway/linked-data-store-documentation/tree/master/docs Docker Hub: https://hub.docker.com/r/statisticsnorway/lds-server/tags) with a Postgres backend.
 
 This service replaced a Node.js prototype, which can be found at: https://github.com/statisticsnorway/klass-subsets-service
 
