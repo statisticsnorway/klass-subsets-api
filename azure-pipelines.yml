@@ -21,6 +21,11 @@ jobs:
   - job: buildTestDockerBuildDockerPush
     displayName: 'Test/build app and Dockerimage'
     steps:
+      - task: DownloadSecureFile@1
+        name: dockerComposeCIBuild
+        displayName: 'Download docker-compose.ci.build.yaml'
+        inputs:
+          secureFile: 'docker-compose.ci.build.yml'
       - task: DockerCompose@0
         displayName: Container registry login
         inputs:
@@ -32,7 +37,7 @@ jobs:
           action: Run services
           containerregistrytype: Container Registry
           dockerRegistryEndpoint: dockerHubOlved
-          dockerComposeFile: docker-compose.ci.build.yml
+          dockerComposeFile: dockerComposeCIBuild
           projectName: $(Build.Repository.Name)
           qualifyImageNames: true
           buildImages: false
