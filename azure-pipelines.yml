@@ -29,6 +29,7 @@ jobs:
       - task: DockerCompose@0
         displayName: Container registry login
         inputs:
+          dockerComposeFile: dockerComposeCIBuild
           containerregistrytype: Container Registry
           dockerRegistryEndpoint: dockerHubOlved
       - task: DockerCompose@0
