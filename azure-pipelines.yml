@@ -21,6 +21,23 @@ jobs:
   - job: buildTestDockerBuildDockerPush
     displayName: 'Test/build app and Dockerimage'
     steps:
+      - task: DockerCompose@0
+        displayName: Container registry login
+        inputs:
+          containerregistrytype: Container Registry
+          dockerRegistryEndpoint: dockerHubOlved
+      - task: DockerCompose@0
+        displayName: 'Run integration test backend services'
+        inputs:
+          action: Run services
+          containerregistrytype: Container Registry
+          dockerRegistryEndpoint: dockerHubOlved
+          dockerComposeFile: docker-compose.ci.build.yml
+          projectName: $(Build.Repository.Name)
+          qualifyImageNames: true
+          buildImages: false
+          abortOnContainerExit: true
+          detached: true
       - task: Maven@3
         displayName: 'Maven install'
         inputs:
