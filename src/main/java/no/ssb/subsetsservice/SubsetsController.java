@@ -32,7 +32,7 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets")
-    public ResponseEntity<JsonNode> getSubsets( @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean urnOnly) {
+    public ResponseEntity<JsonNode> getSubsets( @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean rankedURNOnly) {
         metricsService.incrementGETCounter();
 
         LOG.info("GET subsets");
@@ -40,7 +40,7 @@ public class SubsetsController {
         List<String> subsetIDsList = ldsFacade.getAllSubsetIDs();
         ArrayNode arrayNode = new ObjectMapper().createArrayNode();
         for (String id : subsetIDsList) {
-            ResponseEntity<JsonNode> subsetRE = getSubset(id, includeDrafts, includeFuture, urnOnly);
+            ResponseEntity<JsonNode> subsetRE = getSubset(id, includeDrafts, includeFuture, rankedURNOnly);
             if (subsetRE.getStatusCode() == HttpStatus.OK)
                 arrayNode.add(subsetRE.getBody());
             else
@@ -86,12 +86,12 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets/{id}")
-    public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean urnOnly) {
+    public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean rankedURNOnly) {
         metricsService.incrementGETCounter();
         LOG.info("GET subset with id "+id+" includeDrafts");
 
         if (Utils.isClean(id)){
-            ResponseEntity<JsonNode> majorVersionsRE = getVersions(id, includeFuture, includeDrafts, urnOnly);
+            ResponseEntity<JsonNode> majorVersionsRE = getVersions(id, includeFuture, includeDrafts, rankedURNOnly);
             if (majorVersionsRE.getStatusCode() != HttpStatus.OK) {
                 LOG.error("Failed to get version of subset "+id);
                 return majorVersionsRE;
@@ -229,7 +229,7 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets/{id}/versions")
-    public ResponseEntity<JsonNode> getVersions(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean urnOnly) {
+    public ResponseEntity<JsonNode> getVersions(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean rankedURNOnly) {
         metricsService.incrementGETCounter();
         LOG.info("GET all versions of subset with id: "+id+" includeFuture: "+includeFuture+" includeDrafts: "+includeDrafts);
 
@@ -286,7 +286,7 @@ public class SubsetsController {
                     }
                     LOG.debug("versionList size: "+versionList.size());
                     versionList.sort(Utils::versionComparator);
-                    if (!urnOnly)
+                    if (!rankedURNOnly)
                         versionList = resolveURNsOfCodesInAllVersions(versionList);
                     ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
                     versionList.forEach(majorVersionsArrayNode::add);
@@ -345,13 +345,13 @@ public class SubsetsController {
      * @return
      */
     @GetMapping("/v1/subsets/{id}/versions/{version}")
-    public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String id, @PathVariable("version") String version, @RequestParam(defaultValue = "false") boolean urnOnly) {
+    public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String id, @PathVariable("version") String version, @RequestParam(defaultValue = "false") boolean rankedURNOnly) {
         metricsService.incrementGETCounter();
         LOG.info("GET version "+version+" of subset with id "+id);
 
         if (Utils.isClean(id) && Utils.isVersion(version)){
             if (Utils.isVersion(version)){
-                ResponseEntity<JsonNode> versionsRE = getVersions(id, true, true, urnOnly);
+                ResponseEntity<JsonNode> versionsRE = getVersions(id, true, true, rankedURNOnly);
                 JsonNode responseBodyJSON = versionsRE.getBody();
                 if (responseBodyJSON != null){
                     if (responseBodyJSON.isArray()) {
@@ -387,7 +387,7 @@ public class SubsetsController {
                                                    @RequestParam(required = false) String to,
                                                    @RequestParam(defaultValue = "false") boolean includeDrafts,
                                                    @RequestParam(defaultValue = "false") boolean includeFuture,
-                                                   @RequestParam(defaultValue = "false") boolean urnOnly) {
+                                                   @RequestParam(defaultValue = "false") boolean rankedURNOnly) {
 
         LOG.info("GET codes of subset with id "+id);
         metricsService.incrementGETCounter();
@@ -395,7 +395,7 @@ public class SubsetsController {
         if (Utils.isClean(id)){
             if (from == null && to == null){
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
-                ResponseEntity<JsonNode> subsetResponseEntity = getSubset(id, includeDrafts, includeFuture, urnOnly);
+                ResponseEntity<JsonNode> subsetResponseEntity = getSubset(id, includeDrafts, includeFuture, rankedURNOnly);
                 JsonNode responseBodyJSON = subsetResponseEntity.getBody();
                 if (responseBodyJSON != null){
                     ArrayNode codes = (ArrayNode) responseBodyJSON.get(Field.CODES);
@@ -413,7 +413,7 @@ public class SubsetsController {
             boolean isToDate = to != null;
             if ((!isFromDate || Utils.isYearMonthDay(from)) && (!isToDate || Utils.isYearMonthDay(to))){ // If a date is given as param, it must be valid format
                 // If a date interval is specified using 'from' and 'to' query parameters
-                ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts, urnOnly);
+                ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts, rankedURNOnly);
                 JsonNode responseBodyJSON = versionsResponseEntity.getBody();
                 LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
                 ObjectMapper mapper = new ObjectMapper();
@@ -504,12 +504,12 @@ public class SubsetsController {
                                                      @RequestParam String date,
                                                      @RequestParam(defaultValue = "false") boolean includeFuture,
                                                      @RequestParam(defaultValue = "false") boolean includeDrafts,
-                                                     @RequestParam(defaultValue = "false") boolean urnOnly) {
+                                                     @RequestParam(defaultValue = "false") boolean rankedURNOnly) {
         metricsService.incrementGETCounter();
         LOG.info("GET codes valid at date "+date+" for subset with id "+id);
 
         if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
-            ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts, urnOnly);
+            ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts, rankedURNOnly);
             JsonNode responseBodyJSON = versionsResponseEntity.getBody();
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
