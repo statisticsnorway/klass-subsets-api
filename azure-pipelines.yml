@@ -23,7 +23,7 @@ jobs:
     steps:
       - task: DownloadSecureFile@1
         name: dockerComposeCIBuild # use $(dockerComposeCIBuild.secureFilePath) to refer to it
-        displayName: 'Download docker-compose.ci.build.yaml'
+        displayName: 'Download docker-compose.ci.build.yml'
         inputs:
           secureFile: 'docker-compose.ci.build.yml'
       - task: DownloadSecureFile@1
@@ -37,6 +37,9 @@ jobs:
         inputs:
           secureFile: 'schema.graphql'
       - task: DockerCompose@0
+        env:
+          - SQL_INIT_PATH $(sqlInit.secureFilePath)
+          - SCHEMA_PATH $(schemaGraphQL.secureFilePath)
         displayName: 'Run integration test backend services'
         inputs:
           action: Run services
