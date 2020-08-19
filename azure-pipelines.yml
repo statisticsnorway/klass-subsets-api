@@ -38,8 +38,8 @@ jobs:
           secureFile: 'schema.graphql'
       - task: DockerCompose@0
         env:
-          - SQL_INIT_PATH $(sqlInit.secureFilePath)
-          - SCHEMA_PATH $(schemaGraphQL.secureFilePath)
+          SQL_INIT_PATH: $(sqlInit.secureFilePath)
+          SCHEMA_PATH: $(schemaGraphQL.secureFilePath)
         displayName: 'Run integration test backend services'
         inputs:
           action: Run services
