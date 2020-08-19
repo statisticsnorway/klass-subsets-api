@@ -85,9 +85,10 @@ public class KlassURNResolver {
             }
             code.put(Field.CLASSIFICATION_ID, classificationID);
             code.put(Field.CODE, codeString);
-            ArrayNode links = new ObjectMapper().createArrayNode();
             String selfURL = makeURL(classificationID, fromDate, toDate, codeString);
-            links.add(new ObjectMapper().createObjectNode().put(Field.SELF, selfURL));
+            ObjectMapper om = new ObjectMapper();
+            ObjectNode self = om.createObjectNode().put("href", selfURL);
+            ObjectNode links = om.createObjectNode().set(Field.SELF, self);
             code.set(Field._LINKS, links);
             classificationCodesMap.merge(classificationID, codeString, (c1, c2)-> c1+","+c2);
             urnCodeMap.put(URN, code);
