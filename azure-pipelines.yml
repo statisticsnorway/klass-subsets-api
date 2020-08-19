@@ -29,7 +29,7 @@ jobs:
       - task: DockerCompose@0
         displayName: Container registry login
         inputs:
-          dockerComposeFile: 'docker-compose.ci.build.yml'
+          dockerComposeFile: $(dockerComposeCIBuild.secureFilePath)
           containerregistrytype: Container Registry
           dockerRegistryEndpoint: dockerHubOlved
       - task: DockerCompose@0
@@ -38,7 +38,7 @@ jobs:
           action: Run services
           containerregistrytype: Container Registry
           dockerRegistryEndpoint: dockerHubOlved
-          dockerComposeFile: 'docker-compose.ci.build.yml'
+          dockerComposeFile: $(dockerComposeCIBuild.secureFilePath)
           projectName: $(Build.Repository.Name)
           qualifyImageNames: true
           buildImages: false
