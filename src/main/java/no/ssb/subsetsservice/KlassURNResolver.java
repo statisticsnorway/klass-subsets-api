@@ -23,7 +23,7 @@ public class KlassURNResolver {
     public static String klassBaseURL = "https://data.ssb.no/api/klass/v1/classifications";
 
     public boolean pingKLASSClassifications(){
-        ResponseEntity<JsonNode> re = getFrom(klassBaseURL+".json");
+        ResponseEntity<String> re = getStringResponseFrom("https://data.ssb.no/api/klass/ping/");
         return re.getStatusCode().equals(HttpStatus.OK);
     }
 
@@ -109,6 +109,16 @@ public class KlassURNResolver {
             return new RestTemplate().getForEntity(url, JsonNode.class);
         } catch (HttpClientErrorException | HttpServerErrorException e){
             return ErrorHandler.newHttpError("could not retrieve "+url+".", e.getStatusCode(), LOG);
+        }
+    }
+
+    private ResponseEntity<String> getStringResponseFrom(String url)
+    {
+        LOG.info("Attempting to GET "+url);
+        try {
+            return new RestTemplate().getForEntity(url, String.class);
+        } catch (HttpClientErrorException | HttpServerErrorException e){
+            return new ResponseEntity<>(e.toString(), e.getStatusCode());
         }
     }
 }
