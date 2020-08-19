@@ -27,12 +27,6 @@ jobs:
         inputs:
           secureFile: 'docker-compose.ci.build.yml'
       - task: DockerCompose@0
-        displayName: Container registry login
-        inputs:
-          dockerComposeFile: $(dockerComposeCIBuild.secureFilePath)
-          containerregistrytype: Container Registry
-          dockerRegistryEndpoint: dockerHubOlved
-      - task: DockerCompose@0
         displayName: 'Run integration test backend services'
         inputs:
           action: Run services
