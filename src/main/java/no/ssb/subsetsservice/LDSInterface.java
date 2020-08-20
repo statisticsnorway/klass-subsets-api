@@ -64,4 +64,5 @@ public interface LDSInterface {
      */
     ResponseEntity<JsonNode> createSubset(JsonNode subset, String id);
 
+    boolean pingLDSSubsets();
 }

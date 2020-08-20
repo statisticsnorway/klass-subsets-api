@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -21,31 +22,13 @@ public class KlassURNResolver {
     private static final Logger LOG = LoggerFactory.getLogger(KlassURNResolver.class);
     public static String klassBaseURL = "https://data.ssb.no/api/klass/v1/classifications";
 
-    public static String getURL(){
-        return System.getenv().getOrDefault("API_KLASS", klassBaseURL);
+    public boolean pingKLASSClassifications(){
+        ResponseEntity<String> re = getStringResponseFrom("https://data.ssb.no/api/klass/ping/");
+        return re.getStatusCode().equals(HttpStatus.OK);
     }
 
-    public JsonNode resolveURN(String codeURN, String from, String to){
-        LOG.info("Attempting to resolve the KLASS code URN "+codeURN);
-        String[] urnSplitColon = codeURN.split(":");
-        String classificationID = "";
-        String code = "";
-        for (int i = 0; i < urnSplitColon.length; i++) {
-            String value = urnSplitColon[i];
-            if (value.equals("code")){
-                if (urnSplitColon.length > i+1)
-                    code = urnSplitColon[i+1];
-            } else if (value.equals("classifications")){
-                if (urnSplitColon.length > i+1)
-                    classificationID = urnSplitColon[i+1];
-            }
-        }
-        from = from.split("T")[0];
-        to = to.split("T")[0];
-        String url = makeURL(classificationID, from, to, code);
-        ResponseEntity<JsonNode> selectCodesRE = getFrom(url);
-        JsonNode codes = selectCodesRE.getBody();
-        return codes;
+    public static String getURL(){
+        return System.getenv().getOrDefault("API_KLASS", klassBaseURL);
     }
 
     /**
@@ -58,8 +41,6 @@ public class KlassURNResolver {
         LOG.info("Resolving all code URNs in a subset");
 
         ArrayNode codes = (ArrayNode)subset.get(Field.CODES);
-        List<String> codeURNs = new ArrayList<>(codes.size());
-        codes.forEach(c->codeURNs.add(c.get(Field.URN).asText()));
         String from = subset.get(Field.VERSION_VALID_FROM).asText();
         String fromDate = from.split("T")[0];
         String toDate = to.split("T")[0];
@@ -85,9 +66,10 @@ public class KlassURNResolver {
             }
             code.put(Field.CLASSIFICATION_ID, classificationID);
             code.put(Field.CODE, codeString);
-            ArrayNode links = new ObjectMapper().createArrayNode();
             String selfURL = makeURL(classificationID, fromDate, toDate, codeString);
-            links.add(new ObjectMapper().createObjectNode().put(Field.SELF, selfURL));
+            ObjectMapper om = new ObjectMapper();
+            ObjectNode self = om.createObjectNode().put("href", selfURL);
+            ObjectNode links = om.createObjectNode().set(Field.SELF, self);
             code.set(Field._LINKS, links);
             classificationCodesMap.merge(classificationID, codeString, (c1, c2)-> c1+","+c2);
             urnCodeMap.put(URN, code);
@@ -128,6 +110,16 @@ public class KlassURNResolver {
             return new RestTemplate().getForEntity(url, JsonNode.class);
         } catch (HttpClientErrorException | HttpServerErrorException e){
             return ErrorHandler.newHttpError("could not retrieve "+url+".", e.getStatusCode(), LOG);
+        }
+    }
+
+    private ResponseEntity<String> getStringResponseFrom(String url)
+    {
+        LOG.info("Attempting to GET "+url);
+        try {
+            return new RestTemplate().getForEntity(url, String.class);
+        } catch (HttpClientErrorException | HttpServerErrorException e){
+            return new ResponseEntity<>(e.toString(), e.getStatusCode());
         }
     }
 }
