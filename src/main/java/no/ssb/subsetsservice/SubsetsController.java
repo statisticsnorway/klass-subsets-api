@@ -32,7 +32,7 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets")
-    public ResponseEntity<JsonNode> getSubsets( @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean includeFuture) {
+    public ResponseEntity<JsonNode> getSubsets( @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean rankedUrnOnly) {
         metricsService.incrementGETCounter();
 
         LOG.info("GET subsets");
@@ -40,7 +40,7 @@ public class SubsetsController {
         List<String> subsetIDsList = ldsFacade.getAllSubsetIDs();
         ArrayNode arrayNode = new ObjectMapper().createArrayNode();
         for (String id : subsetIDsList) {
-            ResponseEntity<JsonNode> subsetRE = getSubset(id, includeDrafts, includeFuture);
+            ResponseEntity<JsonNode> subsetRE = getSubset(id, includeDrafts, includeFuture, rankedUrnOnly);
             if (subsetRE.getStatusCode() == HttpStatus.OK)
                 arrayNode.add(subsetRE.getBody());
             else
@@ -86,18 +86,19 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets/{id}")
-    public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean includeFuture) {
+    public ResponseEntity<JsonNode> getSubset(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean rankedUrnOnly) {
         metricsService.incrementGETCounter();
-        LOG.info("GET subset with id "+id);
+        LOG.info("GET subset with id "+id+" includeDrafts");
 
         if (Utils.isClean(id)){
-            ResponseEntity<JsonNode> majorVersionsRE = getVersions(id, includeFuture, includeDrafts);
+            ResponseEntity<JsonNode> majorVersionsRE = getVersions(id, includeFuture, includeDrafts, rankedUrnOnly);
             if (majorVersionsRE.getStatusCode() != HttpStatus.OK) {
                 LOG.error("Failed to get version of subset "+id);
                 return majorVersionsRE;
             }
             JsonNode majorVersionsBody = majorVersionsRE.getBody();
             if (majorVersionsBody != null && majorVersionsBody.isArray()){
+                LOG.debug("The array node with major versions");
                 if (majorVersionsBody.has(0))
                     return new ResponseEntity<>(majorVersionsBody.get(0), HttpStatus.OK);
                 return ErrorHandler.newHttpError("No subset matched the parameters", HttpStatus.NOT_FOUND, LOG);
@@ -116,8 +117,8 @@ public class SubsetsController {
         if (Utils.isClean(id)) {
             ObjectNode editableSubset = Utils.cleanSubsetVersion(newVersionOfSubset).deepCopy();
             editableSubset.put(Field.LAST_UPDATED_DATE, Utils.getNowISO());
-            ResponseEntity<JsonNode> mostRecentVersionRE = getSubset(id, true, true);
-            ResponseEntity<JsonNode> oldVersionsRE = getVersions(id, true, true);
+            ResponseEntity<JsonNode> mostRecentVersionRE = getSubset(id, true, true, true);
+            ResponseEntity<JsonNode> oldVersionsRE = getVersions(id, true, true, true);
             JsonNode mostRecentVersionOfThisSubset = mostRecentVersionRE.getBody();
             if (mostRecentVersionRE.getStatusCodeValue() == HttpStatus.OK.value()){
                 assert mostRecentVersionOfThisSubset != null && mostRecentVersionOfThisSubset.has(Field.ID) : "no old subset with this id was found in body of response entity";
@@ -153,7 +154,7 @@ public class SubsetsController {
                     }
                 }
 
-                ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, newVersionString);
+                ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, newVersionString, false);
                 boolean thisVersionExistsFromBefore = prevPatchOfThisVersionRE.getStatusCodeValue() == 200;
                 boolean attemptToChangeCodesOfPublishedVersion = false;
                 if (thisVersionExistsFromBefore){
@@ -228,7 +229,7 @@ public class SubsetsController {
     }
 
     @GetMapping("/v1/subsets/{id}/versions")
-    public ResponseEntity<JsonNode> getVersions(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean includeDrafts) {
+    public ResponseEntity<JsonNode> getVersions(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean rankedUrnOnly) {
         metricsService.incrementGETCounter();
         LOG.info("GET all versions of subset with id: "+id+" includeFuture: "+includeFuture+" includeDrafts: "+includeDrafts);
 
@@ -280,19 +281,13 @@ public class SubsetsController {
                     LOG.debug("versionLastUpdatedMap size: "+versionLastUpdatedMap.size());
 
                     ArrayList<JsonNode> versionList = new ArrayList<>(versionLastUpdatedMap.size());
-                    versionLastUpdatedMap.forEach((versionInt, versionJsonNode) -> versionList.add(versionJsonNode));
+                    for (Map.Entry<Integer, JsonNode> entry : versionLastUpdatedMap.entrySet()) {
+                        versionList.add(entry.getValue());
+                    }
                     LOG.debug("versionList size: "+versionList.size());
                     versionList.sort(Utils::versionComparator);
-                    String validTo = ""; //FIXME: This means the most recent version does not have a validTo. Is it potentially a mistake?
-                    for (int i = 0; i < versionList.size(); i++) {
-                        ObjectNode editableSubset = versionList.get(i).deepCopy();
-                        ArrayNode resolvedCodes = resolveURNs(editableSubset, validTo);
-                        editableSubset.set(Field.CODES, resolvedCodes);
-                        validTo = editableSubset.get(Field.VERSION_VALID_FROM).asText();
-                        versionList.set(i, editableSubset.deepCopy());
-                    }
-                    LOG.debug("URNs are resolved");
-
+                    if (!rankedUrnOnly)
+                        versionList = resolveURNsOfCodesInAllVersions(versionList);
                     ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
                     versionList.forEach(majorVersionsArrayNode::add);
                     LOG.debug("majorVersionsArrayNode size: "+majorVersionsArrayNode.size());
@@ -350,13 +345,13 @@ public class SubsetsController {
      * @return
      */
     @GetMapping("/v1/subsets/{id}/versions/{version}")
-    public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String id, @PathVariable("version") String version) {
+    public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String id, @PathVariable("version") String version, @RequestParam(defaultValue = "false") boolean rankedUrnOnly) {
         metricsService.incrementGETCounter();
         LOG.info("GET version "+version+" of subset with id "+id);
 
         if (Utils.isClean(id) && Utils.isVersion(version)){
             if (Utils.isVersion(version)){
-                ResponseEntity<JsonNode> versionsRE = getVersions(id, true, true);
+                ResponseEntity<JsonNode> versionsRE = getVersions(id, true, true, rankedUrnOnly);
                 JsonNode responseBodyJSON = versionsRE.getBody();
                 if (responseBodyJSON != null){
                     if (responseBodyJSON.isArray()) {
@@ -387,14 +382,20 @@ public class SubsetsController {
      * @return
      */
     @GetMapping("/v1/subsets/{id}/codes")
-    public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id, @RequestParam(required = false) String from, @RequestParam(required = false) String to, @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean includeFuture) {
+    public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id,
+                                                   @RequestParam(required = false) String from,
+                                                   @RequestParam(required = false) String to,
+                                                   @RequestParam(defaultValue = "false") boolean includeDrafts,
+                                                   @RequestParam(defaultValue = "false") boolean includeFuture,
+                                                   @RequestParam(defaultValue = "false") boolean rankedUrnOnly) {
+
         LOG.info("GET codes of subset with id "+id);
         metricsService.incrementGETCounter();
 
         if (Utils.isClean(id)){
             if (from == null && to == null){
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
-                ResponseEntity<JsonNode> subsetResponseEntity = getSubset(id, includeDrafts, includeFuture);
+                ResponseEntity<JsonNode> subsetResponseEntity = getSubset(id, includeDrafts, includeFuture, rankedUrnOnly);
                 JsonNode responseBodyJSON = subsetResponseEntity.getBody();
                 if (responseBodyJSON != null){
                     ArrayNode codes = (ArrayNode) responseBodyJSON.get(Field.CODES);
@@ -412,7 +413,7 @@ public class SubsetsController {
             boolean isToDate = to != null;
             if ((!isFromDate || Utils.isYearMonthDay(from)) && (!isToDate || Utils.isYearMonthDay(to))){ // If a date is given as param, it must be valid format
                 // If a date interval is specified using 'from' and 'to' query parameters
-                ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts);
+                ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts, rankedUrnOnly);
                 JsonNode responseBodyJSON = versionsResponseEntity.getBody();
                 LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
                 ObjectMapper mapper = new ObjectMapper();
@@ -499,12 +500,16 @@ public class SubsetsController {
      * @return
      */
     @GetMapping("/v1/subsets/{id}/codesAt")
-    public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id, @RequestParam String date, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean includeDrafts) {
+    public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id,
+                                                     @RequestParam String date,
+                                                     @RequestParam(defaultValue = "false") boolean includeFuture,
+                                                     @RequestParam(defaultValue = "false") boolean includeDrafts,
+                                                     @RequestParam(defaultValue = "false") boolean rankedUrnOnly) {
         metricsService.incrementGETCounter();
         LOG.info("GET codes valid at date "+date+" for subset with id "+id);
 
         if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
-            ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts);
+            ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts, rankedUrnOnly);
             JsonNode responseBodyJSON = versionsResponseEntity.getBody();
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
@@ -544,19 +549,35 @@ public class SubsetsController {
         return new LDSFacade().getClassificationSubsetSchema();
     }
 
-    private ArrayNode resolveURNs(JsonNode subset, String to){
-        to = to.split("T")[0];
-        if (to.equals("") || Utils.isYearMonthDay(to)){
+    private ArrayList<JsonNode> resolveURNsOfCodesInAllVersions(ArrayList<JsonNode> versionListInput){
+        ArrayList<JsonNode> versionList = new ArrayList<>(versionListInput.size());
+        versionListInput.forEach(v -> versionList.add(v.deepCopy()));
+        versionList.sort(Utils::versionComparator);
+
+        String validTo = ""; //FIXME: This means the most recent version does not have a validTo. Is it potentially a mistake?
+        for (int i = 0; i < versionList.size(); i++) {
+            ObjectNode editableSubset = versionList.get(i).deepCopy();
+            ArrayNode resolvedCodes = resolveURNsOfCodesInThisSubset(editableSubset, validTo);
+            editableSubset.set(Field.CODES, resolvedCodes);
+            validTo = editableSubset.get(Field.VERSION_VALID_FROM).asText();
+            versionList.set(i, editableSubset.deepCopy());
+        }
+        LOG.debug("URNs of all versions are resolved");
+        return versionList;
+    }
+
+    private ArrayNode resolveURNsOfCodesInThisSubset(JsonNode subset, String subsetValidTo){
+        subsetValidTo = subsetValidTo.split("T")[0];
+        if (subsetValidTo.equals("") || Utils.isYearMonthDay(subsetValidTo)){
             try {
-                ArrayNode codeURNArrayNode = new KlassURNResolver().resolveURNs(subset, to);
-                System.out.println(codeURNArrayNode.toPrettyString());
+                ArrayNode codeURNArrayNode = new KlassURNResolver().resolveURNs(subset, subsetValidTo);
                 return codeURNArrayNode;
             } catch (Exception | Error e){
                 LOG.error(e.toString());
                 return (ArrayNode)subset.get(Field.CODES);
             }
         }
-        throw new IllegalArgumentException("'to' must be empty string '' or on the form YYYY-MM-DD, but was "+to);
+        throw new IllegalArgumentException("'to' must be empty string '' or on the form YYYY-MM-DD, but was "+subsetValidTo);
     }
 
 }
