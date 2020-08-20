@@ -18,6 +18,7 @@ public class Utils {
     public static final String CLEAN_ID_REGEX = "^[a-zA-Z0-9-_]+$";
     public static final String YEAR_MONTH_DAY_REGEX = "([12]\\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01]))";
     public static final String VERSION_STRING_REGEX = "(\\d(\\.\\d)?(\\.\\d)?)";
+    public static final String URN_FORMAT = "urn:ssb:klass-api:classifications:%s:code:%s";
 
     public static boolean isYearMonthDay(String date){
         return date.matches(YEAR_MONTH_DAY_REGEX);
@@ -126,6 +127,6 @@ public class Utils {
     }
 
     public static String generateURN(String classification, String code) {
-        return String.format("urn:ssb:klass-api:classifications:%s:code:%s", classification, code);
+        return String.format(URN_FORMAT, classification, code);
     }
 }
