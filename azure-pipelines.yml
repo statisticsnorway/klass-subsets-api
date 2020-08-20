@@ -53,7 +53,7 @@ jobs:
           detached: true
       - task: Maven@3
         env:
-          API_LDS: "http://localhost:9090/ns/ClassificationSubset"
+          API_LDS: "http://host.docker.internal:9090/ns/ClassificationSubset"
           API_KLASS: "https://data.ssb.no/api/klass/v1/classifications"
         displayName: 'Maven install'
         inputs:

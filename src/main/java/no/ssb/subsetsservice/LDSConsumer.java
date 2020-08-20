@@ -13,11 +13,12 @@ import java.util.Collections;
 public class LDSConsumer {
 
     private static final Logger LOG = LoggerFactory.getLogger(LDSConsumer.class);
-    static String LDS_LOCAL = "http://localhost:9090/ns/ClassificationSubset";
+    static String LDS_LOCAL = "http://host.docker.internal:9090/ns/ClassificationSubset";
     static String LDS_URL;
 
     LDSConsumer(){
         LDS_URL = getURLFromEnvOrDefault();
+        LOG.debug("LDS URL: "+LDS_URL);
     }
 
 
@@ -25,6 +26,7 @@ public class LDSConsumer {
         LDS_URL = API_LDS;
         if (LDS_URL.equals(""))
             LDS_URL = getURLFromEnvOrDefault();
+        LOG.debug("LDS URL: "+LDS_URL);
     }
 
     private static String getURLFromEnvOrDefault(){
