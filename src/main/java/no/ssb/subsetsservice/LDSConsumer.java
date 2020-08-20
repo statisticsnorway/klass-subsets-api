@@ -13,7 +13,7 @@ import java.util.Collections;
 public class LDSConsumer {
 
     private static final Logger LOG = LoggerFactory.getLogger(LDSConsumer.class);
-    static String LDS_LOCAL = "http://host.docker.internal:9090/ns/ClassificationSubset";
+    static String LDS_LOCAL = "http://localhost:9090/ns/ClassificationSubset";
     static String LDS_URL;
 
     LDSConsumer(){
