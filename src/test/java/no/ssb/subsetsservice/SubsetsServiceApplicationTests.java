@@ -8,8 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.ResponseEntity;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 class SubsetsServiceApplicationTests {
@@ -35,7 +34,7 @@ class SubsetsServiceApplicationTests {
 		System.out.println("RESPONSE BODY");
 		System.out.println(response.getBody());
 		assertNotEquals(null, response.getBody());
-		assertNotEquals("[]", response.getBody());
+		assertNotEquals("[]", response.getBody().asText());
 	}
 
 	@Test
@@ -85,7 +84,8 @@ class SubsetsServiceApplicationTests {
 		System.out.println(response.getBody());
 		System.out.println("IDs:");
 		for (JsonNode jsonNode : response.getBody()) {
-			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText(), false, false, false).getBody();
+			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText(), true, true, false).getBody();
+			assertTrue(subset.has("id"));
 			assertEquals(subset.get("id").asText(), jsonNode.get("id").asText());
 			System.out.println(subset.get("id"));
 		}
@@ -96,20 +96,23 @@ class SubsetsServiceApplicationTests {
 		ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets( true, true, false);
 
 		System.out.println("All subsets:");
-		System.out.println(response.getBody());
+		JsonNode body = response.getBody();
+		assertNotNull(body);
+		System.out.println(body);
 		System.out.println("IDs:");
 		for (JsonNode jsonNode : response.getBody()) {
-			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText(), false, false, false).getBody();
+			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText(), true, true, false).getBody();
+			assertNotNull(subset);
+			assertTrue(subset.has("id"));
 			assertEquals(subset.get("id").asText(), jsonNode.get("id").asText());
 			System.out.println("ID: "+subset.get("id"));
 
 			ArrayNode versions = (ArrayNode) SubsetsController.getInstance().getVersions(subset.get("id").asText(), true, true, false).getBody();
-			assertNotEquals(null, versions);
+			assertNotNull(versions);
 			assertNotEquals(0, versions.size());
 			for (JsonNode version : versions) {
 				System.out.println("Version: "+version.get("version").asText()+" adminstatus: "+version.get("administrativeStatus").asText()+" name:"+version.get("name").get(0).get("languageText").asText());
 			}
-
 		}
 	}
 

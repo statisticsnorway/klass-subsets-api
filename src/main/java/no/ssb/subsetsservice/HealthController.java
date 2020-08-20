@@ -1,6 +1,5 @@
 package no.ssb.subsetsservice;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,7 +16,7 @@ public class HealthController {
     @RequestMapping("/health/ready")
     public ResponseEntity<String> ready() {
         boolean klassReady = new KlassURNResolver().pingKLASSClassifications();
-        boolean ldsReady = new LDSFacade().pingLDSSubsets();
+        boolean ldsReady = new LDSFacade().healthReady();
         boolean schemaPresent = new LDSFacade().getClassificationSubsetSchema().getStatusCode().equals(HttpStatus.OK);
         if (klassReady && ldsReady && schemaPresent)
             return new ResponseEntity<>("The service is ready!", HttpStatus.OK);

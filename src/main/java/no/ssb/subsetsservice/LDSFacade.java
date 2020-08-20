@@ -64,7 +64,7 @@ public class LDSFacade implements LDSInterface {
     }
 
     @Override
-    public boolean pingLDSSubsets() {
+    public boolean healthReady() {
         return new LDSConsumer("https://lds-klass.staging-bip-app.ssb.no/health/ready").getFrom("").getStatusCode().equals(HttpStatus.OK);
     }
 }

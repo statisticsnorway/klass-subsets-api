@@ -52,6 +52,9 @@ jobs:
           abortOnContainerExit: true
           detached: true
       - task: Maven@3
+        env:
+          API_LDS: "http://localhost:9090/ns/ClassificationSubset"
+          API_KLASS: "https://data.ssb.no/api/klass/v1/classifications"
         displayName: 'Maven install'
         inputs:
           mavenPomFile: 'pom.xml'
@@ -62,7 +65,7 @@ jobs:
           publishJUnitResults: false
           testResultsFiles: '**/TEST-*.xml'
           goals: 'install'
-          options: '-DskipTests=true -Dmaven.javadoc.skip=true'
+          options: '-DskipTests=false -Dmaven.javadoc.skip=true'
       # Build Docker image
       - task: Docker@2
         displayName: 'Docker build'
