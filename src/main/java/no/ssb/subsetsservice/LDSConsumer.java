@@ -30,6 +30,8 @@ public class LDSConsumer {
     }
 
     private static String getURLFromEnvOrDefault(){
+        String host = System.getenv().getOrDefault("HOST_ADDRESS", "localhost");
+        LDS_LOCAL = "http://"+host+"/ns/ClassificationSubset";
         return System.getenv().getOrDefault("API_LDS", LDS_LOCAL);
     }
 
