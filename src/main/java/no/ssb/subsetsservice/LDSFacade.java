@@ -12,6 +12,7 @@ import java.util.List;
 public class LDSFacade implements LDSInterface {
 
     String API_LDS = "";
+    String SUBSETS_API = "/ns/ClassificationSubset";
 
     LDSFacade(){}
 
@@ -40,31 +41,31 @@ public class LDSFacade implements LDSInterface {
     }
 
     public ResponseEntity<JsonNode> getLastUpdatedVersionOfAllSubsets(){
-        return new LDSConsumer().getFrom("");
+        return new LDSConsumer().getFrom(SUBSETS_API+"");
     }
 
     public ResponseEntity<JsonNode> getTimelineOfSubset(String id){
-        return new LDSConsumer(API_LDS).getFrom("/"+id+"?timeline");
+        return new LDSConsumer(API_LDS).getFrom(SUBSETS_API+"/"+id+"?timeline");
     }
 
     public boolean existsSubsetWithID(String id){
-        return new LDSConsumer(API_LDS).getFrom("/"+id).getStatusCode().equals(HttpStatus.OK);
+        return new LDSConsumer(API_LDS).getFrom(SUBSETS_API+"/"+id).getStatusCode().equals(HttpStatus.OK);
     }
 
     public ResponseEntity<JsonNode> getClassificationSubsetSchema(){
-        return new LDSConsumer().getFrom("/?schema");
+        return new LDSConsumer().getFrom(SUBSETS_API+"/?schema");
     }
 
     public ResponseEntity<JsonNode> editSubset(JsonNode subset, String id){
-        return new LDSConsumer(API_LDS).putTo("/" + id, subset);
+        return new LDSConsumer(API_LDS).putTo(SUBSETS_API+"/" + id, subset);
     }
 
     public ResponseEntity<JsonNode> createSubset(JsonNode subset, String id){
-        return new LDSConsumer(API_LDS).postTo("/" + id, subset);
+        return new LDSConsumer(API_LDS).postTo(SUBSETS_API+"/" + id, subset);
     }
 
     @Override
-    public boolean pingLDSSubsets() {
-        return new LDSConsumer("https://lds-klass.staging-bip-app.ssb.no/health/ready").getFrom("").getStatusCode().equals(HttpStatus.OK);
+    public boolean healthReady() {
+        return new LDSConsumer(API_LDS).getFrom("/health/ready").getStatusCode().equals(HttpStatus.OK);
     }
 }
