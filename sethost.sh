@@ -2,14 +2,11 @@
 
 sleep 10
 
-echo "docker ps: "
-docker ps
+echo "docker ps -a: "
+docker ps -a
 
-echo "lds logs: "
-docker-compose -f docker-compose.ci.build.yml logs lds
-
-echo "postgresdb logs: "
-docker-compose -f docker-compose.ci.build.yml logs postgresdb
+echo "docker logs lds: "
+docker logs klass-subsets-setup-scratch_lds_1
 
 host=localhost
 if grep '^1:name=systemd:/docker/' /proc/1/cgroup
