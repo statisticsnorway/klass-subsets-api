@@ -51,6 +51,9 @@ jobs:
           buildImages: false
           abortOnContainerExit: true
           detached: true
+      - task: ShellScript@2
+        inputs:
+          scriptPath: sethost.sh
       - task: Maven@3
         env:
           API_LDS: "http://localhost:9090/ns/ClassificationSubset"
