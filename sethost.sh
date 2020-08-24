@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
-sleep 10
-
 echo "docker ps -a: "
 docker ps -a
 
-echo "docker logs lds: "
-docker logs klass-subsets-setup-scratch_lds_1
+echo "*** docker logs lds: ***"
+docker logs statisticsnorwayklass-subsets-api_lds_1
+
+echo "*** docker logs postgres db: ***"
+docker logs statisticsnorwayklass-subsets-api_postgresdb_1
 
 host=localhost
 if grep '^1:name=systemd:/docker/' /proc/1/cgroup
