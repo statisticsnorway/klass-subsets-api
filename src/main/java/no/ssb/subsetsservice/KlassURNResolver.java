@@ -19,15 +19,16 @@ import java.util.Map;
 public class KlassURNResolver {
 
     private static final Logger LOG = LoggerFactory.getLogger(KlassURNResolver.class);
-    public static String klassBaseURL = "https://data.ssb.no/api/klass/v1/classifications";
+    public static String KLASS_BASE_URL = "https://data.ssb.no/api/klass";
+    public static final String CLASSIFICATIONS_API = "/v1/classifications";
 
     public boolean pingKLASSClassifications(){
-        ResponseEntity<String> re = getStringResponseFrom("https://data.ssb.no/api/klass/ping/");
+        ResponseEntity<String> re = getStringResponseFrom(String.format("%s/ping/", KLASS_BASE_URL));
         return re.getStatusCode().equals(HttpStatus.OK);
     }
 
     public static String getURL(){
-        return System.getenv().getOrDefault("API_KLASS", klassBaseURL);
+        return System.getenv().getOrDefault("API_KLASS", KLASS_BASE_URL);
     }
 
     /**
@@ -98,8 +99,8 @@ public class KlassURNResolver {
     }
 
     private String makeURL(String classificationID, String from, String to, String codes){
-        klassBaseURL = getURL();
-        return String.format("%s/%s/codes.json?from=%s&to=%s&selectCodes=%s", klassBaseURL, classificationID, from, to, codes);
+        KLASS_BASE_URL = getURL();
+        return String.format("%s%s/%s/codes.json?from=%s&to=%s&selectCodes=%s", KLASS_BASE_URL, CLASSIFICATIONS_API, classificationID, from, to, codes);
     }
 
     private ResponseEntity<JsonNode> getFrom(String url)

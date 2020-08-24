@@ -13,7 +13,7 @@ import java.util.Collections;
 public class LDSConsumer {
 
     private static final Logger LOG = LoggerFactory.getLogger(LDSConsumer.class);
-    static String LDS_LOCAL = "http://localhost:9090/ns/ClassificationSubset";
+    static String LDS_LOCAL = "http://localhost:9090";
     static String LDS_URL;
 
     LDSConsumer(){
@@ -31,7 +31,9 @@ public class LDSConsumer {
 
     private static String getURLFromEnvOrDefault(){
         String host = System.getenv().getOrDefault("HOST_ADDRESS", "localhost");
-        LDS_LOCAL = "http://"+host+"/ns/ClassificationSubset";
+        LOG.debug("Host: "+host);
+        LDS_LOCAL = "http://"+host+":9090";
+        LOG.debug("LDS_LOCAL: "+LDS_LOCAL);
         return System.getenv().getOrDefault("API_LDS", LDS_LOCAL);
     }
 
