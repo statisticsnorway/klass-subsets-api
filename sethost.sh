@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+sleep 10
 host=localhost
 if grep '^1:name=systemd:/docker/' /proc/1/cgroup
 then
