@@ -127,19 +127,7 @@ public class SubsetsController {
                 JsonNode createdDate = mostRecentVersionOfThisSubset.get(Field.CREATED_DATE);
                 editableSubset.put(Field.CREATED_DATE, createdDate.asText());
             } else {
-                LOG.error("most recent version of subset "+id+" did not have the createdDate field");
-                boolean hasCreatedDate = false;
-                for (JsonNode jsonNode : versionsArrayNode) {
-                    if (jsonNode.has(Field.CREATED_DATE)) {
-                        JsonNode createdDate = jsonNode.get(Field.CREATED_DATE);
-                        editableSubset.put(Field.CREATED_DATE, createdDate.asText());
-                        hasCreatedDate = true;
-                        break;
-                    }
-                }
-                if (!hasCreatedDate){
-                    ErrorHandler.newHttpError("Failed to find a single version of subset '"+id+"' with a set createdDate", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
-                }
+                return ErrorHandler.newHttpError("most recent version of subset "+id+" did not have the createdDate field", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
             }
 
             if (mostRecentVersionRE.getStatusCodeValue() == HttpStatus.OK.value()){
