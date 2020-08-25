@@ -118,10 +118,18 @@ public class SubsetsController {
             ObjectNode editableSubset = Utils.cleanSubsetVersion(newVersionOfSubset).deepCopy();
             editableSubset.put(Field.LAST_UPDATED_DATE, Utils.getNowISO());
             ResponseEntity<JsonNode> mostRecentVersionRE = getSubset(id, true, true, true);
-            ResponseEntity<JsonNode> oldVersionsRE = getVersions(id, true, true, true);
             JsonNode mostRecentVersionOfThisSubset = mostRecentVersionRE.getBody();
+            if (mostRecentVersionOfThisSubset == null)
+                return ErrorHandler.newHttpError("Call for most recent version of subset you PUT did not return a body, and gave code "+mostRecentVersionRE.getStatusCode().toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+            if (mostRecentVersionOfThisSubset.has(Field.CREATED_DATE)){
+                JsonNode createdDate = mostRecentVersionOfThisSubset.get(Field.CREATED_DATE);
+                editableSubset.put(Field.CREATED_DATE, createdDate.asText());
+            } else {
+                return ErrorHandler.newHttpError("most recent version did not have the createdDate field", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+            }
+            ResponseEntity<JsonNode> oldVersionsRE = getVersions(id, true, true, true);
             if (mostRecentVersionRE.getStatusCodeValue() == HttpStatus.OK.value()){
-                assert mostRecentVersionOfThisSubset != null && mostRecentVersionOfThisSubset.has(Field.ID) : "no old subset with this id was found in body of response entity";
+                assert mostRecentVersionOfThisSubset.has(Field.ID) : "subset did not have field '"+Field.ID+"' ";
 
                 String oldID = mostRecentVersionOfThisSubset.get(Field.ID).asText();
                 String newID = newVersionOfSubset.get(Field.ID).asText();
