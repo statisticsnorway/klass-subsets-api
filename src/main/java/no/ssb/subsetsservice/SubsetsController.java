@@ -119,17 +119,31 @@ public class SubsetsController {
             editableSubset.put(Field.LAST_UPDATED_DATE, Utils.getNowISO());
             ResponseEntity<JsonNode> mostRecentVersionRE = getSubset(id, true, true, true);
             JsonNode mostRecentVersionOfThisSubset = mostRecentVersionRE.getBody();
+            ResponseEntity<JsonNode> oldVersionsRE = getVersions(id, true, true, true);
+            ArrayNode versionsArrayNode = Utils.sortByVersionValidFrom(Utils.cleanSubsetVersion(Objects.requireNonNull(oldVersionsRE.getBody())).deepCopy());
             if (mostRecentVersionOfThisSubset == null)
-                return ErrorHandler.newHttpError("Call for most recent version of subset you PUT did not return a body, and gave code "+mostRecentVersionRE.getStatusCode().toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+                return ErrorHandler.newHttpError("Call for most recent version of subset '"+id+"'did not return a body, and gave code "+mostRecentVersionRE.getStatusCode().toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
             if (mostRecentVersionOfThisSubset.has(Field.CREATED_DATE)){
                 JsonNode createdDate = mostRecentVersionOfThisSubset.get(Field.CREATED_DATE);
                 editableSubset.put(Field.CREATED_DATE, createdDate.asText());
             } else {
-                return ErrorHandler.newHttpError("most recent version did not have the createdDate field", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+                LOG.error("most recent version of subset "+id+" did not have the createdDate field");
+                boolean hasCreatedDate = false;
+                for (JsonNode jsonNode : versionsArrayNode) {
+                    if (jsonNode.has(Field.CREATED_DATE)) {
+                        JsonNode createdDate = jsonNode.get(Field.CREATED_DATE);
+                        editableSubset.put(Field.CREATED_DATE, createdDate.asText());
+                        hasCreatedDate = true;
+                        break;
+                    }
+                }
+                if (!hasCreatedDate){
+                    ErrorHandler.newHttpError("Failed to find a single version of subset '"+id+"' with a set createdDate", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+                }
             }
-            ResponseEntity<JsonNode> oldVersionsRE = getVersions(id, true, true, true);
+
             if (mostRecentVersionRE.getStatusCodeValue() == HttpStatus.OK.value()){
-                assert mostRecentVersionOfThisSubset.has(Field.ID) : "subset did not have field '"+Field.ID+"' ";
+                assert mostRecentVersionOfThisSubset.has(Field.ID) : "most recent version of this subset did not have the field '"+Field.ID+"' ";
 
                 String oldID = mostRecentVersionOfThisSubset.get(Field.ID).asText();
                 String newID = newVersionOfSubset.get(Field.ID).asText();
@@ -138,7 +152,6 @@ public class SubsetsController {
                 boolean consistentID = oldID.equals(newID) && newID.equals(id);
 
                 String newVersionValidFrom = newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText();
-                ArrayNode versionsArrayNode = Utils.sortByVersionValidFrom(Utils.cleanSubsetVersion(oldVersionsRE.getBody()).deepCopy());
 
                 String newVersionString = newVersionOfSubset.get(Field.VERSION).asText();
 
