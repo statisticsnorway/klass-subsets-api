@@ -1,13 +1,13 @@
 package no.ssb.subsetsservice;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import org.junit.Before;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import static no.ssb.subsetsservice.LDSConsumer.LDS_LOCAL;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @SpringBootTest
 class SubsetsControllerTest {
