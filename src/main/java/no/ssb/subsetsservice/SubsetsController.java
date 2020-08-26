@@ -27,6 +27,10 @@ public class SubsetsController {
         instance = this;
     }
 
+    public SubsetsController(){
+        instance = this;
+    }
+
     public static SubsetsController getInstance(){
         return instance;
     }

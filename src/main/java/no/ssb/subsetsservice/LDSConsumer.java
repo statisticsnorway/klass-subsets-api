@@ -18,6 +18,7 @@ public class LDSConsumer {
 
     LDSConsumer(){
         LDS_URL = getURLFromEnvOrDefault();
+        LOG.debug("LDS URL: "+LDS_URL);
     }
 
 
@@ -25,6 +26,7 @@ public class LDSConsumer {
         LDS_URL = API_LDS;
         if (LDS_URL.equals(""))
             LDS_URL = getURLFromEnvOrDefault();
+        LOG.debug("LDS URL: "+LDS_URL);
     }
 
     private static String getURLFromEnvOrDefault(){
