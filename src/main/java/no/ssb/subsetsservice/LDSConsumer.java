@@ -59,4 +59,8 @@ public class LDSConsumer {
     ResponseEntity<JsonNode> putTo(String additional, JsonNode json){
         return postTo(additional, json);
     }
+
+    public void delete(String url) {
+        new RestTemplate().delete(url);
+    }
 }

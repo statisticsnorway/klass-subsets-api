@@ -64,8 +64,16 @@ public class LDSFacade implements LDSInterface {
         return new LDSConsumer(API_LDS).postTo(SUBSETS_API+"/" + id, subset);
     }
 
-    @Override
     public boolean healthReady() {
         return new LDSConsumer(API_LDS).getFrom("/health/ready").getStatusCode().equals(HttpStatus.OK);
+    }
+
+    public void deleteSubset(String id) {
+       new LDSConsumer(API_LDS).delete(SUBSETS_API+"/" + id);
+    }
+
+    public void deleteAllSubsets(){
+        List<String> idList = getAllSubsetIDs();
+        idList.forEach(this::deleteSubset);
     }
 }
