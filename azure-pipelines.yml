@@ -22,6 +22,9 @@ jobs:
     displayName: 'Test/build app and Dockerimage'
     steps:
       - task: Maven@3
+        env:
+          API_LDS: "http://localhost:9090"
+          API_KLASS: "https://data.ssb.no/api/klass"
         displayName: 'Maven install'
         inputs:
           mavenPomFile: 'pom.xml'

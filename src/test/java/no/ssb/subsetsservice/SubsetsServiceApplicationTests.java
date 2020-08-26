@@ -85,7 +85,7 @@ class SubsetsServiceApplicationTests {
 		System.out.println(response.getBody());
 		System.out.println("IDs:");
 		for (JsonNode jsonNode : response.getBody()) {
-			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText(), false, false, false).getBody();
+			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText(), true, true, false).getBody();
 			assertEquals(subset.get("id").asText(), jsonNode.get("id").asText());
 			System.out.println(subset.get("id"));
 		}
@@ -99,7 +99,7 @@ class SubsetsServiceApplicationTests {
 		System.out.println(response.getBody());
 		System.out.println("IDs:");
 		for (JsonNode jsonNode : response.getBody()) {
-			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText(), false, false, false).getBody();
+			JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText(), true, true, false).getBody();
 			assertEquals(subset.get("id").asText(), jsonNode.get("id").asText());
 			System.out.println("ID: "+subset.get("id"));
 
