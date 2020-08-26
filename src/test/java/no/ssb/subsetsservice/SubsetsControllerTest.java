@@ -2,7 +2,6 @@ package no.ssb.subsetsservice;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import org.junit.Before;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,7 +9,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import static no.ssb.subsetsservice.LDSConsumer.LDS_LOCAL;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
@@ -28,11 +26,6 @@ class SubsetsControllerTest {
     }
 
     @Test
-    void getSubsets() {
-
-    }
-
-    @Test
     void getAllSubsets() {
         SubsetsController instance = SubsetsController.getInstance();
         assertNotNull(instance);
@@ -47,8 +40,6 @@ class SubsetsControllerTest {
         JsonNode body = response.getBody();
         assertNotNull(body);
         assertTrue(body.isArray());
-        assertTrue(body.isEmpty());
-        assertNotEquals("[]", response.getBody().asText());
     }
 
     @Test
@@ -99,9 +90,9 @@ class SubsetsControllerTest {
         System.out.println("IDs:");
         for (JsonNode jsonNode : response.getBody()) {
             JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText(), true, true, false).getBody();
-            assertTrue(subset.has("id"));
-            assertEquals(subset.get("id").asText(), jsonNode.get("id").asText());
-            System.out.println(subset.get("id"));
+            assertTrue(subset.has(Field.ID));
+            assertEquals(subset.get(Field.ID).asText(), jsonNode.get(Field.ID).asText());
+            System.out.println(subset.get(Field.ID));
         }
     }
 
@@ -117,15 +108,15 @@ class SubsetsControllerTest {
         for (JsonNode jsonNode : response.getBody()) {
             JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText(), true, true, false).getBody();
             assertNotNull(subset);
-            assertTrue(subset.has("id"));
-            assertEquals(subset.get("id").asText(), jsonNode.get("id").asText());
-            System.out.println("ID: "+subset.get("id"));
+            assertTrue(subset.has(Field.ID));
+            assertEquals(subset.get(Field.ID).asText(), jsonNode.get(Field.ID).asText());
+            System.out.println("ID: "+subset.get(Field.ID));
 
-            ArrayNode versions = (ArrayNode) SubsetsController.getInstance().getVersions(subset.get("id").asText(), true, true, false).getBody();
+            ArrayNode versions = (ArrayNode) SubsetsController.getInstance().getVersions(subset.get(Field.ID).asText(), true, true, false).getBody();
             assertNotNull(versions);
             assertNotEquals(0, versions.size());
             for (JsonNode version : versions) {
-                System.out.println("Version: "+version.get("version").asText()+" adminstatus: "+version.get("administrativeStatus").asText()+" name:"+version.get("name").get(0).get("languageText").asText());
+                System.out.println("Version: "+version.get(Field.VERSION).asText()+" admin status: "+version.get(Field.ADMINISTRATIVE_STATUS).asText()+" name: "+version.get(Field.NAME).get(0).get("languageText").asText());
             }
         }
     }
