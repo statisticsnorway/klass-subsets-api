@@ -34,7 +34,6 @@ class SubsetsServiceApplicationTests {
 		System.out.println("RESPONSE BODY");
 		System.out.println(response.getBody());
 		assertNotEquals(null, response.getBody());
-		assertNotEquals("[]", response.getBody().asText());
 	}
 
 	@Test
