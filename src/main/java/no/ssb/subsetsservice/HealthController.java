@@ -8,6 +8,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class HealthController {
 
+    private static HealthController instance;
+
+    public static HealthController getInstance(){
+        if (instance == null)
+            instance = new HealthController();
+        return instance;
+    }
+
+    private HealthController(){}
+
     @RequestMapping("/health/alive")
     public ResponseEntity<String> alive() {
         return new ResponseEntity<>("The service is alive!", HttpStatus.OK);
