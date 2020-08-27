@@ -3,6 +3,7 @@ package no.ssb.subsetsservice;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.google.api.Http;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,18 +108,72 @@ class SubsetsControllerTest {
         instance.deleteAll();
 
         JsonNode subsetJsonNode = getSubset(fCS1);
+        instance.postSubset(subsetJsonNode);
         JsonNode retrievedSubset = instance.getSubset(subsetJsonNode.get(Field.ID).asText(), true, true, true).getBody();
         assertTrue(retrievedSubset.has(Field.CREATED_DATE));
         assertTrue(retrievedSubset.has(Field.LAST_UPDATED_DATE));
     }
 
+    @Test
+    void postInvalidVersionValidFrom(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode subsetJsonNode = getSubset(fv0_1);
+        ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
+        assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
+    }
 
     @Test
-    void getSubsetsCheckResponseNotNull() {
+    void postInvalidVersionValidFrom2(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode subsetJsonNode = getSubset(fv0_2);
+        ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
+        assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
+    }
+
+    @Test
+    void postMissingVersion(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode subsetJsonNode = getSubset(fv0_3);
+        ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
+        assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
+    }
+
+    @Test
+    void postDraftSubset(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode subsetJsonNode = getSubset(fv0_9);
+        ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
+        assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
+    }
+
+    @Test
+    void postDraftThenPutOpen(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode draft = getSubset(fv0_9);
+        ResponseEntity<JsonNode> postDraftRE = instance.postSubset(draft);
+        assertEquals(HttpStatus.CREATED, postDraftRE.getStatusCode());
+
+        JsonNode open = getSubset(fv1_0);
+        ResponseEntity<JsonNode> putOpenRE = instance.putSubset(open.get(Field.ID).asText(), open);
+        assertEquals(HttpStatus.OK, putOpenRE.getStatusCode());
+    }
+
+    @Test
+    void getSubsetsCheckStatusOK() {
         SubsetsController instance = SubsetsController.getInstance();
         assertNotNull(instance);
-        ResponseEntity<JsonNode> response = instance.getSubsets(true, true, false);
-        assertNotNull(response);
+        ResponseEntity<JsonNode> subsets = instance.getSubsets(true, true, false);
+        assertEquals(HttpStatus.OK, subsets.getStatusCode());
     }
 
     @Test
@@ -149,14 +204,6 @@ class SubsetsControllerTest {
                 assertTrue(rankedURN.has(Field.RANK));
             }
         }
-    }
-
-    @Test
-    void getSubsetsCheckStatusOK() {
-        SubsetsController instance = SubsetsController.getInstance();
-        assertNotNull(instance);
-        ResponseEntity<JsonNode> subsets = instance.getSubsets(true, true, false);
-        assertEquals(HttpStatus.OK, subsets.getStatusCode());
     }
 
     @Test

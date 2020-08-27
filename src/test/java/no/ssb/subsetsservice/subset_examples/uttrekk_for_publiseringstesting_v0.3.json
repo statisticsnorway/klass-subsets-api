@@ -35,7 +35,7 @@
     ],
     "versionRationale": [
         {
-            "languageText": "Dette er versjonens rasjonale.",
+            "languageText": "Det mangler 'version' felt, så denne skal ikke aksepteres",
             "languageCode": "nb"
         }
     ],
