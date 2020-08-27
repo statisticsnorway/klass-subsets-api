@@ -3,8 +3,6 @@ package no.ssb.subsetsservice;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.micrometer.core.instrument.util.IOUtils;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,9 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -23,40 +19,106 @@ import static org.junit.jupiter.api.Assertions.*;
 class SubsetsControllerTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(SubsetsServiceApplicationTests.class);
+    File fCS1 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/ClassificationSubset_1.json");
+    File fCS2 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/ClassificationSubset_2.json");
+    File fv0_1 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v0.1.json"); // try to set versionValidFrom earlier than validFrom
+    File fv0_2 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v0.2.json"); // try to set versionValidFrom later than validFrom
+    File fv0_3 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v0.3.json"); // version field is missing
+    File fv0_9 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v0.9.json"); // status DRAFT
+    File fv1_0 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v1.0.json"); // status OPEN
+    File fv1_1 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v1.1.json"); // try to delete code
+    File f1_2 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v1.2.json"); // try to change validFrom and versionValidFrom to a later date
+    File fv1_3 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v1.3.json"); // try to change versionValidFrom to a later date than validFrom, even if this is only version of subset
+    File fv2 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v2.json");
 
     @Test
-    void emptyAfterDeleteAllSubsetsTest() {
-        SubsetsController instance = SubsetsController.getInstance();
+    void testIfFilesArePresent(){
+        assertTrue(fCS1.exists());
+        assertTrue(fCS2.exists());
+        assertTrue(fv0_1.exists());
+        assertTrue(fv0_2.exists());
+        assertTrue(fv0_3.exists());
+        assertTrue(fv0_9.exists());
+        assertTrue(fv1_0.exists());
+        assertTrue(fv1_1.exists());
+        assertTrue(f1_2.exists());
+        assertTrue(fv1_3.exists());
+        assertTrue(fv2.exists());
+    }
 
-        // Make sure there is a subset in the database
-        File f = new File("src/test/java/no/ssb/subsetsservice/subset_examples/ClassificationSubset_1.json");
-        System.out.println("absolute: "+f.getAbsolutePath());
-        assertTrue(f.exists());
+    public JsonNode getSubset(File file){
+        assert file.exists() : "File "+file.getAbsolutePath()+" did not exist";
         ObjectMapper mapper = new ObjectMapper();
-        JsonNode subsetJsonNode = null;
         try {
-            subsetJsonNode = mapper.readTree(f);
+            return mapper.readTree(file);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        instance.postSubset(subsetJsonNode);
+        return null;
+    }
+
+    @Test
+    void deleteAllThenCheckThatEmpty() {
+        SubsetsController instance = SubsetsController.getInstance();
+        // Delete all subsets
+        instance.deleteAll();
+
+        // Test if database is empty
         ResponseEntity<JsonNode> allSubsets = instance.getSubsets(true, true, true);
         assertEquals(HttpStatus.OK, allSubsets.getStatusCode());
         JsonNode body = allSubsets.getBody();
         assertNotNull(body);
         assertTrue(body.isArray());
-        assertFalse(body.isEmpty());
+        assertTrue(body.isEmpty());
+    }
 
-        // Delete all subsets
+    @Test
+    void postDeletePostGetVersionsCheckLength(){
+        SubsetsController instance = SubsetsController.getInstance();
         instance.deleteAll();
 
-        // Test if database is empty
-        allSubsets = instance.getSubsets(true, true, true);
-        assertEquals(HttpStatus.OK, allSubsets.getStatusCode());
-        body = allSubsets.getBody();
-        assertNotNull(body);
-        assertTrue(body.isArray());
-        assertTrue(body.isEmpty());
+        JsonNode subsetJsonNode = getSubset(fCS1);
+        ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
+        assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
+        ResponseEntity<JsonNode> getVersionsRE = instance.getVersions(subsetJsonNode.get(Field.ID).asText(), true, true, true);
+        ArrayNode versionsBody = (ArrayNode)getVersionsRE.getBody();
+        assertEquals( 1, versionsBody.size());
+    }
+
+    @Test
+    void postSubsetAndCheckIDOfResponse(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode subsetJsonNode = getSubset(fCS1);
+        ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
+        assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
+        String originalID = subsetJsonNode.get(Field.ID).asText();
+        JsonNode retrievedSubset = instance.getSubset(originalID, true, true, true).getBody();
+
+        assertNotNull(retrievedSubset);
+        assertFalse(retrievedSubset.isEmpty());
+        assertEquals(originalID, retrievedSubset.get(Field.ID).asText());
+    }
+
+    @Test
+    void postSubsetAndCheckDateStampsOfResponse(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode subsetJsonNode = getSubset(fCS1);
+        JsonNode retrievedSubset = instance.getSubset(subsetJsonNode.get(Field.ID).asText(), true, true, true).getBody();
+        assertTrue(retrievedSubset.has(Field.CREATED_DATE));
+        assertTrue(retrievedSubset.has(Field.LAST_UPDATED_DATE));
+    }
+
+
+    @Test
+    void getSubsetsCheckResponseNotNull() {
+        SubsetsController instance = SubsetsController.getInstance();
+        assertNotNull(instance);
+        ResponseEntity<JsonNode> response = instance.getSubsets(true, true, false);
+        assertNotNull(response);
     }
 
     @Test
@@ -90,11 +152,11 @@ class SubsetsControllerTest {
     }
 
     @Test
-    void getAllSubsetsCheckResponseNotNull() {
+    void getSubsetsCheckStatusOK() {
         SubsetsController instance = SubsetsController.getInstance();
         assertNotNull(instance);
-        ResponseEntity<JsonNode> response = instance.getSubsets(true, true, false);
-        assertNotNull(response);
+        ResponseEntity<JsonNode> subsets = instance.getSubsets(true, true, false);
+        assertEquals(HttpStatus.OK, subsets.getStatusCode());
     }
 
     @Test
