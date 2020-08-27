@@ -249,9 +249,21 @@ public class SubsetsController {
                     return new ResponseEntity<>(HttpStatus.NOT_FOUND);
                 }
                 if (responseBodyJSON.isArray()) {
-                    LOG.debug("versions responsebody json is array");
+                    LOG.debug("versions response body json is array");
                     ArrayNode timelineArrayNode = (ArrayNode) responseBodyJSON;
                     LOG.debug("timelineArrayNode size: "+timelineArrayNode.size());
+
+                    for (int i = timelineArrayNode.size()-1; i >= 0; i--) {
+                        if (timelineArrayNode.get(i).get(Field.DOCUMENT).isEmpty()){
+                            LOG.debug("Found an empty subset version in the LDS timeline at index "+i+"/"+(timelineArrayNode.size()-1)+", indicating a DELETE action. Deleting all previous versions.");
+                            for (int i1 = 0; i1 <= i; i1++) {
+                                timelineArrayNode.remove(0);
+                            }
+                            break;
+                        }
+                    }
+                    LOG.debug("timelineArrayNode is now of size "+timelineArrayNode.size());
+
                     Map<Integer, JsonNode> versionLastUpdatedMap = new HashMap<>(timelineArrayNode.size() * 2, 0.51f);
                     for (JsonNode versionNode : timelineArrayNode) {
                         ObjectNode subsetVersionDocument = versionNode.get(Field.DOCUMENT).deepCopy();
