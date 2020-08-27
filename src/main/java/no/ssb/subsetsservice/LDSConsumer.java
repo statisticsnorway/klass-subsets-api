@@ -57,7 +57,11 @@ public class LDSConsumer {
     }
 
     ResponseEntity<JsonNode> putTo(String additional, JsonNode json){
-        return postTo(additional, json);
+        ResponseEntity<JsonNode> postRE = postTo(additional, json);
+        HttpStatus statusCode = postRE.getStatusCode();
+        if (postRE.getStatusCode().equals(HttpStatus.CREATED))
+            statusCode = HttpStatus.OK;
+        return new ResponseEntity<>(postRE.getBody(), statusCode);
     }
 
     public void delete(String url) {
