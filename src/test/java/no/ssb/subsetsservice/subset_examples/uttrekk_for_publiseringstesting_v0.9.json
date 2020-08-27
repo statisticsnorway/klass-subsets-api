@@ -1,6 +1,7 @@
 {
-    "administrativeStatus": "OPEN",
+    "administrativeStatus": "DRAFT",
     "id": "uttrekk_for_publiseringstesting",
+    "version": "1",
     "name": [
         {
             "languageText": "Uttrekk for Testing av Publisering og Endring",
@@ -33,7 +34,6 @@
             "languageCode": "nb"
         }
     ],
-    "version": "1",
     "versionRationale": [
         {
             "languageText": "Dette er versjonens rasjonale.",
