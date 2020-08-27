@@ -1,7 +1,10 @@
 package no.ssb.subsetsservice;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.micrometer.core.instrument.util.IOUtils;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,12 +12,52 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 class SubsetsControllerTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(SubsetsServiceApplicationTests.class);
+
+    @Test
+    void emptyAfterDeleteAllSubsetsTest() {
+        SubsetsController instance = SubsetsController.getInstance();
+
+        // Make sure there is a subset in the database
+        File f = new File("src/test/java/no/ssb/subsetsservice/subset_examples/ClassificationSubset_1.json");
+        System.out.println("absolute: "+f.getAbsolutePath());
+        assertTrue(f.exists());
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode subsetJsonNode = null;
+        try {
+            subsetJsonNode = mapper.readTree(f);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        instance.postSubset(subsetJsonNode);
+        ResponseEntity<JsonNode> allSubsets = instance.getSubsets(true, true, true);
+        assertEquals(HttpStatus.OK, allSubsets.getStatusCode());
+        JsonNode body = allSubsets.getBody();
+        assertNotNull(body);
+        assertTrue(body.isArray());
+        assertFalse(body.isEmpty());
+
+        // Delete all subsets
+        instance.deleteAll();
+
+        // Test if database is empty
+        allSubsets = instance.getSubsets(true, true, true);
+        assertEquals(HttpStatus.OK, allSubsets.getStatusCode());
+        body = allSubsets.getBody();
+        assertNotNull(body);
+        assertTrue(body.isArray());
+        assertTrue(body.isEmpty());
+    }
 
     @Test
     void getSubsetsUrnOnlyCheckStatusOK() {

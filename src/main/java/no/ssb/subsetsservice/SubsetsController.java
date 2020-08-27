@@ -553,6 +553,14 @@ public class SubsetsController {
         return new LDSFacade().getClassificationSubsetSchema();
     }
 
+    void deleteAll(){
+        new LDSFacade().deleteAllSubsets();
+    }
+
+    void deleteById(String id){
+        new LDSFacade().deleteSubset(id);
+    }
+
     private ArrayList<JsonNode> resolveURNsOfCodesInAllVersions(ArrayList<JsonNode> versionListInput){
         ArrayList<JsonNode> versionList = new ArrayList<>(versionListInput.size());
         versionListInput.forEach(v -> versionList.add(v.deepCopy()));

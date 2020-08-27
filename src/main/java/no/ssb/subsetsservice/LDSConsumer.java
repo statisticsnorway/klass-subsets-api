@@ -61,6 +61,7 @@ public class LDSConsumer {
     }
 
     public void delete(String url) {
-        new RestTemplate().delete(url);
+        LOG.debug("DELETE "+LDS_URL+url);
+        new RestTemplate().delete(LDS_URL+url);
     }
 }

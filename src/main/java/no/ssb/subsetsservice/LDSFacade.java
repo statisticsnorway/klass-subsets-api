@@ -2,6 +2,7 @@ package no.ssb.subsetsservice;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
@@ -69,11 +70,13 @@ public class LDSFacade implements LDSInterface {
     }
 
     public void deleteSubset(String id) {
-       new LDSConsumer(API_LDS).delete(SUBSETS_API+"/" + id);
+        String url = SUBSETS_API+"/"+id;
+       new LDSConsumer(API_LDS).delete(url);
     }
 
     public void deleteAllSubsets(){
         List<String> idList = getAllSubsetIDs();
+        LoggerFactory.getLogger(LDSFacade.class).info("DELETE all "+idList.size()+" subset(s) from LDS");
         idList.forEach(this::deleteSubset);
     }
 }
