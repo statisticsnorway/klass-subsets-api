@@ -220,7 +220,8 @@ public class SubsetsController {
                 // If there is a version which is previous to this version that is still a DRAFT, you can not publish this version.
 
                 if (consistentID && !attemptToChangeCodesOfPublishedVersion && !sameVersionValidFrom){
-                    return new LDSFacade().editSubset(editableSubset, id);
+                    ResponseEntity<JsonNode> responseEntity = new LDSFacade().editSubset(editableSubset, id);
+                    return responseEntity;
                 } else {
                     StringBuilder errorStringBuilder = new StringBuilder();
                     if (!sameID)

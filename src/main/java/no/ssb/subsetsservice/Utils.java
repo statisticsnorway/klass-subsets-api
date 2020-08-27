@@ -55,6 +55,10 @@ public class Utils {
             return cleanSubsetVersionsArray(arrayNode);
         }
         ObjectNode clone = subset.deepCopy();
+        if (!clone.has(Field.VERSION)) {
+            LoggerFactory.getLogger(Utils.class).error("subset did not contain 'version', so it could not be cleaned");
+            return clone;
+        }
         String oldVersion = clone.get(Field.VERSION).asText();
         String majorVersion = oldVersion.split("\\.")[0];
         clone.put(Field.VERSION, majorVersion);
