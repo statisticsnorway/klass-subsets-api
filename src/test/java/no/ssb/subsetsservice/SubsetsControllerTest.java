@@ -114,6 +114,8 @@ class SubsetsControllerTest {
         JsonNode subsetJsonNode = getSubset(fCS1);
         ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
         assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
+        assertEquals(subsetJsonNode.get(Field.ID).asText(), postRE.getBody().get(Field.ID).asText());
+        System.out.println(postRE.getBody().toPrettyString());
         String originalID = subsetJsonNode.get(Field.ID).asText();
         JsonNode retrievedSubset = instance.getSubset(originalID, true, true, true).getBody();
 
