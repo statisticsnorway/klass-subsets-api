@@ -80,7 +80,11 @@ public class SubsetsController {
                         return ErrorHandler.newHttpError("validFrom must be equal versionValidFrom for the first version of the subset (this one)", HttpStatus.BAD_REQUEST, LOG);
                     }
                     JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
-                    return new LDSFacade().createSubset(cleanSubset, id);
+                    ResponseEntity<JsonNode> responseEntity = new LDSFacade().createSubset(cleanSubset, id);
+                    if (responseEntity.getStatusCode().equals(HttpStatus.CREATED)){
+                        responseEntity = new ResponseEntity<>(cleanSubset, HttpStatus.CREATED);
+                    }
+                    return responseEntity;
                 }
                 return ErrorHandler.newHttpError("POST: Can not create subset. ID already in use", HttpStatus.BAD_REQUEST, LOG);
             }
@@ -220,7 +224,11 @@ public class SubsetsController {
                 // If there is a version which is previous to this version that is still a DRAFT, you can not publish this version.
 
                 if (consistentID && !attemptToChangeCodesOfPublishedVersion && !sameVersionValidFrom){
-                    return new LDSFacade().editSubset(editableSubset, id);
+                    ResponseEntity<JsonNode> responseEntity = new LDSFacade().editSubset(editableSubset, id);
+                    if (responseEntity.getStatusCode().equals(HttpStatus.OK)){
+                        responseEntity = new ResponseEntity<>(editableSubset, HttpStatus.OK);
+                    }
+                    return responseEntity;
                 } else {
                     StringBuilder errorStringBuilder = new StringBuilder();
                     if (!sameID)
