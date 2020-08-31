@@ -1,0 +1,47 @@
+{
+    "id": "uttrekk_for_publiseringstesting",
+    "shortName": "Test av Publisering",
+    "name": [
+        {
+            "languageText": "Uttrekk for Testing av Publisering og Endring",
+            "languageCode": "nb"
+        }
+    ],
+    "description": [
+        {
+            "languageText": "Test av publisering, endringer og versjonering",
+            "languageCode": "nb"
+        }
+    ],
+    "createdBy": "702 - Seksjon for IT-arkitektur",
+    "validFrom": "2020-08-20T00:00:00.000Z",
+    "validUntil": "2020-09-09T00:00:00.000Z",
+    "version": "4",
+    "administrativeStatus": "DRAFT",
+    "versionValidFrom": "2020-08-20T00:00:00.000Z",
+    "versionValidUntil": "2020-09-09T00:00:00.000Z",
+    "versionRationale": [
+        {
+            "languageText": "test draft uten koder",
+            "languageCode": "nb"
+        }
+    ],
+    "administrativeDetails": [
+        {
+            "administrativeDetailType": "ANNOTATION",
+            "values": [
+                "Befolkning"
+            ]
+        },
+        {
+            "administrativeDetailType": "ORIGIN",
+            "values": [
+                "urn:ssb:klass-api:classifications:7",
+                "urn:ssb:klass-api:classifications:17",
+                "urn:ssb:klass-api:classifications:19"
+            ]
+        }
+    ],
+    "codes": [
+    ]
+}

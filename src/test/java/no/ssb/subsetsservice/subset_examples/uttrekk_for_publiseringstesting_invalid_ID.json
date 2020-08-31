@@ -1,17 +1,31 @@
 {
-    "administrativeStatus": "DRAFT",
-    "id": "uttrekk_for_publiseringstesting",
-    "version": "1",
+    "id": "uttrekk_for_publiseringstesting_§!#¤%&/()=?^¨'*~",
+    "shortName": "Test av Publisering",
     "name": [
         {
             "languageText": "Uttrekk for Testing av Publisering og Endring",
             "languageCode": "nb"
         }
     ],
-    "shortName": "Test av Publisering",
+    "description": [
+        {
+            "languageText": "Test av publisering, endringer og versjonering",
+            "languageCode": "nb"
+        }
+    ],
+    "createdBy": "702 - Seksjon for IT-arkitektur",
     "validFrom": "2020-08-08T00:00:00.000Z",
     "validUntil": "2020-09-09T00:00:00.000Z",
-    "createdBy": "702 - Seksjon for IT-arkitektur",
+    "version": "1",
+    "administrativeStatus": "OPEN",
+    "versionValidFrom": "2020-08-08T00:00:00.000Z",
+    "versionValidUntil": "2020-09-09T00:00:00.000Z",
+    "versionRationale": [
+        {
+            "languageText": "Test at invalid id ikke kan postes.",
+            "languageCode": "nb"
+        }
+    ],
     "administrativeDetails": [
         {
             "administrativeDetailType": "ANNOTATION",
@@ -28,20 +42,6 @@
             ]
         }
     ],
-    "description": [
-        {
-            "languageText": "Test av publisering, endringer og versjonering",
-            "languageCode": "nb"
-        }
-    ],
-    "versionRationale": [
-        {
-            "languageText": "Dette er versjonens rasjonale.",
-            "languageCode": "nb"
-        }
-    ],
-    "versionValidFrom": "2020-08-08T00:00:00.000Z",
-    "versionValidUntil": "2020-09-09T00:00:00.000Z",
     "codes": [
         {
             "code": "6",
