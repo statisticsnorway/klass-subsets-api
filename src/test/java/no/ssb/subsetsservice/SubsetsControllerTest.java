@@ -202,6 +202,17 @@ class SubsetsControllerTest {
     }
 
     @Test
+    void putDraftSubsetWhenSubsetDoesNotExist(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode subsetJsonNode = getSubset(fv0_9);
+        String id = subsetJsonNode.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postRE = instance.putSubset(id, subsetJsonNode);
+        assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
+    }
+
+    @Test
     void postDraftThenPutOpenExpectingStatusCreatedAndOK(){
         SubsetsController instance = SubsetsController.getInstance();
         instance.deleteAll();
