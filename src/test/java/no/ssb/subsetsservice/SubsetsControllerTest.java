@@ -215,15 +215,41 @@ class SubsetsControllerTest {
     }
 
     @Test
+    void postDraftSubsetThenPutAndCheckLastUpdatedDate(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode subsetJsonNode = getSubset(fv0_9);
+        ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
+        assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
+        String lastUpdated1 = postRE.getBody().get(Field.LAST_UPDATED_DATE).asText();
+
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        JsonNode subsetJsonNode2 = getSubset(fv1_0);
+        String id = subsetJsonNode.get(Field.ID).asText();
+        ResponseEntity<JsonNode> putRE = instance.putSubset(id, subsetJsonNode2);
+        assertEquals(HttpStatus.OK, putRE.getStatusCode());
+        String lastUpdated2 = putRE.getBody().get(Field.LAST_UPDATED_DATE).asText();
+        System.out.println("lastUpdatedDate1: "+lastUpdated1);
+        System.out.println("lastUpdatedDate2: "+lastUpdated2);
+        assertTrue(lastUpdated1.compareTo(lastUpdated2) < 0);
+    }
+
+    @Test
     void postDraftSubsetThenPutWrongIDVersion(){
         SubsetsController instance = SubsetsController.getInstance();
         instance.deleteAll();
 
         JsonNode subsetJsonNode = getSubset(fv0_9);
-
-        JsonNode subsetJsonNode2 = getSubset(fv1_0);
         ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
         assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
+
+        JsonNode subsetJsonNode2 = getSubset(fv1_0);
         ResponseEntity<JsonNode> putRE = instance.putSubset("wrong-id", subsetJsonNode2);
         assertEquals(HttpStatus.BAD_REQUEST, putRE.getStatusCode());
     }
