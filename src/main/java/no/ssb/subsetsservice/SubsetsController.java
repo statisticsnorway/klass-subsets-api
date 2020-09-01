@@ -134,6 +134,11 @@ public class SubsetsController {
         if (!getVersionsStatus.equals(HttpStatus.OK))
             return ErrorHandler.newHttpError("Call for version of subset '"+id+"' returned with code "+getVersionsStatus.toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
 
+        //TODO: Validate that the incoming subset version contains the legal fields?
+        
+        if(newVersionOfSubset.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN) && newVersionOfSubset.get(Field.CODES).isEmpty())
+            return ErrorHandler.newHttpError("Can not publish a subset with an empty code list", HttpStatus.BAD_REQUEST, LOG);
+
         if (!(newVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0))
             return ErrorHandler.newHttpError("'versionValidFrom' can not be earlier than subset 'validFrom'", HttpStatus.BAD_REQUEST, LOG);
 
@@ -191,7 +196,7 @@ public class SubsetsController {
         } else {
             // The new version being put is the new last version
             // If defined, the subset's 'validUntil' in the new version must be the same as the subsets 'versionValidUntil' .
-            
+
         }
 
         ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, newVersionString, false);
