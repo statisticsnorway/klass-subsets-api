@@ -63,34 +63,39 @@ public class SubsetsController {
     public ResponseEntity<JsonNode> postSubset(@RequestBody JsonNode subsetJson) {
         metricsService.incrementPOSTCounter();
 
-        if (subsetJson != null) {
-            JsonNode idJN = subsetJson.get(Field.ID);
-            String id = idJN.textValue();
-            if (Utils.isClean(id)){
-                LOG.info("POST subset with id "+id);
-                boolean subsetExists = new LDSFacade().existsSubsetWithID(id);
-                if (!subsetExists){
-                    ObjectNode editableSubset = subsetJson.deepCopy();
-                    String isoNow = Utils.getNowISO();
-                    editableSubset.put(Field.LAST_UPDATED_DATE, isoNow);
-                    editableSubset.put(Field.CREATED_DATE, isoNow);
-                    String versionValidFrom = editableSubset.get(Field.VERSION_VALID_FROM).asText();
-                    String validFrom = editableSubset.get(Field.VALID_FROM).asText();
-                    if (!versionValidFrom.equals(validFrom)){
-                        return ErrorHandler.newHttpError("validFrom must be equal versionValidFrom for the first version of the subset (this one)", HttpStatus.BAD_REQUEST, LOG);
-                    }
-                    JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
-                    ResponseEntity<JsonNode> responseEntity = new LDSFacade().createSubset(cleanSubset, id);
-                    if (responseEntity.getStatusCode().equals(HttpStatus.CREATED)){
-                        responseEntity = new ResponseEntity<>(cleanSubset, HttpStatus.CREATED);
-                    }
-                    return responseEntity;
-                }
-                return ErrorHandler.newHttpError("POST: Can not create subset. ID already in use", HttpStatus.BAD_REQUEST, LOG);
-            }
+        if (subsetJson == null)
+            return ErrorHandler.newHttpError("POST: Can not create subset from empty body", HttpStatus.BAD_REQUEST, LOG);
+
+        //TODO: Validate that body is a subset, somehow?
+
+        String id = subsetJson.get(Field.ID).textValue();
+        LOG.info("POST subset with id "+id);
+
+        if (!Utils.isClean(id))
             return ErrorHandler.illegalID(LOG);
+
+        boolean subsetExists = new LDSFacade().existsSubsetWithID(id);
+        if (subsetExists)
+            return ErrorHandler.newHttpError("POST: Can not create subset. ID already in use", HttpStatus.BAD_REQUEST, LOG);
+
+        ObjectNode editableSubset = subsetJson.deepCopy();
+
+        String isoNow = Utils.getNowISO();
+        editableSubset.put(Field.LAST_UPDATED_DATE, isoNow);
+        editableSubset.put(Field.CREATED_DATE, isoNow);
+
+        String versionValidFrom = editableSubset.get(Field.VERSION_VALID_FROM).asText();
+        String validFrom = editableSubset.get(Field.VALID_FROM).asText();
+        if (!versionValidFrom.equals(validFrom)){
+            return ErrorHandler.newHttpError("validFrom must be equal versionValidFrom for the first version of the subset (this one)", HttpStatus.BAD_REQUEST, LOG);
         }
-        return ErrorHandler.newHttpError("POST: Can not create subset from empty body", HttpStatus.BAD_REQUEST, LOG);
+
+        JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
+        ResponseEntity<JsonNode> responseEntity = new LDSFacade().createSubset(cleanSubset, id);
+        if (responseEntity.getStatusCode().equals(HttpStatus.CREATED)){
+            responseEntity = new ResponseEntity<>(cleanSubset, HttpStatus.CREATED);
+        }
+        return responseEntity;
     }
 
     @GetMapping("/v1/subsets/{id}")
@@ -135,7 +140,7 @@ public class SubsetsController {
             return ErrorHandler.newHttpError("Call for version of subset '"+id+"' returned with code "+getVersionsStatus.toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
 
         //TODO: Validate that the incoming subset version contains the legal fields?
-        
+
         if(newVersionOfSubset.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN) && newVersionOfSubset.get(Field.CODES).isEmpty())
             return ErrorHandler.newHttpError("Can not publish a subset with an empty code list", HttpStatus.BAD_REQUEST, LOG);
 
