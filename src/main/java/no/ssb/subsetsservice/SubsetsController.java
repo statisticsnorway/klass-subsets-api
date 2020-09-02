@@ -187,10 +187,12 @@ public class SubsetsController {
                         ArrayList<String> changeableFieldsList = new ArrayList<>();
                         Collections.addAll(changeableFieldsList, changeableFieldsInPublishedVersion);
 
+                        StringBuilder fieldErrorBuilder = new StringBuilder();
                         boolean allSameFields = true;
                         while (allSameFields && prevPatchFieldNames.hasNext()){
                             String field = prevPatchFieldNames.next();
-                            if (!newVersionOfSubset.has(field)) {
+                            if (!newVersionOfSubset.has(field) && !changeableFieldsList.contains(field)) {
+                                fieldErrorBuilder.append("The new version (").append(newVersionOfSubset.get(Field.VERSION)).append(") of the subset ").append(prevPatchOfThisVersion.get(Field.ID)).append(" does not contain the field ").append(field).append(" that is present in the old version. \n");
                                 allSameFields = false;
                             }
                         }
@@ -198,12 +200,13 @@ public class SubsetsController {
                         while (allSameFields && newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
                             if (!prevPatchOfThisVersion.has(field) && !changeableFieldsList.contains(field)) {
+                                fieldErrorBuilder.append("The previous version (").append(prevPatchOfThisVersion.get(Field.VERSION)).append(") of the subset ").append(prevPatchOfThisVersion.get(Field.ID)).append(" does not contain the field ").append(field).append(" that is present in the new version. \n");
                                 allSameFields = false;
                             }
                         }
 
                         if (!allSameFields){
-                            return ErrorHandler.newHttpError("The submitted version does not contain all the unchangeable fields of the already published version that it attempts to override", HttpStatus.BAD_REQUEST, LOG);
+                            return ErrorHandler.newHttpError(fieldErrorBuilder.toString(), HttpStatus.BAD_REQUEST, LOG);
                         }
 
                         newPatchFieldNames = newVersionOfSubset.fieldNames();
