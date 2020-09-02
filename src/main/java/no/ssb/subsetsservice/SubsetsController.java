@@ -130,6 +130,8 @@ public class SubsetsController {
             if (mostRecentVersionOfThisSubset.has(Field.CREATED_DATE)){
                 JsonNode createdDate = mostRecentVersionOfThisSubset.get(Field.CREATED_DATE);
                 editableNewVersionOfSubset.set(Field.CREATED_DATE, createdDate);
+                JsonNode _links = mostRecentVersionOfThisSubset.get(Field._LINKS);
+                editableNewVersionOfSubset.set(Field._LINKS, _links);
             } else {
                 return ErrorHandler.newHttpError("most recent version of subset "+id+" did not have the createdDate field", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
             }
@@ -167,20 +169,22 @@ public class SubsetsController {
                     }
                 }
 
-                ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, newVersionString, false);
-                boolean thisVersionExistsFromBefore = prevPatchOfThisVersionRE.getStatusCodeValue() == 200;
+                ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, newVersionString, true, true, false);
+                boolean thisVersionExistsFromBefore = prevPatchOfThisVersionRE.getStatusCode().equals(HttpStatus.OK);
                 boolean attemptToChangeCodesOfPublishedVersion = false;
                 if (thisVersionExistsFromBefore){
-                    JsonNode prevPatchOfThisVersion = prevPatchOfThisVersionRE.getBody();
-                    boolean thisVersionIsPublishedFromBefore = prevPatchOfThisVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
+
+                    ResponseEntity<JsonNode> prevPublishedPatchOfThisVersionRE = getVersion(id, newVersionString, false, false, false);
+                    boolean thisVersionIsPublishedFromBefore = prevPublishedPatchOfThisVersionRE.getStatusCode().equals(HttpStatus.OK) && prevPublishedPatchOfThisVersionRE.getBody().get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
+                    JsonNode prevPublishedPatchOfThisVersion = prevPublishedPatchOfThisVersionRE.getBody();
 
                     if (thisVersionIsPublishedFromBefore){
-                        String oldCodeList = prevPatchOfThisVersion.get(Field.CODES).asText();
+                        String oldCodeList = prevPublishedPatchOfThisVersion.get(Field.CODES).asText();
                         String newCodeList = editableNewVersionOfSubset.get(Field.CODES).asText();
                         boolean differentCodeList = oldCodeList.equals(newCodeList);
                         attemptToChangeCodesOfPublishedVersion = !differentCodeList;
 
-                        Iterator<String> prevPatchFieldNames = prevPatchOfThisVersion.fieldNames();
+                        Iterator<String> prevPatchFieldNames = prevPublishedPatchOfThisVersion.fieldNames();
                         Iterator<String> newPatchFieldNames = editableNewVersionOfSubset.fieldNames();
 
                         String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, Field.LAST_UPDATED_BY, Field.LAST_UPDATED_DATE};
@@ -195,15 +199,15 @@ public class SubsetsController {
                         while (allSameFields && prevPatchFieldNames.hasNext()){
                             String field = prevPatchFieldNames.next();
                             if (!editableNewVersionOfSubset.has(field) && !changeableFieldsList.contains(field)) {
-                                fieldErrorBuilder.append("- The new patch of version (").append(editableNewVersionOfSubset.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the old patch of this version (").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
+                                fieldErrorBuilder.append("- The new patch of version (").append(editableNewVersionOfSubset.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPublishedPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the old patch of this version (").append(prevPublishedPatchOfThisVersion.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
                                 allSameFields = false;
                             }
                         }
 
                         while (allSameFields && newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
-                            if (!prevPatchOfThisVersion.has(field) && !changeableFieldsList.contains(field)) {
-                                fieldErrorBuilder.append("- The previous patch of version (").append(prevPatchOfThisVersion.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the new patch of this version version (").append(editableNewVersionOfSubset.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
+                            if (!prevPublishedPatchOfThisVersion.has(field) && !changeableFieldsList.contains(field)) {
+                                fieldErrorBuilder.append("- The previous patch of version (").append(prevPublishedPatchOfThisVersion.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPublishedPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the new patch of this version version (").append(editableNewVersionOfSubset.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
                                 allSameFields = false;
                             }
                         }
@@ -216,7 +220,7 @@ public class SubsetsController {
                         while (newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
                             if (!changeableFieldsList.contains(field)){
-                                if (!prevPatchOfThisVersion.get(field).asText().equals(editableNewVersionOfSubset.get(field).asText())) {
+                                if (!prevPublishedPatchOfThisVersion.get(field).asText().equals(editableNewVersionOfSubset.get(field).asText())) {
                                     return ErrorHandler.newHttpError("The version of the subset you are trying to change is published, which means you can only change validUntil and versionRationale.", HttpStatus.BAD_REQUEST, LOG);
                                 }
                             }
@@ -365,13 +369,13 @@ public class SubsetsController {
      * @return
      */
     @GetMapping("/v1/subsets/{id}/versions/{version}")
-    public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String id, @PathVariable("version") String version, @RequestParam(defaultValue = "false") boolean rankedUrnOnly) {
+    public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String id, @PathVariable("version") String version, @RequestParam(defaultValue = "false") boolean includeFuture, @RequestParam(defaultValue = "false") boolean includeDrafts, @RequestParam(defaultValue = "false") boolean rankedUrnOnly) {
         metricsService.incrementGETCounter();
         LOG.info("GET version "+version+" of subset with id "+id);
 
         if (Utils.isClean(id) && Utils.isVersion(version)){
             if (Utils.isVersion(version)){
-                ResponseEntity<JsonNode> versionsRE = getVersions(id, true, true, rankedUrnOnly);
+                ResponseEntity<JsonNode> versionsRE = getVersions(id, includeFuture, includeDrafts, rankedUrnOnly);
                 JsonNode responseBodyJSON = versionsRE.getBody();
                 if (responseBodyJSON != null){
                     if (responseBodyJSON.isArray()) {
