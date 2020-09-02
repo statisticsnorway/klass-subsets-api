@@ -204,7 +204,6 @@ public class SubsetsController {
         } else {
             // The new version being put is the new last version
             // If defined, the subset's 'validUntil' in the new version must be the same as the subsets 'versionValidUntil' .
-
         }
 
         ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, newVersionString, false);
@@ -223,31 +222,38 @@ public class SubsetsController {
                 Iterator<String> prevPatchFieldNames = prevPatchOfThisVersion.fieldNames();
                 Iterator<String> newPatchFieldNames = newVersionOfSubset.fieldNames();
 
+                String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, Field.LAST_UPDATED_BY, Field.LAST_UPDATED_DATE};
+                ArrayList<String> changeableFieldsList = new ArrayList<>();
+                Collections.addAll(changeableFieldsList, changeableFieldsInPublishedVersion);
+                StringBuilder fieldErrorBuilder = new StringBuilder();
+                fieldErrorBuilder.append("Changeable fields: [ ");
+                changeableFieldsList.forEach(s->fieldErrorBuilder.append(s).append(" "));
+                fieldErrorBuilder.append("]");
+
                 boolean allSameFields = true;
                 while (allSameFields && prevPatchFieldNames.hasNext()){
                     String field = prevPatchFieldNames.next();
-                    if (!newVersionOfSubset.has(field)) {
+                    if (!newVersionOfSubset.has(field) && !changeableFieldsList.contains(field)) {
+                        fieldErrorBuilder.append("- The new patch of version (").append(newVersionOfSubset.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the old patch of this version (").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
                         allSameFields = false;
                     }
                 }
 
                 while (allSameFields && newPatchFieldNames.hasNext()){
                     String field = newPatchFieldNames.next();
-                    if (!prevPatchOfThisVersion.has(field)) {
+                    if (!prevPatchOfThisVersion.has(field) && !changeableFieldsList.contains(field)) {
+                        fieldErrorBuilder.append("- The previous patch of version (").append(prevPatchOfThisVersion.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the new patch of this version version (").append(newVersionOfSubset.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
                         allSameFields = false;
                     }
                 }
 
                 if (!allSameFields){
-                    return ErrorHandler.newHttpError("The submitted version does not contain all the same fields as the already published version that it attempts to override", HttpStatus.BAD_REQUEST, LOG);
+                    return ErrorHandler.newHttpError(fieldErrorBuilder.toString(), HttpStatus.BAD_REQUEST, LOG);
                 }
 
                 newPatchFieldNames = newVersionOfSubset.fieldNames();
                 while (newPatchFieldNames.hasNext()){
                     String field = newPatchFieldNames.next();
-                    String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, Field.LAST_UPDATED_BY, Field.LAST_UPDATED_DATE};
-                    ArrayList<String> changeableFieldsList = new ArrayList<>();
-                    Collections.addAll(changeableFieldsList, changeableFieldsInPublishedVersion);
                     if (!changeableFieldsList.contains(field)){
                         if (!prevPatchOfThisVersion.get(field).asText().equals(newVersionOfSubset.get(field).asText())) {
                             return ErrorHandler.newHttpError("The version of the subset you are trying to change is published, which means you can only change validUntil and versionRationale.", HttpStatus.BAD_REQUEST, LOG);
