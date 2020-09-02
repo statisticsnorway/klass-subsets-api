@@ -66,7 +66,10 @@ public class SubsetsController {
         if (subsetJson == null)
             return ErrorHandler.newHttpError("POST: Can not create subset from empty body", HttpStatus.BAD_REQUEST, LOG);
 
-        //TODO: Validate that body is a subset, somehow?
+        //TODO: Validate that body is a val subset, somehow?
+
+        if (!subsetJson.has(Field.VERSION))
+            return ErrorHandler.newHttpError("Each subset must have the field 'version', which uniquely identifies the version of the subset", HttpStatus.BAD_REQUEST, LOG);
 
         String id = subsetJson.get(Field.ID).textValue();
         LOG.info("POST subset with id "+id);
