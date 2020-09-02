@@ -119,8 +119,8 @@ public class SubsetsController {
         LOG.info("PUT subset with id "+id);
 
         if (Utils.isClean(id)) {
-            ObjectNode editableSubset = Utils.cleanSubsetVersion(newVersionOfSubset).deepCopy();
-            editableSubset.put(Field.LAST_UPDATED_DATE, Utils.getNowISO());
+            ObjectNode editableNewVersionOfSubset = Utils.cleanSubsetVersion(newVersionOfSubset).deepCopy();
+            editableNewVersionOfSubset.put(Field.LAST_UPDATED_DATE, Utils.getNowISO());
             ResponseEntity<JsonNode> mostRecentVersionRE = getSubset(id, true, true, true);
             JsonNode mostRecentVersionOfThisSubset = mostRecentVersionRE.getBody();
             ResponseEntity<JsonNode> oldVersionsRE = getVersions(id, true, true, true);
@@ -129,7 +129,7 @@ public class SubsetsController {
                 return ErrorHandler.newHttpError("Call for most recent version of subset '"+id+"'did not return a body, and gave code "+mostRecentVersionRE.getStatusCode().toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
             if (mostRecentVersionOfThisSubset.has(Field.CREATED_DATE)){
                 JsonNode createdDate = mostRecentVersionOfThisSubset.get(Field.CREATED_DATE);
-                editableSubset.put(Field.CREATED_DATE, createdDate.asText());
+                editableNewVersionOfSubset.set(Field.CREATED_DATE, createdDate);
             } else {
                 return ErrorHandler.newHttpError("most recent version of subset "+id+" did not have the createdDate field", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
             }
@@ -138,14 +138,14 @@ public class SubsetsController {
                 assert mostRecentVersionOfThisSubset.has(Field.ID) : "most recent version of this subset did not have the field '"+Field.ID+"' ";
 
                 String oldID = mostRecentVersionOfThisSubset.get(Field.ID).asText();
-                String newID = newVersionOfSubset.get(Field.ID).asText();
+                String newID = editableNewVersionOfSubset.get(Field.ID).asText();
                 boolean sameID = oldID.equals(newID);
                 boolean sameIDAsRequest = newID.equals(id);
                 boolean consistentID = oldID.equals(newID) && newID.equals(id);
 
-                String newVersionValidFrom = newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText();
+                String newVersionValidFrom = editableNewVersionOfSubset.get(Field.VERSION_VALID_FROM).asText();
 
-                String newVersionString = newVersionOfSubset.get(Field.VERSION).asText();
+                String newVersionString = editableNewVersionOfSubset.get(Field.VERSION).asText();
 
                 boolean sameVersionValidFrom = false;
                 for (JsonNode jsonNode : versionsArrayNode) {
@@ -161,7 +161,7 @@ public class SubsetsController {
                     JsonNode firstVersion = versionsArrayNode.get(versionsArrayNode.size() - 1);
                     String firstVersionValidFrom = firstVersion.get(Field.VERSION_VALID_FROM).asText();
                     if (newVersionValidFrom.compareTo(firstVersionValidFrom) < 0){
-                        if (!newVersionOfSubset.get(Field.VALID_FROM).asText().equals(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText())){
+                        if (!editableNewVersionOfSubset.get(Field.VALID_FROM).asText().equals(editableNewVersionOfSubset.get(Field.VERSION_VALID_FROM).asText())){
                             return ErrorHandler.newHttpError("'versionValidFrom' can not be earlier than subset 'validFrom'", HttpStatus.BAD_REQUEST, LOG);
                         }
                     }
@@ -176,12 +176,12 @@ public class SubsetsController {
 
                     if (thisVersionIsPublishedFromBefore){
                         String oldCodeList = prevPatchOfThisVersion.get(Field.CODES).asText();
-                        String newCodeList = newVersionOfSubset.get(Field.CODES).asText();
+                        String newCodeList = editableNewVersionOfSubset.get(Field.CODES).asText();
                         boolean differentCodeList = oldCodeList.equals(newCodeList);
                         attemptToChangeCodesOfPublishedVersion = !differentCodeList;
 
                         Iterator<String> prevPatchFieldNames = prevPatchOfThisVersion.fieldNames();
-                        Iterator<String> newPatchFieldNames = newVersionOfSubset.fieldNames();
+                        Iterator<String> newPatchFieldNames = editableNewVersionOfSubset.fieldNames();
 
                         String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, Field.LAST_UPDATED_BY, Field.LAST_UPDATED_DATE};
                         ArrayList<String> changeableFieldsList = new ArrayList<>();
@@ -194,8 +194,8 @@ public class SubsetsController {
                         boolean allSameFields = true;
                         while (allSameFields && prevPatchFieldNames.hasNext()){
                             String field = prevPatchFieldNames.next();
-                            if (!newVersionOfSubset.has(field) && !changeableFieldsList.contains(field)) {
-                                fieldErrorBuilder.append("- The new patch of version (").append(newVersionOfSubset.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the old patch of this version (").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
+                            if (!editableNewVersionOfSubset.has(field) && !changeableFieldsList.contains(field)) {
+                                fieldErrorBuilder.append("- The new patch of version (").append(editableNewVersionOfSubset.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the old patch of this version (").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
                                 allSameFields = false;
                             }
                         }
@@ -203,7 +203,7 @@ public class SubsetsController {
                         while (allSameFields && newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
                             if (!prevPatchOfThisVersion.has(field) && !changeableFieldsList.contains(field)) {
-                                fieldErrorBuilder.append("- The previous patch of version (").append(prevPatchOfThisVersion.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the new patch of this version version (").append(newVersionOfSubset.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
+                                fieldErrorBuilder.append("- The previous patch of version (").append(prevPatchOfThisVersion.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the new patch of this version version (").append(editableNewVersionOfSubset.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
                                 allSameFields = false;
                             }
                         }
@@ -212,11 +212,11 @@ public class SubsetsController {
                             return ErrorHandler.newHttpError(fieldErrorBuilder.toString(), HttpStatus.BAD_REQUEST, LOG);
                         }
 
-                        newPatchFieldNames = newVersionOfSubset.fieldNames();
+                        newPatchFieldNames = editableNewVersionOfSubset.fieldNames();
                         while (newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
                             if (!changeableFieldsList.contains(field)){
-                                if (!prevPatchOfThisVersion.get(field).asText().equals(newVersionOfSubset.get(field).asText())) {
+                                if (!prevPatchOfThisVersion.get(field).asText().equals(editableNewVersionOfSubset.get(field).asText())) {
                                     return ErrorHandler.newHttpError("The version of the subset you are trying to change is published, which means you can only change validUntil and versionRationale.", HttpStatus.BAD_REQUEST, LOG);
                                 }
                             }
@@ -227,7 +227,7 @@ public class SubsetsController {
                 // If there is a version which is previous to this version that is still a DRAFT, you can not publish this version.
 
                 if (consistentID && !attemptToChangeCodesOfPublishedVersion && !sameVersionValidFrom){
-                    return new LDSFacade().editSubset(editableSubset, id);
+                    return new LDSFacade().editSubset(editableNewVersionOfSubset, id);
                 } else {
                     StringBuilder errorStringBuilder = new StringBuilder();
                     if (!sameID)
