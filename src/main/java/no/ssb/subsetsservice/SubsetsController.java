@@ -183,6 +183,10 @@ public class SubsetsController {
                         Iterator<String> prevPatchFieldNames = prevPatchOfThisVersion.fieldNames();
                         Iterator<String> newPatchFieldNames = newVersionOfSubset.fieldNames();
 
+                        String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, Field.LAST_UPDATED_BY, Field.LAST_UPDATED_DATE};
+                        ArrayList<String> changeableFieldsList = new ArrayList<>();
+                        Collections.addAll(changeableFieldsList, changeableFieldsInPublishedVersion);
+
                         boolean allSameFields = true;
                         while (allSameFields && prevPatchFieldNames.hasNext()){
                             String field = prevPatchFieldNames.next();
@@ -193,21 +197,18 @@ public class SubsetsController {
 
                         while (allSameFields && newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
-                            if (!prevPatchOfThisVersion.has(field)) {
+                            if (!prevPatchOfThisVersion.has(field) && !changeableFieldsList.contains(field)) {
                                 allSameFields = false;
                             }
                         }
 
                         if (!allSameFields){
-                            return ErrorHandler.newHttpError("The submitted version does not contain all the same fields as the already published version that it attempts to override", HttpStatus.BAD_REQUEST, LOG);
+                            return ErrorHandler.newHttpError("The submitted version does not contain all the unchangeable fields of the already published version that it attempts to override", HttpStatus.BAD_REQUEST, LOG);
                         }
 
                         newPatchFieldNames = newVersionOfSubset.fieldNames();
                         while (newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
-                            String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, Field.LAST_UPDATED_BY, Field.LAST_UPDATED_DATE};
-                            ArrayList<String> changeableFieldsList = new ArrayList<>();
-                            Collections.addAll(changeableFieldsList, changeableFieldsInPublishedVersion);
                             if (!changeableFieldsList.contains(field)){
                                 if (!prevPatchOfThisVersion.get(field).asText().equals(newVersionOfSubset.get(field).asText())) {
                                     return ErrorHandler.newHttpError("The version of the subset you are trying to change is published, which means you can only change validUntil and versionRationale.", HttpStatus.BAD_REQUEST, LOG);
