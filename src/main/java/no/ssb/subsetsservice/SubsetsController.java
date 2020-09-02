@@ -130,8 +130,6 @@ public class SubsetsController {
             if (mostRecentVersionOfThisSubset.has(Field.CREATED_DATE)){
                 JsonNode createdDate = mostRecentVersionOfThisSubset.get(Field.CREATED_DATE);
                 editableNewVersionOfSubset.set(Field.CREATED_DATE, createdDate);
-                JsonNode _links = mostRecentVersionOfThisSubset.get(Field._LINKS);
-                editableNewVersionOfSubset.set(Field._LINKS, _links);
             } else {
                 return ErrorHandler.newHttpError("most recent version of subset "+id+" did not have the createdDate field", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
             }
@@ -187,7 +185,7 @@ public class SubsetsController {
                         Iterator<String> prevPatchFieldNames = prevPublishedPatchOfThisVersion.fieldNames();
                         Iterator<String> newPatchFieldNames = editableNewVersionOfSubset.fieldNames();
 
-                        String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, Field.LAST_UPDATED_BY, Field.LAST_UPDATED_DATE};
+                        String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, Field.LAST_UPDATED_BY, Field.LAST_UPDATED_DATE, Field._LINKS};
                         ArrayList<String> changeableFieldsList = new ArrayList<>();
                         Collections.addAll(changeableFieldsList, changeableFieldsInPublishedVersion);
                         StringBuilder fieldErrorBuilder = new StringBuilder();
@@ -283,7 +281,7 @@ public class SubsetsController {
                                     }
                                     //JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
                                     JsonNode self = new ObjectMapper().createObjectNode();
-                                    subsetVersionDocument.set("_links", self);
+                                    subsetVersionDocument.set(Field._LINKS, self);
                                     int subsetMajorVersion = Integer.parseInt(subsetVersionDocument.get(Field.VERSION).textValue().split("\\.")[0]);
                                     if (!versionLastUpdatedMap.containsKey(subsetMajorVersion)) { // Only include the latest update of any major version
                                         versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
