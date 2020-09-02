@@ -195,7 +195,7 @@ public class SubsetsController {
                         while (allSameFields && prevPatchFieldNames.hasNext()){
                             String field = prevPatchFieldNames.next();
                             if (!newVersionOfSubset.has(field) && !changeableFieldsList.contains(field)) {
-                                fieldErrorBuilder.append("The new version (").append(newVersionOfSubset.get(Field.VERSION)).append(") of the subset ").append(prevPatchOfThisVersion.get(Field.ID)).append(" does not contain the field ").append(field).append(" that is present in the old version, and is not in the 'changeable fields' list. \n");
+                                fieldErrorBuilder.append("- The new patch of version (").append(newVersionOfSubset.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the old patch of this version (").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
                                 allSameFields = false;
                             }
                         }
@@ -203,7 +203,7 @@ public class SubsetsController {
                         while (allSameFields && newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
                             if (!prevPatchOfThisVersion.has(field) && !changeableFieldsList.contains(field)) {
-                                fieldErrorBuilder.append("The previous version (").append(prevPatchOfThisVersion.get(Field.VERSION)).append(") of the subset ").append(prevPatchOfThisVersion.get(Field.ID)).append(" does not contain the field ").append(field).append(" that is present in the new version, and is not in the 'changeable fields' list. \n");
+                                fieldErrorBuilder.append("- The previous patch of version (").append(prevPatchOfThisVersion.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the new patch of this version version (").append(newVersionOfSubset.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
                                 allSameFields = false;
                             }
                         }
