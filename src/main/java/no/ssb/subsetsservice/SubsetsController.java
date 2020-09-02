@@ -186,11 +186,16 @@ public class SubsetsController {
                         String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, Field.LAST_UPDATED_BY, Field.LAST_UPDATED_DATE};
                         ArrayList<String> changeableFieldsList = new ArrayList<>();
                         Collections.addAll(changeableFieldsList, changeableFieldsInPublishedVersion);
+                        StringBuilder fieldErrorBuilder = new StringBuilder();
+                        fieldErrorBuilder.append("Changeable fields: [ ");
+                        changeableFieldsList.forEach(s->fieldErrorBuilder.append(s).append(" "));
+                        fieldErrorBuilder.append("]");
 
                         boolean allSameFields = true;
                         while (allSameFields && prevPatchFieldNames.hasNext()){
                             String field = prevPatchFieldNames.next();
-                            if (!newVersionOfSubset.has(field)) {
+                            if (!newVersionOfSubset.has(field) && !changeableFieldsList.contains(field)) {
+                                fieldErrorBuilder.append("- The new patch of version (").append(newVersionOfSubset.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the old patch of this version (").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
                                 allSameFields = false;
                             }
                         }
@@ -198,12 +203,13 @@ public class SubsetsController {
                         while (allSameFields && newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
                             if (!prevPatchOfThisVersion.has(field) && !changeableFieldsList.contains(field)) {
+                                fieldErrorBuilder.append("- The previous patch of version (").append(prevPatchOfThisVersion.get(Field.VERSION).asText()).append(") of the subset with ID '").append(prevPatchOfThisVersion.get(Field.ID).asText()).append("' does not contain the field '").append(field).append("' that is present in the new patch of this version version (").append(newVersionOfSubset.get(Field.ID).asText()).append("), and is a field that is not allowed to change when a version is already published. ");
                                 allSameFields = false;
                             }
                         }
 
                         if (!allSameFields){
-                            return ErrorHandler.newHttpError("The submitted version does not contain all the unchangeable fields of the already published version that it attempts to override", HttpStatus.BAD_REQUEST, LOG);
+                            return ErrorHandler.newHttpError(fieldErrorBuilder.toString(), HttpStatus.BAD_REQUEST, LOG);
                         }
 
                         newPatchFieldNames = newVersionOfSubset.fieldNames();
