@@ -186,13 +186,16 @@ public class SubsetsController {
                         String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, Field.LAST_UPDATED_BY, Field.LAST_UPDATED_DATE};
                         ArrayList<String> changeableFieldsList = new ArrayList<>();
                         Collections.addAll(changeableFieldsList, changeableFieldsInPublishedVersion);
-
                         StringBuilder fieldErrorBuilder = new StringBuilder();
+                        fieldErrorBuilder.append("Changeable fields: [ ");
+                        changeableFieldsList.forEach(s->fieldErrorBuilder.append(s).append(" "));
+                        fieldErrorBuilder.append("]");
+
                         boolean allSameFields = true;
                         while (allSameFields && prevPatchFieldNames.hasNext()){
                             String field = prevPatchFieldNames.next();
                             if (!newVersionOfSubset.has(field) && !changeableFieldsList.contains(field)) {
-                                fieldErrorBuilder.append("The new version (").append(newVersionOfSubset.get(Field.VERSION)).append(") of the subset ").append(prevPatchOfThisVersion.get(Field.ID)).append(" does not contain the field ").append(field).append(" that is present in the old version. \n");
+                                fieldErrorBuilder.append("The new version (").append(newVersionOfSubset.get(Field.VERSION)).append(") of the subset ").append(prevPatchOfThisVersion.get(Field.ID)).append(" does not contain the field ").append(field).append(" that is present in the old version, and is not in the 'changeable fields' list. \n");
                                 allSameFields = false;
                             }
                         }
@@ -200,7 +203,7 @@ public class SubsetsController {
                         while (allSameFields && newPatchFieldNames.hasNext()){
                             String field = newPatchFieldNames.next();
                             if (!prevPatchOfThisVersion.has(field) && !changeableFieldsList.contains(field)) {
-                                fieldErrorBuilder.append("The previous version (").append(prevPatchOfThisVersion.get(Field.VERSION)).append(") of the subset ").append(prevPatchOfThisVersion.get(Field.ID)).append(" does not contain the field ").append(field).append(" that is present in the new version. \n");
+                                fieldErrorBuilder.append("The previous version (").append(prevPatchOfThisVersion.get(Field.VERSION)).append(") of the subset ").append(prevPatchOfThisVersion.get(Field.ID)).append(" does not contain the field ").append(field).append(" that is present in the new version, and is not in the 'changeable fields' list. \n");
                                 allSameFields = false;
                             }
                         }
