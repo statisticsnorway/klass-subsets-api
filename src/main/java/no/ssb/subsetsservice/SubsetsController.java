@@ -150,6 +150,15 @@ public class SubsetsController {
         if (!(newVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0))
             return ErrorHandler.newHttpError("'versionValidFrom' can not be earlier than subset 'validFrom'", HttpStatus.BAD_REQUEST, LOG);
 
+        if (newVersionOfSubset.has(Field.VALID_UNTIL) && newVersionOfSubset.get(Field.VALID_UNTIL).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0)
+            return ErrorHandler.newHttpError("The subset's 'validUntil' must be set to a date after 'versionValidFrom'", HttpStatus.BAD_REQUEST, LOG);
+
+        if (!(newVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0))
+            return ErrorHandler.newHttpError("'versionValidFrom' can not be earlier than subset 'validFrom'", HttpStatus.BAD_REQUEST, LOG);
+
+        ResponseEntity<JsonNode> oldPublishedVersionsRE = getVersions(id, true, false, true);
+        boolean thisSubsetIsPublishedFromBefore = oldPublishedVersionsRE.getStatusCode().equals(HttpStatus.OK) && oldPublishedVersionsRE.getBody() != null && oldPublishedVersionsRE.getBody().size() > 0;
+
         ArrayNode versionsArrayNode = Utils.sortByVersionValidFrom(Utils.cleanSubsetVersion(Objects.requireNonNull(oldVersionsRE.getBody())).deepCopy());
         JsonNode mostRecentVersionOfThisSubset = versionsArrayNode.get(0);
 
@@ -159,6 +168,23 @@ public class SubsetsController {
         editableNewVersionOfSubset.put(Field.LAST_UPDATED_DATE, Utils.getNowISO());
         JsonNode createdDate = mostRecentVersionOfThisSubset.get(Field.CREATED_DATE);
         editableNewVersionOfSubset.set(Field.CREATED_DATE, createdDate);
+
+        if (!editableNewVersionOfSubset.has(Field.VALID_UNTIL)){
+            //TODO: Add the validUntil date from the existing published version?
+            JsonNode validUntil = null;
+            if (thisSubsetIsPublishedFromBefore){
+                JsonNode publishedVersion = oldPublishedVersionsRE.getBody().get(0);
+                if (publishedVersion.has(Field.VALID_UNTIL))
+                    validUntil = publishedVersion.get(Field.VALID_UNTIL);
+            }
+            if (validUntil == null && mostRecentVersionOfThisSubset.has(Field.VALID_UNTIL)) {
+                validUntil = mostRecentVersionOfThisSubset.get(Field.VALID_UNTIL);
+            }
+            if (validUntil != null)
+                editableNewVersionOfSubset.set(Field.VALID_UNTIL, validUntil);
+            else
+                LOG.error("The PUT version as well as the most recent published version and the most recent version overall had no validUntil field, so this version will have to validUntil");
+        }
 
         String oldID = mostRecentVersionOfThisSubset.get(Field.ID).asText();
         String newID = editableNewVersionOfSubset.get(Field.ID).asText();
@@ -183,9 +209,6 @@ public class SubsetsController {
                 return ErrorHandler.newHttpError("It is not allowed to submit a version with versionValidFrom equal to that of an existing version.", HttpStatus.BAD_REQUEST, LOG);
             }
         }
-
-
-        // TODO: If defined, the subset's 'validUntil' in the new version must not be before the 'versionValidFrom' in any case.
 
         String mostRecentVersionValidFrom = mostRecentVersionOfThisSubset.get(Field.VERSION_VALID_FROM).asText();
         if (newVersionValidFrom.compareTo(mostRecentVersionValidFrom) < 0){
@@ -354,23 +377,23 @@ public class SubsetsController {
                     LOG.debug("gotten lastestPublishedVersion");
                     boolean publishedVersionExists = latestPublishedVersionNode != null;
                     LOG.debug("published version exists? "+publishedVersionExists);
-                    int latestMajorVersionInt = Integer.parseInt(latestVersion.get(Field.VERSION).asText().split("\\.")[0]);
-                    LOG.debug("latest major version id as int: "+latestMajorVersionInt);
+                    int latestPublishedMajorVersionInt = Integer.parseInt(latestPublishedVersionNode.get(Field.VERSION).asText().split("\\.")[0]);
+                    LOG.debug("latest major version id as int: "+latestPublishedMajorVersionInt);
 
                     ArrayNode majorVersionsObjectNodeArray = mapper.createArrayNode();
                     for (JsonNode versionNode : majorVersionsArrayNode) {
-                        ObjectNode objectNode = versionNode.deepCopy();
-                        int version = Integer.parseInt(objectNode.get(Field.VERSION).asText().split("\\.")[0]);
-                        objectNode.put(Field.VERSION, Integer.toString(version));
-                        if (publishedVersionExists && version < latestMajorVersionInt && objectNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
+                        ObjectNode editableVersionNode = versionNode.deepCopy();
+                        int version = Integer.parseInt(editableVersionNode.get(Field.VERSION).asText().split("\\.")[0]);
+                        editableVersionNode.put(Field.VERSION, Integer.toString(version));
+                        if (publishedVersionExists && version < latestPublishedMajorVersionInt && editableVersionNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
                             if (latestPublishedVersionNode.has(Field.NAME)){
-                                objectNode.set(Field.NAME, latestPublishedVersionNode.get(Field.NAME));
+                                editableVersionNode.set(Field.NAME, latestPublishedVersionNode.get(Field.NAME));
                             }
                             if (latestPublishedVersionNode.has(Field.SHORT_NAME)){
-                                objectNode.set(Field.SHORT_NAME, latestPublishedVersionNode.get(Field.SHORT_NAME));
+                                editableVersionNode.set(Field.SHORT_NAME, latestPublishedVersionNode.get(Field.SHORT_NAME));
                             }
                         }
-                        majorVersionsObjectNodeArray.add(objectNode);
+                        majorVersionsObjectNodeArray.add(editableVersionNode);
                     }
                     LOG.debug("sorting by versionValidFrom");
                     ArrayNode sorted = Utils.sortByVersionValidFrom(majorVersionsArrayNode);
@@ -466,14 +489,14 @@ public class SubsetsController {
             if ((!isFromDate || Utils.isYearMonthDay(from)) && (!isToDate || Utils.isYearMonthDay(to))){ // If a date is given as param, it must be valid format
                 // If a date interval is specified using 'from' and 'to' query parameters
                 ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts, rankedUrnOnly);
-                JsonNode responseBodyJSON = versionsResponseEntity.getBody();
+                JsonNode versionsResponseBodyJson = versionsResponseEntity.getBody();
                 LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
                 ObjectMapper mapper = new ObjectMapper();
                 Map<String, Integer> codeMap = new HashMap<>();
                 int nrOfVersions;
-                if (responseBodyJSON != null) {
-                    if (responseBodyJSON.isArray()) {
-                        ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
+                if (versionsResponseBodyJson != null) {
+                    if (versionsResponseBodyJson.isArray()) {
+                        ArrayNode versionsArrayNode = (ArrayNode) versionsResponseBodyJson;
                         nrOfVersions = versionsArrayNode.size();
                         LOG.debug("Nr of versions: " + nrOfVersions);
                         JsonNode firstVersion = versionsArrayNode.get(versionsArrayNode.size() - 1).get(Field.DOCUMENT);
@@ -496,12 +519,11 @@ public class SubsetsController {
                         LOG.debug("isLastValidAtOrAfterToDate? " + isLastValidAtOrAfterToDate);
 
                         if (isFirstValidAtOrBeforeFromDate && isLastValidAtOrAfterToDate) {
-                            for (JsonNode arrayEntry : versionsArrayNode) {
-                                if (includeDrafts || arrayEntry.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
+                            for (JsonNode subsetVersion : versionsArrayNode) {
+                                if (includeDrafts || subsetVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
                                     // if this version has any overlap with the valid interval . . .
-                                    JsonNode subset = arrayEntry.get(Field.DOCUMENT);
-                                    String validFromDateString = subset.get(Field.VALID_FROM).textValue().split("T")[0];
-                                    String validUntilDateString = subset.get(Field.VALID_UNTIL).textValue().split("T")[0];
+                                    String validFromDateString = subsetVersion.get(Field.VALID_FROM).textValue().split("T")[0];
+                                    String validUntilDateString = subsetVersion.get(Field.VALID_UNTIL).textValue().split("T")[0];
 
                                     boolean validUntilGTFrom = true;
                                     if (isFromDate)
@@ -512,9 +534,9 @@ public class SubsetsController {
                                         validFromLTTo = validFromDateString.compareTo(to) < 0;
 
                                     if (validUntilGTFrom || validFromLTTo) {
-                                        LOG.debug("Version " + subset.get(Field.VERSION) + " is valid in the interval, so codes will be added to map");
+                                        LOG.debug("Version " + subsetVersion.get(Field.VERSION) + " is valid in the interval, so codes will be added to map");
                                         // . . . using each code in this version as key, increment corresponding integer value in map
-                                        JsonNode codes = arrayEntry.get(Field.DOCUMENT).get(Field.CODES);
+                                        JsonNode codes = subsetVersion.get(Field.CODES);
                                         ArrayNode codesArrayNode = (ArrayNode) codes;
                                         LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
                                         for (JsonNode jsonNode : codesArrayNode) {
