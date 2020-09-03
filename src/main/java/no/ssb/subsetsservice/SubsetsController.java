@@ -312,9 +312,6 @@ public class SubsetsController {
                                     if (!subsetVersionDocument.has(Field.LAST_UPDATED_DATE)) {
                                         subsetVersionDocument.set(Field.LAST_UPDATED_DATE, subsetVersionDocument.get(Field.CREATED_DATE));
                                     }
-                                    //JsonNode self = Utils.getSelfLinkObject(mapper, ServletUriComponentsBuilder.fromCurrentRequestUri(), subsetVersionDocument);
-                                    JsonNode self = new ObjectMapper().createObjectNode();
-                                    subsetVersionDocument.set("_links", self);
                                     int subsetMajorVersion = Integer.parseInt(subsetVersionDocument.get(Field.VERSION).textValue().split("\\.")[0]);
                                     if (!versionLastUpdatedMap.containsKey(subsetMajorVersion)) { // Only include the latest update of any major version
                                         versionLastUpdatedMap.put(subsetMajorVersion, subsetVersionDocument);
