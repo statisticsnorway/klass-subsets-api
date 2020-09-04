@@ -377,22 +377,25 @@ public class SubsetsController {
                     LOG.debug("gotten lastestPublishedVersion");
                     boolean publishedVersionExists = latestPublishedVersionNode != null;
                     LOG.debug("published version exists? "+publishedVersionExists);
-                    int latestPublishedMajorVersionInt = Integer.parseInt(latestPublishedVersionNode.get(Field.VERSION).asText().split("\\.")[0]);
-                    LOG.debug("latest major version id as int: "+latestPublishedMajorVersionInt);
 
                     ArrayNode majorVersionsObjectNodeArray = mapper.createArrayNode();
                     for (JsonNode versionNode : majorVersionsArrayNode) {
                         ObjectNode editableVersionNode = versionNode.deepCopy();
                         int version = Integer.parseInt(editableVersionNode.get(Field.VERSION).asText().split("\\.")[0]);
                         editableVersionNode.put(Field.VERSION, Integer.toString(version));
-                        if (publishedVersionExists && version < latestPublishedMajorVersionInt && editableVersionNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
-                            if (latestPublishedVersionNode.has(Field.NAME)){
-                                editableVersionNode.set(Field.NAME, latestPublishedVersionNode.get(Field.NAME));
-                            }
-                            if (latestPublishedVersionNode.has(Field.SHORT_NAME)){
-                                editableVersionNode.set(Field.SHORT_NAME, latestPublishedVersionNode.get(Field.SHORT_NAME));
+                        if (publishedVersionExists){
+                            int latestPublishedMajorVersionInt = Integer.parseInt(latestPublishedVersionNode.get(Field.VERSION).asText().split("\\.")[0]);
+                            LOG.debug("latest major version id as int: "+latestPublishedMajorVersionInt);
+                            if (version < latestPublishedMajorVersionInt && editableVersionNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
+                                if (latestPublishedVersionNode.has(Field.NAME)){
+                                    editableVersionNode.set(Field.NAME, latestPublishedVersionNode.get(Field.NAME));
+                                }
+                                if (latestPublishedVersionNode.has(Field.SHORT_NAME)){
+                                    editableVersionNode.set(Field.SHORT_NAME, latestPublishedVersionNode.get(Field.SHORT_NAME));
+                                }
                             }
                         }
+
                         majorVersionsObjectNodeArray.add(editableVersionNode);
                     }
                     LOG.debug("sorting by versionValidFrom");
