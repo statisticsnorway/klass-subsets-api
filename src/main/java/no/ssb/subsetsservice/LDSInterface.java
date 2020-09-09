@@ -65,4 +65,6 @@ public interface LDSInterface {
     ResponseEntity<JsonNode> createSubset(JsonNode subset, String id);
 
     boolean healthReady();
+
+    void deleteSubset(String url);
 }
