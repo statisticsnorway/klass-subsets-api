@@ -89,7 +89,10 @@ class SubsetsControllerTest {
         instance.deleteAll();
 
         // Test if database is empty
-        ResponseEntity<JsonNode> allSubsets = instance.getSubsets(true, true, true);
+        ResponseEntity<JsonNode> allSubsets = instance.getSubsets(
+                true,
+                true,
+                true);
         assertEquals(HttpStatus.OK, allSubsets.getStatusCode());
         JsonNode body = allSubsets.getBody();
         assertNotNull(body);
@@ -105,7 +108,11 @@ class SubsetsControllerTest {
         JsonNode subsetJsonNode = getSubset(fCS1);
         ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
         assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
-        ResponseEntity<JsonNode> getVersionsRE = instance.getVersions(subsetJsonNode.get(Field.ID).asText(), true, true, true);
+        ResponseEntity<JsonNode> getVersionsRE = instance.getVersions(
+                subsetJsonNode.get(Field.ID).asText(),
+                true,
+                true,
+                true);
         ArrayNode versionsBody = (ArrayNode)getVersionsRE.getBody();
         assertEquals( 1, versionsBody.size());
     }
@@ -121,7 +128,12 @@ class SubsetsControllerTest {
         assertEquals(subsetJsonNode.get(Field.ID).asText(), postRE.getBody().get(Field.ID).asText());
         System.out.println(postRE.getBody().toPrettyString());
         String originalID = subsetJsonNode.get(Field.ID).asText();
-        JsonNode retrievedSubset = instance.getSubset(originalID, true, true, true).getBody();
+        JsonNode retrievedSubset = instance.getSubset(
+                originalID,
+                true,
+                true,
+                true)
+                .getBody();
 
         assertNotNull(retrievedSubset);
         assertFalse(retrievedSubset.isEmpty());
@@ -135,7 +147,12 @@ class SubsetsControllerTest {
 
         JsonNode subsetJsonNode = getSubset(fCS1);
         instance.postSubset(subsetJsonNode);
-        JsonNode retrievedSubset = instance.getSubset(subsetJsonNode.get(Field.ID).asText(), true, true, true).getBody();
+        JsonNode retrievedSubset = instance.getSubset(
+                subsetJsonNode.get(Field.ID).asText(),
+                true,
+                true,
+                true)
+                .getBody();
         assertTrue(retrievedSubset.has(Field.CREATED_DATE));
         assertTrue(retrievedSubset.has(Field.LAST_UPDATED_DATE));
     }
@@ -316,14 +333,26 @@ class SubsetsControllerTest {
         String id = draft.get(Field.ID).asText();
         instance.postSubset(draft);
 
-        ResponseEntity<JsonNode> getSubsetsNoDraftRE = instance.getSubset(id, false, false, true);
+        ResponseEntity<JsonNode> getSubsetsNoDraftRE = instance.getSubset(
+                id,
+                false,
+                false,
+                true);
         assertEquals(HttpStatus.NOT_FOUND, getSubsetsNoDraftRE.getStatusCode());
-        ResponseEntity<JsonNode> getSubsetsWithDraftsRE = instance.getSubset(id, true, true, true);
+        ResponseEntity<JsonNode> getSubsetsWithDraftsRE = instance.getSubset(
+                id,
+                true,
+                true,
+                true);
         assertEquals(HttpStatus.OK, getSubsetsWithDraftsRE.getStatusCode());
 
         JsonNode open = getSubset(fv1_0);
         instance.putSubset(id, open);
-        getSubsetsNoDraftRE = instance.getSubset(id, false, false, true);
+        getSubsetsNoDraftRE = instance.getSubset(
+                id,
+                false,
+                false,
+                true);
         assertEquals(HttpStatus.OK, getSubsetsNoDraftRE.getStatusCode());
     }
 
@@ -361,7 +390,10 @@ class SubsetsControllerTest {
     void getSubsetsCheckStatusOK() {
         SubsetsController instance = SubsetsController.getInstance();
         assertNotNull(instance);
-        ResponseEntity<JsonNode> subsets = instance.getSubsets(true, true, false);
+        ResponseEntity<JsonNode> subsets = instance.getSubsets(
+                true,
+                true,
+                false);
         assertEquals(HttpStatus.OK, subsets.getStatusCode());
     }
 
@@ -369,7 +401,10 @@ class SubsetsControllerTest {
     void getSubsetsUrnOnlyCheckStatusOK() {
         SubsetsController instance = SubsetsController.getInstance();
         assertNotNull(instance);
-        ResponseEntity<JsonNode> subsets = instance.getSubsets(true, true, true);
+        ResponseEntity<JsonNode> subsets = instance.getSubsets(
+                true,
+                true,
+                true);
         assertEquals(HttpStatus.OK, subsets.getStatusCode());
     }
 
@@ -377,7 +412,10 @@ class SubsetsControllerTest {
     void getSubsetsUrnOnlyCheckContainsURNAndRank() {
         SubsetsController instance = SubsetsController.getInstance();
         assertNotNull(instance);
-        ResponseEntity<JsonNode> subsets = instance.getSubsets(true, true, true);
+        ResponseEntity<JsonNode> subsets = instance.getSubsets(
+                true,
+                true,
+                true);
         assertEquals(HttpStatus.OK, subsets.getStatusCode());
         JsonNode body = subsets.getBody();
         assertNotNull(body);
@@ -398,7 +436,10 @@ class SubsetsControllerTest {
     @Test
     void getAllSubsetsCheckStatusOK() {
         SubsetsController instance = SubsetsController.getInstance();
-        ResponseEntity<JsonNode> response = instance.getSubsets(true, true, false);
+        ResponseEntity<JsonNode> response = instance.getSubsets(
+                true,
+                true,
+                false);
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
@@ -406,7 +447,10 @@ class SubsetsControllerTest {
     @Test
     void getAllSubsetsCheckResponseBodyNotNull() {
         SubsetsController instance = SubsetsController.getInstance();
-        ResponseEntity<JsonNode> response = instance.getSubsets(true, true, false);
+        ResponseEntity<JsonNode> response = instance.getSubsets(
+                true,
+                true,
+                false);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         JsonNode body = response.getBody();
         assertNotNull(body);
@@ -415,7 +459,10 @@ class SubsetsControllerTest {
     @Test
     void getAllSubsetsCheckBodyIsArray() {
         SubsetsController instance = SubsetsController.getInstance();
-        ResponseEntity<JsonNode> response = instance.getSubsets(true, true, false);
+        ResponseEntity<JsonNode> response = instance.getSubsets(
+                true,
+                true,
+                false);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         JsonNode body = response.getBody();
         assertTrue(body.isArray());
@@ -428,7 +475,11 @@ class SubsetsControllerTest {
 
     @Test
     void getIllegalIdSubset() {
-        ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubset("this-id-is-not-legal-¤%&#!§|`^¨~'*=)(/\\£$@{[]}", false, false, false);
+        ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubset(
+                "this-id-is-not-legal-¤%&#!§|`^¨~'*=)(/\\£$@{[]}",
+                false,
+                false,
+                false);
 
         System.out.println("STATUS CODE");
         System.out.println(response.getStatusCodeValue());
@@ -441,7 +492,11 @@ class SubsetsControllerTest {
 
     @Test
     void getNonExistingSubset() {
-        ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubset("this-id-does-not-exist", true, true, true);
+        ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubset(
+                "this-id-does-not-exist",
+                true,
+                true,
+                true);
 
         System.out.println("STATUS CODE");
         System.out.println(response.getStatusCodeValue());
@@ -454,7 +509,11 @@ class SubsetsControllerTest {
 
     @Test
     void getNonExistentSubsetVersions() {
-        ResponseEntity<JsonNode> response = SubsetsController.getInstance().getVersions("this-id-does-not-exist", true, true, true);
+        ResponseEntity<JsonNode> response = SubsetsController.getInstance().getVersions(
+                "this-id-does-not-exist",
+                true,
+                true,
+                true);
 
         System.out.println("STATUS CODE");
         System.out.println(response.getStatusCodeValue());
@@ -467,7 +526,10 @@ class SubsetsControllerTest {
 
     @Test
     void getAllIndividualSubsetsCompareIDs() {
-        ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets(true, true, false);
+        ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets(
+                true,
+                true,
+                false);
 
         System.out.println("All subsets:");
         JsonNode responseBody = response.getBody();
@@ -477,7 +539,12 @@ class SubsetsControllerTest {
         System.out.println("IDs:");
         for (JsonNode jsonNode : responseBody) {
             String id = jsonNode.get(Field.ID).asText();
-            JsonNode subset = SubsetsController.getInstance().getSubset(id, true, true, false).getBody();
+            JsonNode subset = SubsetsController.getInstance().getSubset(
+                    id,
+                    true,
+                    true,
+                    false)
+                    .getBody();
             assert subset != null : "getSubset "+id+" did not return any result";
             assertTrue(subset.has(Field.ID));
             assertEquals(subset.get(Field.ID).asText(), jsonNode.get(Field.ID).asText());
@@ -487,7 +554,10 @@ class SubsetsControllerTest {
 
     @Test
     void getAllVersionsOfAllSubsets() {
-        ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets( true, true, false);
+        ResponseEntity<JsonNode> response = SubsetsController.getInstance().getSubsets(
+                true,
+                true,
+                false);
 
         System.out.println("All subsets:");
         JsonNode body = response.getBody();
@@ -495,17 +565,32 @@ class SubsetsControllerTest {
         System.out.println(body);
         System.out.println("IDs:");
         for (JsonNode jsonNode : response.getBody()) {
-            JsonNode subset = SubsetsController.getInstance().getSubset(jsonNode.get("id").asText(), true, true, false).getBody();
+            JsonNode subset = SubsetsController.getInstance().getSubset(
+                    jsonNode.get("id").asText(),
+                    true,
+                    true,
+                    false)
+                    .getBody();
             assertNotNull(subset);
             assertTrue(subset.has(Field.ID));
             assertEquals(subset.get(Field.ID).asText(), jsonNode.get(Field.ID).asText());
             System.out.println("ID: "+subset.get(Field.ID));
 
-            ArrayNode versions = (ArrayNode) SubsetsController.getInstance().getVersions(subset.get(Field.ID).asText(), true, true, false).getBody();
+            ArrayNode versions = (ArrayNode) SubsetsController.getInstance().getVersions(
+                    subset.get(Field.ID).asText(),
+                    true,
+                    true,
+                    false)
+                    .getBody();
             assertNotNull(versions);
             assertNotEquals(0, versions.size());
             for (JsonNode version : versions) {
-                System.out.println("Version: "+version.get(Field.VERSION).asText()+" admin status: "+version.get(Field.ADMINISTRATIVE_STATUS).asText()+" name: "+version.get(Field.NAME).get(0).get("languageText").asText());
+                System.out.println("Version: "+version.get(
+                        Field.VERSION).asText()
+                        +" admin status: "
+                        +version.get(Field.ADMINISTRATIVE_STATUS).asText()
+                        +" name: "
+                        +version.get(Field.NAME).get(0).get("languageText").asText());
             }
         }
     }
