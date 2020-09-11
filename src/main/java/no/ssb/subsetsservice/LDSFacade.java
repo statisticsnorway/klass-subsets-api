@@ -25,7 +25,7 @@ public class LDSFacade implements LDSInterface {
 
         ResponseEntity<JsonNode> allSubsetsRE = getLastUpdatedVersionOfAllSubsets();
 
-        if (allSubsetsRE.getStatusCodeValue() == HttpStatus.OK.value()) {
+        if (allSubsetsRE.getStatusCode().equals(HttpStatus.OK)) {
             JsonNode ldsREBody = allSubsetsRE.getBody();
             if (ldsREBody != null) {
                 if (ldsREBody.isArray()) {
@@ -36,7 +36,9 @@ public class LDSFacade implements LDSInterface {
                     }
                     return idList;
                 }
+                throw new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "GET all subsets body was not ArrayNode");
             }
+            throw new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "GET all subsets body was null");
         }
         throw new HttpClientErrorException(allSubsetsRE.getStatusCode());
     }

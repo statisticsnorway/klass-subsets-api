@@ -71,6 +71,18 @@ public class SubsetsController {
         if (!subsetJson.has(Field.VERSION))
             return ErrorHandler.newHttpError("Each subset must have the field 'version', which uniquely identifies the version of the subset", HttpStatus.BAD_REQUEST, LOG);
 
+        if(subsetJson.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN) && subsetJson.get(Field.CODES).isEmpty())
+            return ErrorHandler.newHttpError("Can not publish a subset with an empty code list", HttpStatus.BAD_REQUEST, LOG);
+
+        if ((subsetJson.get(Field.VALID_FROM).asText().compareTo(subsetJson.get(Field.VERSION_VALID_FROM).asText()) != 0))
+            return ErrorHandler.newHttpError("'versionValidFrom' can not be different from the subset's 'validFrom'", HttpStatus.BAD_REQUEST, LOG);
+
+        if (subsetJson.has(Field.VALID_UNTIL) && subsetJson.has(Field.VERSION_VALID_UNTIL) && subsetJson.get(Field.VALID_UNTIL).asText().compareTo(subsetJson.get(Field.VERSION_VALID_UNTIL).asText()) != 0)
+            return ErrorHandler.newHttpError("'versionValidUntil' can not be different from the subset's 'validUntil'", HttpStatus.BAD_REQUEST, LOG);
+
+        if (subsetJson.has(Field.VALID_UNTIL) && subsetJson.get(Field.VALID_UNTIL).asText().compareTo(subsetJson.get(Field.VERSION_VALID_FROM).asText()) <= 0)
+            return ErrorHandler.newHttpError("The subset's 'validUntil' must be set to a date after 'versionValidFrom' and 'validFrom'", HttpStatus.BAD_REQUEST, LOG);
+
         String id = subsetJson.get(Field.ID).textValue();
         LOG.info("POST subset with id "+id);
 
@@ -144,6 +156,9 @@ public class SubsetsController {
 
         //TODO: Validate that the incoming subset version contains the legal fields?
 
+        if (!newVersionOfSubset.has(Field.VERSION))
+            return ErrorHandler.newHttpError("Each subset must have the field 'version', which uniquely identifies the version of the subset", HttpStatus.BAD_REQUEST, LOG);
+
         if(newVersionOfSubset.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN) && newVersionOfSubset.get(Field.CODES).isEmpty())
             return ErrorHandler.newHttpError("Can not publish a subset with an empty code list", HttpStatus.BAD_REQUEST, LOG);
 
@@ -153,11 +168,15 @@ public class SubsetsController {
         if (newVersionOfSubset.has(Field.VALID_UNTIL) && newVersionOfSubset.get(Field.VALID_UNTIL).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0)
             return ErrorHandler.newHttpError("The subset's 'validUntil' must be set to a date after 'versionValidFrom'", HttpStatus.BAD_REQUEST, LOG);
 
+        if (newVersionOfSubset.has(Field.VALID_UNTIL) && newVersionOfSubset.has(Field.VERSION_VALID_UNTIL) && newVersionOfSubset.get(Field.VALID_UNTIL).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_UNTIL).asText()) > 0)
+            return ErrorHandler.newHttpError("The subset's 'versionValidUntil' must be set to a date equal to or before 'validUntil'", HttpStatus.BAD_REQUEST, LOG);
+
         if (!(newVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0))
             return ErrorHandler.newHttpError("'versionValidFrom' can not be earlier than subset 'validFrom'", HttpStatus.BAD_REQUEST, LOG);
 
         ResponseEntity<JsonNode> oldPublishedVersionsRE = getVersions(id, true, false, true);
         boolean thisSubsetIsPublishedFromBefore = oldPublishedVersionsRE.getStatusCode().equals(HttpStatus.OK) && oldPublishedVersionsRE.getBody() != null && oldPublishedVersionsRE.getBody().size() > 0;
+        LOG.debug("This SUBSET has at leas one published version");
 
         ArrayNode versionsArrayNode = Utils.sortByVersionValidFrom(Utils.cleanSubsetVersion(Objects.requireNonNull(oldVersionsRE.getBody())).deepCopy());
         JsonNode mostRecentVersionOfThisSubset = versionsArrayNode.get(0);
@@ -170,7 +189,7 @@ public class SubsetsController {
         editableNewVersionOfSubset.set(Field.CREATED_DATE, createdDate);
 
         if (!editableNewVersionOfSubset.has(Field.VALID_UNTIL)){
-            //TODO: Add the validUntil date from the existing published version?
+            //TODO: Add the validUntil date from the existing published version, if exists?
             JsonNode validUntil = null;
             if (thisSubsetIsPublishedFromBefore){
                 JsonNode publishedVersion = oldPublishedVersionsRE.getBody().get(0);
