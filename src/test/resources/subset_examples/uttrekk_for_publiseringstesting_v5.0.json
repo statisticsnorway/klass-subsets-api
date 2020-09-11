@@ -1,7 +1,7 @@
 {
     "administrativeStatus": "DRAFT",
     "id": "uttrekk_for_publiseringstesting",
-    "version": "1",
+    "version": "5",
     "name": [
         {
             "languageText": "Uttrekk for Testing av Publisering og Endring",
@@ -9,7 +9,7 @@
         }
     ],
     "shortName": "Test av Publisering",
-    "validFrom": "2020-08-08T00:00:00.000Z",
+    "validFrom": "2020-08-07T00:00:00.000Z",
     "validUntil": "2020-09-09T00:00:00.000Z",
     "versionValidFrom": "2020-08-09T00:00:00.000Z",
     "versionValidUntil": "2020-09-09T00:00:00.000Z",
