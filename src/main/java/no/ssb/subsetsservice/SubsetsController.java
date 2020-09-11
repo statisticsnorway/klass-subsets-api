@@ -174,12 +174,22 @@ public class SubsetsController {
         if (!(newVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0))
             return ErrorHandler.newHttpError("'versionValidFrom' can not be earlier than subset 'validFrom'", HttpStatus.BAD_REQUEST, LOG);
 
+        // When a new draft is posted that is the new first version, make sure validUntil == versionValidUntil
         ResponseEntity<JsonNode> oldPublishedVersionsRE = getVersions(id, true, false, true);
         boolean thisSubsetIsPublishedFromBefore = oldPublishedVersionsRE.getStatusCode().equals(HttpStatus.OK) && oldPublishedVersionsRE.getBody() != null && oldPublishedVersionsRE.getBody().size() > 0;
+        if (thisSubsetIsPublishedFromBefore && newVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) < 0) {
+            ArrayNode oldPublishedVersions = oldPublishedVersionsRE.getBody().deepCopy();
+            JsonNode firstPublished = oldPublishedVersions.get(oldPublishedVersions.size()-1);
+            if (newVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(firstPublished.get(Field.VERSION_VALID_FROM).asText()) != 0){
+                return ErrorHandler.newHttpError("'validFrom' can not be different from the 'versionValidFrom' of the earliest version", HttpStatus.BAD_REQUEST, LOG);
+            }
+        }
         LOG.debug("This SUBSET has at leas one published version");
+
 
         ArrayNode versionsArrayNode = Utils.sortByVersionValidFrom(Utils.cleanSubsetVersion(Objects.requireNonNull(oldVersionsRE.getBody())).deepCopy());
         JsonNode mostRecentVersionOfThisSubset = versionsArrayNode.get(0);
+        JsonNode earliestVersionOfThisSubset = versionsArrayNode.get(0);
 
         assert mostRecentVersionOfThisSubset.has(Field.ID) : "most recent version of this subset did not have the field '"+Field.ID+"' ";
 
