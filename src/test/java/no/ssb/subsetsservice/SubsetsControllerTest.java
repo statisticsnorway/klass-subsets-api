@@ -19,22 +19,24 @@ import static org.junit.jupiter.api.Assertions.*;
 class SubsetsControllerTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(SubsetsServiceApplicationTests.class);
-    File fCS1 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/ClassificationSubset_1.json");
-    File fCS2 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/ClassificationSubset_2.json");
-    File fv0_1 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v0.1.json"); // try to set versionValidFrom earlier than validFrom
-    File fv0_2 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v0.2.json"); // try to set versionValidFrom later than validFrom
-    File fv0_3 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v0.3.json"); // version field is missing
-    File fv0_9 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v0.9.json"); // status DRAFT
-    File fv1_0 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v1.0.json"); // status OPEN
-    File fv1_1 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v1.1.json"); // try to delete code
-    File f1_2 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v1.2.json"); // try to change validFrom and versionValidFrom to a later date
-    File fv1_3 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v1.3.json"); // try to change versionValidFrom to a later date than validFrom, even if this is only version of subset
-    File fv2 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v2.json");
-    File fv3_0 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v3.0.json");
-    File fv3_1 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v3.1.json");
-    File fv4_0 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v4.0.json");
-    File fv4_1 = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_v4.1.json");
-    File fInvalidID = new File("src/test/java/no/ssb/subsetsservice/subset_examples/uttrekk_for_publiseringstesting_invalid_ID.json");
+    File fCS1 = new File("src/test/resources/subset_examples/ClassificationSubset_1.json");
+    File fCS2 = new File("src/test/resources/subset_examples/ClassificationSubset_2.json");
+    File fv0_1 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v0.1.json"); // versionValidFrom earlier than validFrom
+    File fv0_2 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v0.2.json"); // versionValidFrom later than validFrom
+    File fv0_3 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v0.3.json"); // version field is missing
+    File fv0_4 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v0.4.json"); // versionValidUntil after validUntil
+    File fv0_5 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v0.5.json"); // versionValidUntil before validUntil
+    File fv0_9 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v0.9.json"); // status DRAFT
+    File fv1_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.0.json"); // status OPEN
+    File fv1_1 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.1.json"); // try to delete code
+    File f1_2 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.2.json"); // try to change validFrom and versionValidFrom to a later date
+    File fv1_3 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.3.json"); // try to change versionValidFrom to a later date than validFrom, even if this is only version of subset
+    File fv2 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v2.json");
+    File fv3_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v3.0.json");
+    File fv3_1 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v3.1.json");
+    File fv4_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v4.0.json");
+    File fv4_1 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v4.1.json");
+    File fInvalidID = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_invalid_ID.json");
 
 
     @Test
@@ -149,11 +151,48 @@ class SubsetsControllerTest {
     }
 
     @Test
+    void putVersionValidFromDifferentFromValidFrom(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode subsetJsonNode = getSubset(fv0_9);
+        ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
+        assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
+
+
+        JsonNode subsetJsonNode2 = getSubset(fv0_1);
+        String id = subsetJsonNode2.get(Field.ID).asText();
+        ResponseEntity<JsonNode> putRE = instance.putSubset(id, subsetJsonNode2);
+
+        assertEquals(HttpStatus.BAD_REQUEST, putRE.getStatusCode());
+    }
+
+    @Test
     void postVersionValidFromDifferentFromValidFrom2(){
         SubsetsController instance = SubsetsController.getInstance();
         instance.deleteAll();
 
         JsonNode subsetJsonNode = getSubset(fv0_2);
+        ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
+        assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
+    }
+
+    @Test
+    void postVersionValidUntilDifferentFromValidUntil(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode subsetJsonNode = getSubset(fv0_4);
+        ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
+        assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
+    }
+
+    @Test
+    void postVersionValidUntilDifferentFromValidUntil2(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode subsetJsonNode = getSubset(fv0_5);
         ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
         assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
     }
