@@ -27,6 +27,7 @@ class SubsetsControllerTest {
     File fv0_4 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v0.4.json"); // versionValidUntil after validUntil
     File fv0_5 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v0.5.json"); // versionValidUntil before validUntil
     File fv0_9 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v0.9.json"); // status DRAFT
+    File fv0_91 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v0.91.json");
     File fv1_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.0.json"); // status OPEN
     File fv1_1 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.1.json"); // try to delete code
     File f1_2 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.2.json"); // try to change validFrom and versionValidFrom to a later date
@@ -438,6 +439,32 @@ class SubsetsControllerTest {
         instance.postSubset(subsetv1);
         ResponseEntity<JsonNode> putRE = instance.putSubset(subsetv3.get(Field.ID).asText(), subsetv3);
         assertEquals(HttpStatus.BAD_REQUEST, putRE.getStatusCode());
+    }
+
+    @Test
+    void putNewVersion(){
+        JsonNode subsetv1 = getSubset(fv1_0);
+        JsonNode subsetv3 = getSubset(fv3_0);
+
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        instance.postSubset(subsetv1);
+        ResponseEntity<JsonNode> putRE = instance.putSubset(subsetv3.get(Field.ID).asText(), subsetv3);
+        assertEquals(HttpStatus.OK, putRE.getStatusCode());
+    }
+
+    @Test
+    void putPatchWithChangesToVersion(){
+        JsonNode subsetv1 = getSubset(fv0_9);
+        JsonNode subsetv3 = getSubset(fv0_91);
+
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        instance.postSubset(subsetv1);
+        ResponseEntity<JsonNode> putRE = instance.putSubset(subsetv3.get(Field.ID).asText(), subsetv3);
+        assertEquals(HttpStatus.OK, putRE.getStatusCode());
     }
 
     @Test
