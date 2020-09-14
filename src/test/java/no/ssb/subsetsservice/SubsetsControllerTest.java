@@ -62,7 +62,16 @@ class SubsetsControllerTest {
     }
 
     @Test
-    void testDraftNoCodes(){
+    void postDraftNoCodes(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+        JsonNode subset = getSubset(fv4_0);
+        ResponseEntity<JsonNode> postResponseEntity = instance.postSubset(subset);
+        assertEquals(HttpStatus.CREATED, postResponseEntity.getStatusCode());
+    }
+
+    @Test
+    void postDraftNoCodesThenPutOpenNoCodes(){
         SubsetsController instance = SubsetsController.getInstance();
         instance.deleteAll();
         JsonNode subset = getSubset(fv4_0);
@@ -71,6 +80,15 @@ class SubsetsControllerTest {
         assertEquals(HttpStatus.CREATED, postResponseEntity.getStatusCode());
         ResponseEntity<JsonNode> putResponseEntity = instance.putSubset(id, getSubset(fv4_1));
         assertEquals(HttpStatus.BAD_REQUEST, putResponseEntity.getStatusCode()); // 0 codes is not allowed in published subset
+    }
+
+    @Test
+    void postOpenNoCodes(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+        JsonNode subset = getSubset(fv4_1);
+        ResponseEntity<JsonNode> postResponseEntity = instance.postSubset(subset);
+        assertEquals(HttpStatus.BAD_REQUEST, postResponseEntity.getStatusCode()); // 0 codes is not allowed in published subset
     }
 
     public JsonNode getSubset(File file){
@@ -214,7 +232,7 @@ class SubsetsControllerTest {
     }
 
     @Test
-    void putOpenThenDraft(){
+    void postOpenThenPutDraft(){
         SubsetsController instance = SubsetsController.getInstance();
         instance.deleteAll();
 
