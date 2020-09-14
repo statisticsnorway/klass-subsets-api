@@ -331,13 +331,15 @@ public class SubsetsController {
         ObjectMapper mapper = new ObjectMapper();
         if (Utils.isClean(id)){
             ResponseEntity<JsonNode> ldsRE = new LDSFacade().getTimelineOfSubset(id);
-            if (ldsRE.getStatusCodeValue() != HttpStatus.OK.value()){
-                return ldsRE;
-            }
             JsonNode responseBodyJSON = ldsRE.getBody();
+            if (ldsRE.getStatusCode() != HttpStatus.OK){
+                if (ldsRE.getStatusCode().equals(HttpStatus.NOT_FOUND))
+                    return ErrorHandler.newHttpError("Subset versions not found. No timeline for subset found in LDS.", HttpStatus.NOT_FOUND, LOG);
+                return ErrorHandler.newHttpError("LDS.getTimelineOfSubset("+id+") did not return HttpStatus 200 OK. Status of the LDS response: "+ldsRE.getStatusCodeValue()+" Body of the LDS response: \n"+ (responseBodyJSON == null ? "null" : responseBodyJSON.asText())+" \n ******* end body ******* ", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+            }
             if (responseBodyJSON != null){
                 if (!responseBodyJSON.has(0)){
-                    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+                    return ErrorHandler.newHttpError("Subset versions not found. LDS timeline response body did not have a field at index 0", HttpStatus.NOT_FOUND, LOG);
                 }
                 if (responseBodyJSON.isArray()) {
                     LOG.debug("versions response body json is array");
