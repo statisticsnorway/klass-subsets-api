@@ -20,7 +20,6 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public class LDSConsumer {
@@ -30,20 +29,20 @@ public class LDSConsumer {
     static String LDS_URL;
 
 
-    LDSConsumer(){
+    LDSConsumer() {
         LDS_URL = getURLFromEnvOrDefault();
         LOG.debug("LDS URL: "+LDS_URL);
     }
 
 
-    LDSConsumer(String API_LDS){
+    LDSConsumer(String API_LDS) {
         LDS_URL = API_LDS;
         if (LDS_URL.equals(""))
             LDS_URL = getURLFromEnvOrDefault();
         LOG.debug("LDS URL: "+LDS_URL);
     }
 
-    private static String getURLFromEnvOrDefault(){
+    private static String getURLFromEnvOrDefault() {
         String host = System.getenv().getOrDefault("HOST_ADDRESS", "localhost");
         LOG.debug("Host: "+host);
         LDS_LOCAL = "http://"+host+":9090";
@@ -56,7 +55,7 @@ public class LDSConsumer {
      * @param additional
      * @return
      */
-    ResponseEntity<JsonNode> getFrom(String additional){
+    ResponseEntity<JsonNode> getFrom(String additional) {
         try {
             OkHttpClient client = new OkHttpClient.Builder().readTimeout(6, TimeUnit.SECONDS).build();
             Request request = new Request.Builder()
@@ -64,19 +63,21 @@ public class LDSConsumer {
                     .build();
 
             Call call = client.newCall(request);
-            Response response = call.execute();
-            HttpStatus httpStatus = HttpStatus.resolve(response.code());
-            InputStream inputStream = response.body().byteStream();
-            JsonNode jsonNode = new ObjectMapper().readTree(inputStream);
-            return new ResponseEntity<>(jsonNode, httpStatus);
+            try (Response response = call.execute()) {
+                HttpStatus httpStatus = HttpStatus.resolve(response.code());
+                ResponseBody body = response.body();
+                assert body != null : "Response body was null";
+                InputStream inputStream = body.byteStream();
+                JsonNode jsonNode = new ObjectMapper().readTree(inputStream);
+                return new ResponseEntity<>(jsonNode, httpStatus);
+            }
         } catch (IOException e) {
             e.printStackTrace();
             return ErrorHandler.newHttpError("Could not retrieve "+LDS_URL+additional+" because of an IOException: "+e.toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
         }
     }
 
-    ResponseEntity<JsonNode> getFromApacheCommons(String additional)
-    {
+    ResponseEntity<JsonNode> getFromApacheCommons(String additional) {
         // Because Spring RestTemplate fails when the response is too long, I use Apache Commons Http Client instead,
         // and pack the response into a ResponseEntity, so it feels like Spring to the user.
         // I could not get Spring WebClient to work, which would have been my first choice.
