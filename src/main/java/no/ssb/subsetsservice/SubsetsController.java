@@ -275,7 +275,7 @@ public class SubsetsController {
                 Iterator<String> prevPatchFieldNames = prevPublishedPatchOfThisVersion.fieldNames();
                 Iterator<String> newPatchFieldNames = editableNewVersionOfSubset.fieldNames();
 
-                String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, Field.LAST_UPDATED_BY, Field.LAST_UPDATED_DATE};
+                String[] changeableFieldsInPublishedVersion = {Field.VERSION_RATIONALE, Field.VALID_UNTIL, Field.VERSION_VALID_UNTIL, Field.LAST_UPDATED_BY, Field.LAST_UPDATED_DATE};
                 ArrayList<String> changeableFieldsList = new ArrayList<>();
                 Collections.addAll(changeableFieldsList, changeableFieldsInPublishedVersion);
                 StringBuilder fieldErrorBuilder = new StringBuilder();
