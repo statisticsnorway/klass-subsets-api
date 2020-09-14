@@ -455,6 +455,7 @@ class SubsetsControllerTest {
     void getSubsetsUrnOnlyCheckStatusOK() {
         SubsetsController instance = SubsetsController.getInstance();
         assertNotNull(instance);
+        
         ResponseEntity<JsonNode> subsets = instance.getSubsets(
                 true,
                 true,
@@ -466,6 +467,13 @@ class SubsetsControllerTest {
     void getSubsetsUrnOnlyCheckContainsURNAndRank() {
         SubsetsController instance = SubsetsController.getInstance();
         assertNotNull(instance);
+        instance.deleteAll();
+
+        instance.postSubset(getSubset(fv1_0));
+        JsonNode v3 = getSubset(fv3_0);
+        String id = v3.get(Field.ID).asText();
+        instance.putSubset(id, v3);
+
         ResponseEntity<JsonNode> subsets = instance.getSubsets(
                 true,
                 true,
@@ -476,6 +484,7 @@ class SubsetsControllerTest {
         assertTrue(body.isArray());
         ArrayNode bodyArrayNode = (ArrayNode) body;
         System.out.println("Size of list of subsets: "+bodyArrayNode.size());
+        assertEquals(1, bodyArrayNode.size());
         for (JsonNode subsetJsonNode : bodyArrayNode) {
             JsonNode codesList = subsetJsonNode.get(Field.CODES);
             assertTrue(codesList.isArray());
