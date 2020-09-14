@@ -55,9 +55,9 @@ public class LDSConsumer {
      * @param additional
      * @return
      */
-    ResponseEntity<JsonNode> getFrom(String additional) {
+    ResponseEntity<JsonNode> getFromOkHttp(String additional) {
         try {
-            OkHttpClient client = new OkHttpClient.Builder().readTimeout(6, TimeUnit.SECONDS).build();
+            OkHttpClient client = new OkHttpClient.Builder().readTimeout(5, TimeUnit.SECONDS).build();
             Request request = new Request.Builder()
                     .url(LDS_URL + additional)
                     .build();
@@ -77,7 +77,7 @@ public class LDSConsumer {
         }
     }
 
-    ResponseEntity<JsonNode> getFromApacheCommons(String additional) {
+    ResponseEntity<JsonNode> getFrom(String additional) {
         // Because Spring RestTemplate fails when the response is too long, I use Apache Commons Http Client instead,
         // and pack the response into a ResponseEntity, so it feels like Spring to the user.
         // I could not get Spring WebClient to work, which would have been my first choice.
@@ -93,9 +93,7 @@ public class LDSConsumer {
             HttpStatus httpStatus = HttpStatus.resolve(status);
             JsonNode jsonNode = new ObjectMapper().readTree(entity1.getContent());
             ResponseEntity<JsonNode> responseEntity = new ResponseEntity<>(jsonNode, httpStatus);
-
             EntityUtils.consume(entity1);
-
             return responseEntity;
         } catch (Exception e) {
             LOG.error(e.toString());
