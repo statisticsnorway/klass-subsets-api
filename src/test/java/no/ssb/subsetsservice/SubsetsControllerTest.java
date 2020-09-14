@@ -168,6 +168,16 @@ class SubsetsControllerTest {
         ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
         assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
     }
+    
+    @Test
+    void postVersionValidFromDifferentFromValidFrom2(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode subsetJsonNode = getSubset(fv0_2);
+        ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
+        assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
+    }
 
     @Test
     void putVersionValidFromDifferentFromValidFrom(){
@@ -201,16 +211,6 @@ class SubsetsControllerTest {
         ResponseEntity<JsonNode> putRE = instance.putSubset(id, subsetJsonNode2);
 
         assertEquals(HttpStatus.BAD_REQUEST, putRE.getStatusCode());
-    }
-
-    @Test
-    void postVersionValidFromDifferentFromValidFrom2(){
-        SubsetsController instance = SubsetsController.getInstance();
-        instance.deleteAll();
-
-        JsonNode subsetJsonNode = getSubset(fv0_2);
-        ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
-        assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
     }
 
     @Test
