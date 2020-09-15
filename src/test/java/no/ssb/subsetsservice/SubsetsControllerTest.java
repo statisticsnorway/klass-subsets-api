@@ -30,10 +30,11 @@ class SubsetsControllerTest {
     File fv0_91 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v0.91.json");
     File fv1_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.0.json"); // status OPEN
     File fv1_1 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.1.json"); // try to delete code
-    File f1_2 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.2.json"); // try to change validFrom and versionValidFrom to a later date
+    File fv1_2 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.2.json"); // try to change validFrom and versionValidFrom to a later date
     File fv1_3 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.3.json"); // try to change versionValidFrom to a later date than validFrom, even if this is only version of subset
-    File fv1_4 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.4.json");
-    File fv2 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v2.json");
+    File fv1_4 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.4.json"); // from 1.0 change validUntil, versionValidUntil and versionRationale
+    File fv2_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v2.json");
+    File fv2_1 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v2.1.json");
     File fv3_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v3.0.json"); // A valid DRAFT
     File fv3_1 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v3.1.json"); // same versionValidFrom as 1.0
     File fv4_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v4.0.json"); // DRAFT with no codes
@@ -49,12 +50,17 @@ class SubsetsControllerTest {
         assertTrue(fv0_1.exists());
         assertTrue(fv0_2.exists());
         assertTrue(fv0_3.exists());
+        assertTrue(fv0_4.exists());
+        assertTrue(fv0_5.exists());
         assertTrue(fv0_9.exists());
+        assertTrue(fv0_91.exists());
         assertTrue(fv1_0.exists());
         assertTrue(fv1_1.exists());
-        assertTrue(f1_2.exists());
+        assertTrue(fv1_2.exists());
         assertTrue(fv1_3.exists());
-        assertTrue(fv2.exists());
+        assertTrue(fv1_4.exists());
+        assertTrue(fv2_0.exists());
+        assertTrue(fv2_1.exists());
         assertTrue(fv3_0.exists());
         assertTrue(fv3_1.exists());
         assertTrue(fv4_0.exists());
@@ -428,7 +434,7 @@ class SubsetsControllerTest {
     @Test
     void putNewVersionDraftWhenAnotherDraftAlreadyExists(){
         JsonNode subsetv1 = getSubset(fv1_0);
-        JsonNode subsetv2 = getSubset(fv2);
+        JsonNode subsetv2 = getSubset(fv2_0);
         JsonNode subsetv3 = getSubset(fv3_0);
 
         SubsetsController instance = SubsetsController.getInstance();
@@ -472,6 +478,19 @@ class SubsetsControllerTest {
     void putPatchWithChangesToOPEN(){
         JsonNode subsetv1 = getSubset(fv1_0);
         JsonNode subsetv2 = getSubset(fv1_4);
+
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        instance.postSubset(subsetv1);
+        ResponseEntity<JsonNode> putRE = instance.putSubset(subsetv2.get(Field.ID).asText(), subsetv2);
+        assertEquals(HttpStatus.OK, putRE.getStatusCode());
+    }
+
+    @Test
+    void putNewOpenVersionWithChanges(){
+        JsonNode subsetv1 = getSubset(fv1_0);
+        JsonNode subsetv2 = getSubset(fv2_1);
 
         SubsetsController instance = SubsetsController.getInstance();
         instance.deleteAll();
