@@ -9,8 +9,8 @@
         }
     ],
     "shortName": "Test av Publisering, endring draft",
-    "validFrom": "2020-07-07T00:00:00.000Z",
-    "validUntil": "2020-10-10T00:00:00.000Z",
+    "validFrom": "2020-08-08T00:00:00.000Z",
+    "validUntil": "2020-11-11T00:00:00.000Z",
     "createdBy": "702 - Seksjon for IT-arkitektur",
     "administrativeDetails": [
         {
@@ -40,8 +40,8 @@
             "languageCode": "nb"
         }
     ],
-    "versionValidFrom": "2020-07-07T00:00:00.000Z",
-    "versionValidUntil": "2020-10-10T00:00:00.000Z",
+    "versionValidFrom": "2020-10-10T00:00:00.000Z",
+    "versionValidUntil": "2020-11-11T00:00:00.000Z",
     "codes": [
         {
             "code": "6",

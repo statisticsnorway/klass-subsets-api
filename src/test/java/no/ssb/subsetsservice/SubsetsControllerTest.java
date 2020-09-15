@@ -34,7 +34,7 @@ class SubsetsControllerTest {
     File fv1_3 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.3.json"); // try to change versionValidFrom to a later date than validFrom, even if this is only version of subset
     File fv1_4 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.4.json"); // from 1.0 change validUntil, versionValidUntil and versionRationale
     File fv2_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v2.json");
-    File fv2_1 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v2.1.json");
+    File fv2_1 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v2.1.json"); // OPEN, with same changes as 0.91
     File fv3_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v3.0.json"); // A valid DRAFT
     File fv3_1 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v3.1.json"); // same versionValidFrom as 1.0
     File fv4_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v4.0.json"); // DRAFT with no codes
@@ -498,6 +498,35 @@ class SubsetsControllerTest {
         instance.postSubset(subsetv1);
         ResponseEntity<JsonNode> putRE = instance.putSubset(subsetv2.get(Field.ID).asText(), subsetv2);
         assertEquals(HttpStatus.OK, putRE.getStatusCode());
+    }
+
+    @Test
+    void testNameChangeAffectingPreviousVersions(){
+        JsonNode subsetV1 = getSubset(fv1_0);
+        String nameV1 = subsetV1.get(Field.NAME).get(0).get("languageText").asText();
+        JsonNode subsetV2 = getSubset(fv2_1);
+        String nameV2 = subsetV2.get(Field.NAME).get(0).get("languageText").asText();
+        assertNotEquals(nameV1, nameV2);
+
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        ResponseEntity<JsonNode> postV1RE = instance.postSubset(subsetV1);
+        JsonNode postV1REBody = postV1RE.getBody();
+        String v1String = postV1REBody.get(Field.VERSION).asText();
+        String id = postV1REBody.get(Field.ID).asText();
+        ResponseEntity<JsonNode> putV2RE = instance.putSubset(id, subsetV2);
+        assertEquals(HttpStatus.OK, putV2RE.getStatusCode());
+        ResponseEntity<JsonNode> getV1RE = instance.getVersion(
+                id,
+                v1String,
+                true,
+                false,
+                false);
+        String nameV1AfterV2Put = getV1RE.getBody().get(Field.NAME).get(0).get("languageText").asText();
+        assertEquals(nameV2, nameV1AfterV2Put);
+        System.out.println("v1 name: "+nameV1+" v2 name: "+nameV2+ " v1 name after puting v2: "+nameV1AfterV2Put);
+
     }
 
     @Test

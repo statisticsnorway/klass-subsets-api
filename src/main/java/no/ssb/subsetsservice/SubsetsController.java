@@ -409,6 +409,9 @@ public class SubsetsController {
                     boolean publishedVersionExists = latestPublishedVersionNode != null;
                     LOG.debug("published version exists? "+publishedVersionExists);
 
+                    JsonNode latestPublishedName = publishedVersionExists && latestPublishedVersionNode.has(Field.NAME) ? latestPublishedVersionNode.get(Field.NAME) : null;
+                    JsonNode latestPublishedShortName = publishedVersionExists && latestPublishedVersionNode.has(Field.SHORT_NAME) ? latestPublishedVersionNode.get(Field.SHORT_NAME) : null;
+
                     ArrayNode majorVersionsObjectNodeArray = mapper.createArrayNode();
                     for (JsonNode versionNode : majorVersionsArrayNode) {
                         ObjectNode editableVersionNode = versionNode.deepCopy();
@@ -419,10 +422,10 @@ public class SubsetsController {
                             LOG.debug("latest major version id as int: "+latestPublishedMajorVersionInt);
                             if (version < latestPublishedMajorVersionInt && editableVersionNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
                                 if (latestPublishedVersionNode.has(Field.NAME)){
-                                    editableVersionNode.set(Field.NAME, latestPublishedVersionNode.get(Field.NAME));
+                                    editableVersionNode.set(Field.NAME, latestPublishedName);
                                 }
                                 if (latestPublishedVersionNode.has(Field.SHORT_NAME)){
-                                    editableVersionNode.set(Field.SHORT_NAME, latestPublishedVersionNode.get(Field.SHORT_NAME));
+                                    editableVersionNode.set(Field.SHORT_NAME, latestPublishedShortName);
                                 }
                             }
                         }
@@ -430,7 +433,7 @@ public class SubsetsController {
                         majorVersionsObjectNodeArray.add(editableVersionNode);
                     }
                     LOG.debug("sorting by versionValidFrom");
-                    ArrayNode sorted = Utils.sortByVersionValidFrom(majorVersionsArrayNode);
+                    ArrayNode sorted = Utils.sortByVersionValidFrom(majorVersionsObjectNodeArray);
                     LOG.debug("returning sorted");
                     return new ResponseEntity<>(sorted, HttpStatus.OK);
                 } else {
