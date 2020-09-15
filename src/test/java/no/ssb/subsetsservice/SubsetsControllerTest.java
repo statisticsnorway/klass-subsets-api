@@ -525,7 +525,9 @@ class SubsetsControllerTest {
                 false);
         String nameV1AfterV2Put = getV1RE.getBody().get(Field.NAME).get(0).get("languageText").asText();
         assertEquals(nameV2, nameV1AfterV2Put);
-        System.out.println("v1 name: "+nameV1+" v2 name: "+nameV2+ " v1 name after puting v2: "+nameV1AfterV2Put);
+        System.out.println("v1 name: "+nameV1);
+        System.out.println("v2 name: "+nameV2);
+        System.out.println("v1 name after PUTing v2: "+nameV1AfterV2Put);
 
     }
 

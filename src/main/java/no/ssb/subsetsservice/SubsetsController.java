@@ -417,10 +417,14 @@ public class SubsetsController {
                         ObjectNode editableVersionNode = versionNode.deepCopy();
                         int version = Integer.parseInt(editableVersionNode.get(Field.VERSION).asText().split("\\.")[0]);
                         editableVersionNode.put(Field.VERSION, Integer.toString(version));
+                        String versionValidFromString = editableVersionNode.get(Field.VERSION_VALID_FROM).asText();
                         if (publishedVersionExists){
+                            String latestVersionValidFromString = latestPublishedVersionNode.get(Field.VERSION_VALID_FROM).asText();
                             int latestPublishedMajorVersionInt = Integer.parseInt(latestPublishedVersionNode.get(Field.VERSION).asText().split("\\.")[0]);
                             LOG.debug("latest major version id as int: "+latestPublishedMajorVersionInt);
-                            if (version < latestPublishedMajorVersionInt && editableVersionNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
+                            if (editableVersionNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
+                                if (versionValidFromString.compareTo(latestVersionValidFromString) > 0)
+                                    LOG.error("Version "+latestPublishedMajorVersionInt+" was picked as the latest published version, but had versionValidFrom "+latestVersionValidFromString+" while version "+version+" had versionValidFrom "+versionValidFromString);
                                 if (latestPublishedVersionNode.has(Field.NAME)){
                                     editableVersionNode.set(Field.NAME, latestPublishedName);
                                 }
