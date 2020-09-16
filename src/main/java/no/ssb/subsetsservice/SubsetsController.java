@@ -394,23 +394,32 @@ public class SubsetsController {
                     versionList.sort(Utils::versionComparator);
                     if (!rankedUrnOnly)
                         versionList = resolveURNsOfCodesInAllVersions(versionList);
+                    ArrayList<JsonNode> publishedVersionList = new ArrayList<>();
+                    for (JsonNode jsonNode : versionList) {
+                        if (jsonNode.get(Field.ADMINISTRATIVE_STATUS).equals(Field.OPEN))
+                            publishedVersionList.add(jsonNode);
+                    }
                     ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
                     versionList.forEach(majorVersionsArrayNode::add);
                     LOG.debug("majorVersionsArrayNode size: "+majorVersionsArrayNode.size());
                     if (majorVersionsArrayNode.isEmpty())
                         return ErrorHandler.newHttpError("No versions of the subset "+id+" exist with the given constraints includeDrafts="+includeDrafts+" and includeFuture="+includeFuture, HttpStatus.NOT_FOUND, LOG);
 
-                    JsonNode latestVersion = Utils.getLatestMajorVersion(majorVersionsArrayNode, false);
+                    JsonNode latestVersionNode = versionList.isEmpty() ? null : versionList.get(0);
                     LOG.debug("gotten latestVersion");
-                    boolean latestVersionExist = latestVersion != null;
+                    boolean latestVersionExist = latestVersionNode != null;
                     LOG.debug("latest version exist? "+ latestVersionExist);
-                    JsonNode latestPublishedVersionNode = Utils.getLatestMajorVersion(majorVersionsArrayNode, true);
-                    LOG.debug("gotten lastestPublishedVersion");
+                    JsonNode latestPublishedVersionNode = publishedVersionList.isEmpty() ? null : publishedVersionList.get(0);
+                    LOG.debug("gotten latestPublishedVersion");
                     boolean publishedVersionExists = latestPublishedVersionNode != null;
                     LOG.debug("published version exists? "+publishedVersionExists);
+                    JsonNode firstPublishedVersionNode = publishedVersionList.isEmpty() ? null : publishedVersionList.get(publishedVersionList.size()-1);
+                    boolean firstPublishedVersionExists = firstPublishedVersionNode != null;
 
                     JsonNode latestPublishedName = publishedVersionExists && latestPublishedVersionNode.has(Field.NAME) ? latestPublishedVersionNode.get(Field.NAME) : null;
                     JsonNode latestPublishedShortName = publishedVersionExists && latestPublishedVersionNode.has(Field.SHORT_NAME) ? latestPublishedVersionNode.get(Field.SHORT_NAME) : null;
+                    JsonNode latestPublishedValidUntil = publishedVersionExists && latestPublishedVersionNode.has(Field.VALID_UNTIL) ? latestPublishedVersionNode.get(Field.VALID_UNTIL) : null;
+                    JsonNode firstPublishedValidFrom = firstPublishedVersionExists && firstPublishedVersionNode.has(Field.VALID_FROM) ? firstPublishedVersionNode.get(Field.VALID_FROM) : null;
 
                     ArrayNode majorVersionsObjectNodeArray = mapper.createArrayNode();
                     for (JsonNode versionNode : majorVersionsArrayNode) {
@@ -425,12 +434,14 @@ public class SubsetsController {
                             if (editableVersionNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
                                 if (versionValidFromString.compareTo(latestVersionValidFromString) > 0)
                                     LOG.error("Version "+latestPublishedMajorVersionInt+" was picked as the latest published version, but had versionValidFrom "+latestVersionValidFromString+" while version "+version+" had versionValidFrom "+versionValidFromString);
-                                if (latestPublishedVersionNode.has(Field.NAME)){
+                                if (latestPublishedVersionNode.has(Field.NAME))
                                     editableVersionNode.set(Field.NAME, latestPublishedName);
-                                }
-                                if (latestPublishedVersionNode.has(Field.SHORT_NAME)){
+                                if (latestPublishedVersionNode.has(Field.SHORT_NAME))
                                     editableVersionNode.set(Field.SHORT_NAME, latestPublishedShortName);
-                                }
+                                if (latestPublishedValidUntil != null)
+                                    editableVersionNode.set(Field.VALID_UNTIL, latestPublishedValidUntil);
+                                if (firstPublishedValidFrom != null)
+                                    editableVersionNode.set(Field.VALID_FROM, firstPublishedValidFrom);
                             }
                         }
 
