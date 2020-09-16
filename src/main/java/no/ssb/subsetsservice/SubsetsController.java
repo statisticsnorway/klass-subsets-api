@@ -237,7 +237,7 @@ public class SubsetsController {
             String versionValidFrom = subsetVersionJsonNode.get(Field.VERSION_VALID_FROM).asText();
             if (!subsetVersionJsonNode.get(Field.VERSION).asText().equals(newVersionString) && versionValidFrom.equals(newVersionValidFrom))
                 return ErrorHandler.newHttpError("It is not allowed to submit a version with versionValidFrom equal to that of an existing version.", HttpStatus.BAD_REQUEST, LOG);
-            if (newVersionValidFrom.compareTo(versionValidFrom) < 0 && editableNewVersionOfSubset.has(Field.VERSION_VALID_UNTIL) && editableNewVersionOfSubset.get(Field.VALID_UNTIL).asText().compareTo(versionValidFrom) > 0)
+            if (!subsetVersionJsonNode.get(Field.VERSION).asText().equals(editableNewVersionOfSubset.get(Field.VERSION).asText()) && newVersionValidFrom.compareTo(versionValidFrom) < 0 && editableNewVersionOfSubset.has(Field.VERSION_VALID_UNTIL) && editableNewVersionOfSubset.get(Field.VALID_UNTIL).asText().compareTo(versionValidFrom) > 0)
                 return ErrorHandler.newHttpError("It is not allowed for subset version to overlap in validity periods", HttpStatus.BAD_REQUEST, LOG);
         }
 
@@ -398,7 +398,7 @@ public class SubsetsController {
                         versionList = resolveURNsOfCodesInAllVersions(versionList);
                     ArrayList<JsonNode> publishedVersionList = new ArrayList<>();
                     for (JsonNode jsonNode : versionList) {
-                        if (jsonNode.get(Field.ADMINISTRATIVE_STATUS).equals(Field.OPEN))
+                        if (jsonNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN))
                             publishedVersionList.add(jsonNode);
                     }
                     ArrayNode majorVersionsArrayNode = mapper.createArrayNode();
