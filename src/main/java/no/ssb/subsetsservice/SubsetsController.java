@@ -234,9 +234,11 @@ public class SubsetsController {
         String newVersionString = editableNewVersionOfSubset.get(Field.VERSION).asText();
 
         for (JsonNode subsetVersionJsonNode : versionsArrayNode) {
-            if (!subsetVersionJsonNode.get(Field.VERSION).asText().equals(newVersionString) && subsetVersionJsonNode.get(Field.VERSION_VALID_FROM).asText().equals(newVersionValidFrom)) {
+            String versionValidFrom = subsetVersionJsonNode.get(Field.VERSION_VALID_FROM).asText();
+            if (!subsetVersionJsonNode.get(Field.VERSION).asText().equals(newVersionString) && versionValidFrom.equals(newVersionValidFrom))
                 return ErrorHandler.newHttpError("It is not allowed to submit a version with versionValidFrom equal to that of an existing version.", HttpStatus.BAD_REQUEST, LOG);
-            }
+            if (newVersionValidFrom.compareTo(versionValidFrom) < 0 && editableNewVersionOfSubset.has(Field.VERSION_VALID_UNTIL) && editableNewVersionOfSubset.get(Field.VALID_UNTIL).asText().compareTo(versionValidFrom) > 0)
+                return ErrorHandler.newHttpError("It is not allowed for subset version to overlap in validity periods", HttpStatus.BAD_REQUEST, LOG);
         }
 
         String mostRecentVersionValidFrom = mostRecentVersionOfThisSubset.get(Field.VERSION_VALID_FROM).asText();
