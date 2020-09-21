@@ -33,7 +33,6 @@ class LDSFacadeTest {
             System.err.println("Localized Message: "+e.getLocalizedMessage());
             System.err.println("Cause: "+e.getCause().toString());
         }
-
     }
 
     @Test
