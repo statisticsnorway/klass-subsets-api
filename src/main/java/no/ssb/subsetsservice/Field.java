@@ -23,5 +23,4 @@ public class Field {
     public static final String CODE = "code";
     public static final String _LINKS = "_links";
     public static final String SELF = "self";
-    public static final String VERSION_VALID_UNTIL = "versionValidUntil";
 }
