@@ -84,7 +84,7 @@ public class Utils {
                 Logger logger = LoggerFactory.getLogger(Utils.class);
                 logger.error("Two major versions of a subset have the same 'versionValidFrom' values. The versions are '"+versionNode.get(Field.VERSION)+"' and '"+latestVersionNode.get(Field.VERSION)+"'");
             }
-            if ((!published || isOpen) && thisVersionValidFrom.compareTo(latestVersionValidFrom) > 0 ){
+            if ((!published || isOpen) && compareThisToLatest > 0 ){
                 latestVersionNode = versionNode;
                 latestVersionValidFrom = thisVersionValidFrom;
             }
