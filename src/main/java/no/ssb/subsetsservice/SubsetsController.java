@@ -133,8 +133,26 @@ public class SubsetsController {
         if (!Utils.isClean(id))
             return ErrorHandler.illegalID(LOG);
 
+        ObjectNode editableNewVersionOfSubset = Utils.cleanSubsetVersion(newVersionOfSubset).deepCopy(); // never use newVersionOfSubset after this!
+        newVersionOfSubset = null; //Make sure it causes an error if you try to use this from now on
+
         ResponseEntity<JsonNode> oldVersionsRE = getVersions(id, true, true, true);
         HttpStatus getVersionsStatus = oldVersionsRE.getStatusCode();
+        ArrayNode versionsArrayNode = Utils.sortByVersionValidFrom(Utils.cleanSubsetVersion(Objects.requireNonNull(oldVersionsRE.getBody())).deepCopy());
+        JsonNode mostRecentVersionOfThisSubset = versionsArrayNode.get(0);
+        assert mostRecentVersionOfThisSubset.has(Field.ID) : "most recent version of this subset did not have the field '"+Field.ID+"' ";
+
+        ResponseEntity<JsonNode> oldPublishedVersionsRE = getVersions(id, true, false, true);
+        boolean thisSubsetIsPublishedFromBefore = oldPublishedVersionsRE.getStatusCode().equals(HttpStatus.OK) && oldPublishedVersionsRE.getBody() != null && oldPublishedVersionsRE.getBody().size() > 0;
+
+        editableNewVersionOfSubset.put(Field.LAST_UPDATED_DATE, Utils.getNowISO());
+        JsonNode createdDate = mostRecentVersionOfThisSubset.get(Field.CREATED_DATE);
+        editableNewVersionOfSubset.set(Field.CREATED_DATE, createdDate);
+
+        if (!editableNewVersionOfSubset.has(Field.VALID_UNTIL)){
+            editableNewVersionOfSubset.set(Field.VALID_UNTIL, null);
+            LOG.error("The PUT version did not have a validUntil value defined. validUntil was defined and set to null");
+        }
 
         if (getVersionsStatus.equals(HttpStatus.NOT_FOUND))
             return ErrorHandler.newHttpError("Can not PUT a subset that does not exist from before. POST the subset instead", HttpStatus.BAD_REQUEST, LOG);
@@ -144,47 +162,17 @@ public class SubsetsController {
 
         //TODO: Validate that the incoming subset version contains the legal fields?
 
-        if(newVersionOfSubset.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN) && newVersionOfSubset.get(Field.CODES).isEmpty())
+        if(editableNewVersionOfSubset.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN) && editableNewVersionOfSubset.get(Field.CODES).isEmpty())
             return ErrorHandler.newHttpError("Can not publish a subset with an empty code list", HttpStatus.BAD_REQUEST, LOG);
 
-        if (!(newVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0))
+        if (!(editableNewVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(editableNewVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0))
             return ErrorHandler.newHttpError("'versionValidFrom' can not be earlier than subset 'validFrom'", HttpStatus.BAD_REQUEST, LOG);
 
-        if (newVersionOfSubset.has(Field.VALID_UNTIL) && newVersionOfSubset.get(Field.VALID_UNTIL).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0)
+        if (editableNewVersionOfSubset.has(Field.VALID_UNTIL) && !editableNewVersionOfSubset.get(Field.VALID_UNTIL).isNull() && editableNewVersionOfSubset.get(Field.VALID_UNTIL).asText().compareTo(editableNewVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0)
             return ErrorHandler.newHttpError("The subset's 'validUntil' must be set to a date after 'versionValidFrom'", HttpStatus.BAD_REQUEST, LOG);
 
-        if (!(newVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0))
+        if (!(editableNewVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(editableNewVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0))
             return ErrorHandler.newHttpError("'versionValidFrom' can not be earlier than subset 'validFrom'", HttpStatus.BAD_REQUEST, LOG);
-
-        ResponseEntity<JsonNode> oldPublishedVersionsRE = getVersions(id, true, false, true);
-        boolean thisSubsetIsPublishedFromBefore = oldPublishedVersionsRE.getStatusCode().equals(HttpStatus.OK) && oldPublishedVersionsRE.getBody() != null && oldPublishedVersionsRE.getBody().size() > 0;
-
-        ArrayNode versionsArrayNode = Utils.sortByVersionValidFrom(Utils.cleanSubsetVersion(Objects.requireNonNull(oldVersionsRE.getBody())).deepCopy());
-        JsonNode mostRecentVersionOfThisSubset = versionsArrayNode.get(0);
-
-        assert mostRecentVersionOfThisSubset.has(Field.ID) : "most recent version of this subset did not have the field '"+Field.ID+"' ";
-
-        ObjectNode editableNewVersionOfSubset = Utils.cleanSubsetVersion(newVersionOfSubset).deepCopy();
-        editableNewVersionOfSubset.put(Field.LAST_UPDATED_DATE, Utils.getNowISO());
-        JsonNode createdDate = mostRecentVersionOfThisSubset.get(Field.CREATED_DATE);
-        editableNewVersionOfSubset.set(Field.CREATED_DATE, createdDate);
-
-        if (!editableNewVersionOfSubset.has(Field.VALID_UNTIL)){
-            //TODO: Add the validUntil date from the existing published version?
-            JsonNode validUntil = null;
-            if (thisSubsetIsPublishedFromBefore){
-                JsonNode publishedVersion = oldPublishedVersionsRE.getBody().get(0);
-                if (publishedVersion.has(Field.VALID_UNTIL))
-                    validUntil = publishedVersion.get(Field.VALID_UNTIL);
-            }
-            if (validUntil == null && mostRecentVersionOfThisSubset.has(Field.VALID_UNTIL)) {
-                validUntil = mostRecentVersionOfThisSubset.get(Field.VALID_UNTIL);
-            }
-            if (validUntil != null)
-                editableNewVersionOfSubset.set(Field.VALID_UNTIL, validUntil);
-            else
-                LOG.error("The PUT version as well as the most recent published version and the most recent version overall had no validUntil field, so this version will have to validUntil");
-        }
 
         String oldID = mostRecentVersionOfThisSubset.get(Field.ID).asText();
         String newID = editableNewVersionOfSubset.get(Field.ID).asText();
@@ -471,7 +459,11 @@ public class SubsetsController {
         metricsService.incrementGETCounter();
 
         if (Utils.isClean(id)){
-            if (from == null && to == null){
+
+            boolean isFromDate = from != null;
+            boolean isToDate = to != null;
+
+            if (!isFromDate && !isToDate){
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
                 ResponseEntity<JsonNode> subsetResponseEntity = getSubset(id, includeDrafts, includeFuture, rankedUrnOnly);
                 JsonNode responseBodyJSON = subsetResponseEntity.getBody();
@@ -487,8 +479,6 @@ public class SubsetsController {
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
 
-            boolean isFromDate = from != null;
-            boolean isToDate = to != null;
             if ((!isFromDate || Utils.isYearMonthDay(from)) && (!isToDate || Utils.isYearMonthDay(to))){ // If a date is given as param, it must be valid format
                 // If a date interval is specified using 'from' and 'to' query parameters
                 ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts, rankedUrnOnly);
@@ -506,35 +496,40 @@ public class SubsetsController {
                         JsonNode lastVersion = versionsArrayNode.get(0).get(Field.DOCUMENT);
                         ArrayNode intersectionValidCodesInIntervalArrayNode = mapper.createArrayNode();
                         // Check if first version includes fromDate, and last version includes toDate. If not, then return an empty list.
-                        String firstVersionValidFromString = firstVersion.get(Field.VALID_FROM).textValue().split("T")[0];
-                        String lastVersionValidUntilString = lastVersion.get(Field.VALID_UNTIL).textValue().split("T")[0];
-                        LOG.debug("First version valid from: " + firstVersionValidFromString);
-                        LOG.debug("Last version valid until: " + lastVersionValidUntilString);
+
 
                         boolean isFirstValidAtOrBeforeFromDate = true; // If no "from" date is given, version is automatically valid at or before "from" date
-                        if (isFromDate)
-                            isFirstValidAtOrBeforeFromDate = firstVersionValidFromString.compareTo(from) <= 0;
+                        if (isFromDate) {
+                            String firstValidFromString = firstVersion.get(Field.VALID_FROM).textValue().split("T")[0];
+                            LOG.debug("First version valid from: " + firstValidFromString);
+                            isFirstValidAtOrBeforeFromDate = firstValidFromString.compareTo(from) <= 0;
+                        }
                         LOG.debug("isFirstValidAtOrBeforeFromDate? " + isFirstValidAtOrBeforeFromDate);
 
                         boolean isLastValidAtOrAfterToDate = true; // If no "to" date is given, it is automatically valid at or after "to" date
-                        if (isToDate)
-                            isLastValidAtOrAfterToDate = lastVersionValidUntilString.compareTo(to) >= 0;
+                        if (isToDate && lastVersion.has(Field.VALID_UNTIL) && !lastVersion.get(Field.VALID_UNTIL).isNull()) {
+                            String lastValidUntilString = lastVersion.get(Field.VALID_UNTIL).textValue().split("T")[0];
+                            LOG.debug("Last version valid until: " + lastValidUntilString);
+                            isLastValidAtOrAfterToDate = lastValidUntilString.compareTo(to) >= 0;
+                        }
                         LOG.debug("isLastValidAtOrAfterToDate? " + isLastValidAtOrAfterToDate);
 
                         if (isFirstValidAtOrBeforeFromDate && isLastValidAtOrAfterToDate) {
                             for (JsonNode subsetVersion : versionsArrayNode) {
                                 if (includeDrafts || subsetVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
                                     // if this version has any overlap with the valid interval . . .
-                                    String validFromDateString = subsetVersion.get(Field.VALID_FROM).textValue().split("T")[0];
-                                    String validUntilDateString = subsetVersion.get(Field.VALID_UNTIL).textValue().split("T")[0];
 
                                     boolean validUntilGTFrom = true;
-                                    if (isFromDate)
+                                    if (isFromDate && subsetVersion.has(Field.VALID_UNTIL) && !subsetVersion.get(Field.VALID_UNTIL).isNull()) {
+                                        String validUntilDateString = subsetVersion.get(Field.VALID_UNTIL).textValue().split("T")[0];
                                         validUntilGTFrom = validUntilDateString.compareTo(from) > 0;
+                                    }
 
                                     boolean validFromLTTo = true;
-                                    if (isToDate)
+                                    if (isToDate) {
+                                        String validFromDateString = subsetVersion.get(Field.VALID_FROM).textValue().split("T")[0];
                                         validFromLTTo = validFromDateString.compareTo(to) < 0;
+                                    }
 
                                     if (validUntilGTFrom || validFromLTTo) {
                                         LOG.debug("Version " + subsetVersion.get(Field.VERSION) + " is valid in the interval, so codes will be added to map");
@@ -590,16 +585,15 @@ public class SubsetsController {
             JsonNode responseBodyJSON = versionsResponseEntity.getBody();
             if (responseBodyJSON != null){
                 if (responseBodyJSON.isArray()) {
-                    ArrayNode arrayNode = (ArrayNode) responseBodyJSON;
-                    for (JsonNode jsonNode : arrayNode) {
-                        JsonNode version = jsonNode.get(Field.DOCUMENT);
-                        String entryValidFrom = version.get(Field.VALID_FROM).textValue();
-                        String entryValidUntil = version.get(Field.VALID_UNTIL).textValue();
-                        if (entryValidFrom.compareTo(date) <= 0 && entryValidUntil.compareTo(date) >= 0 ){
-                            LOG.debug("Found valid codes at "+date+". "+version.get(Field.CODES).size());
+                    ArrayNode versionsArrayNode = (ArrayNode) responseBodyJSON;
+                    for (JsonNode versionJsonNode : versionsArrayNode) {
+                        String versionValidFrom = versionJsonNode.get(Field.VERSION_VALID_FROM).textValue();
+                        boolean hasVersionValidUntil = versionJsonNode.has(Field.VERSION_VALID_UNTIL);
+                        if (versionValidFrom.compareTo(date) <= 0 && (!hasVersionValidUntil || versionJsonNode.get(Field.VERSION_VALID_UNTIL).textValue().compareTo(date) >= 0)){
+                            LOG.debug("Found valid codes at "+date+". "+versionJsonNode.get(Field.CODES).size());
                             ObjectMapper mapper = new ObjectMapper();
                             ArrayNode codeArray = mapper.createArrayNode();
-                            version.get(Field.CODES).forEach(e -> codeArray.add(e.get(Field.URN)));
+                            versionJsonNode.get(Field.CODES).forEach(e -> codeArray.add(e.get(Field.URN)));
                             return new ResponseEntity<>(codeArray, HttpStatus.OK);
                         }
                     }
