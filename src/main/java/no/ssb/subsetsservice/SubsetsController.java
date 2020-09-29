@@ -146,8 +146,8 @@ public class SubsetsController {
 
         ResponseEntity<JsonNode> oldVersionsRE = getVersions(id, true, true, true);
         HttpStatus getVersionsStatus = oldVersionsRE.getStatusCode();
-        ArrayNode versionsArrayNode = Utils.sortByVersionValidFrom(Utils.cleanSubsetVersion(Objects.requireNonNull(oldVersionsRE.getBody())).deepCopy());
-        JsonNode mostRecentVersionOfThisSubset = versionsArrayNode.get(0);
+        ArrayNode allVersionsArrayNode = Utils.sortByVersionValidFrom(Utils.cleanSubsetVersion(Objects.requireNonNull(oldVersionsRE.getBody())).deepCopy());
+        JsonNode mostRecentVersionOfThisSubset = allVersionsArrayNode.get(0);
         assert mostRecentVersionOfThisSubset.has(Field.ID) : "most recent version of this subset did not have the field '"+Field.ID+"' ";
 
         ResponseEntity<JsonNode> oldPublishedVersionsRE = getVersions(id, true, false, true);
@@ -197,10 +197,9 @@ public class SubsetsController {
         }
 
         String newVersionValidFrom = editableNewVersionOfSubset.get(Field.VERSION_VALID_FROM).asText();
-        String newSubsetValidFrom = editableNewVersionOfSubset.get(Field.VALID_FROM).asText();
         String newVersionString = editableNewVersionOfSubset.get(Field.VERSION).asText();
 
-        for (JsonNode subsetVersionJsonNode : versionsArrayNode) {
+        for (JsonNode subsetVersionJsonNode : allVersionsArrayNode) {
             if (!subsetVersionJsonNode.get(Field.VERSION).asText().equals(newVersionString) && subsetVersionJsonNode.get(Field.VERSION_VALID_FROM).asText().equals(newVersionValidFrom)) {
                 return ErrorHandler.newHttpError("It is not allowed to submit a version with versionValidFrom equal to that of an existing version.", HttpStatus.BAD_REQUEST, LOG);
             }
@@ -209,8 +208,9 @@ public class SubsetsController {
         String mostRecentVersionValidFrom = mostRecentVersionOfThisSubset.get(Field.VERSION_VALID_FROM).asText();
         if (newVersionValidFrom.compareTo(mostRecentVersionValidFrom) < 0){
             // The new version being PUT is not the last version!
-            JsonNode firstVersion = versionsArrayNode.get(versionsArrayNode.size() - 1);
+            JsonNode firstVersion = allVersionsArrayNode.get(allVersionsArrayNode.size() - 1);
             String firstVersionValidFrom = firstVersion.get(Field.VERSION_VALID_FROM).asText();
+            String newSubsetValidFrom = editableNewVersionOfSubset.get(Field.VALID_FROM).asText();
             if (newVersionValidFrom.compareTo(firstVersionValidFrom) < 0){
                 // The new version being PUT is the new first version!
                 if (!newSubsetValidFrom.equals(newVersionValidFrom)){
@@ -223,6 +223,9 @@ public class SubsetsController {
         } else {
             // The new version being put is the new last version
             // If defined, the subset's 'validUntil' in the new version must be the same as the subsets 'versionValidUntil' .
+            if (editableNewVersionOfSubset.has(Field.VALID_UNTIL) && !editableNewVersionOfSubset.get(Field.VALID_UNTIL).isNull() || editableNewVersionOfSubset.has(Field.VERSION_VALID_UNTIL))
+                if (!editableNewVersionOfSubset.get(Field.VERSION_VALID_UNTIL).equals(editableNewVersionOfSubset.get(Field.VALID_UNTIL)))
+                    return ErrorHandler.newHttpError("validUntil must match versionValidUntil when a new last version is created", HttpStatus.BAD_REQUEST, LOG);
         }
 
         ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, newVersionString, true, true, true);
