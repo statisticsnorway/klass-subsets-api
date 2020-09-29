@@ -68,10 +68,18 @@ public class SubsetsController {
 
         //TODO: Validate that body is a val subset, somehow?
 
-        if (!subsetJson.has(Field.VERSION))
+        ObjectNode editableSubset = subsetJson.deepCopy();
+        subsetJson = null; // Make sure this is not used, because you should use the editableSubset
+
+        if (!editableSubset.has(Field.VALID_UNTIL)){
+            editableSubset.set(Field.VALID_UNTIL, null);
+            LOG.debug("The PUT version did not have a validUntil value defined. validUntil was defined and set to null");
+        }
+
+        if (!editableSubset.has(Field.VERSION))
             return ErrorHandler.newHttpError("Each subset must have the field 'version', which uniquely identifies the version of the subset", HttpStatus.BAD_REQUEST, LOG);
 
-        String id = subsetJson.get(Field.ID).textValue();
+        String id = editableSubset.get(Field.ID).textValue();
         LOG.info("POST subset with id "+id);
 
         if (!Utils.isClean(id))
@@ -81,7 +89,7 @@ public class SubsetsController {
         if (subsetExists)
             return ErrorHandler.newHttpError("POST: Can not create subset. ID already in use", HttpStatus.BAD_REQUEST, LOG);
 
-        ObjectNode editableSubset = subsetJson.deepCopy();
+
 
         String isoNow = Utils.getNowISO();
         editableSubset.put(Field.LAST_UPDATED_DATE, isoNow);
@@ -151,7 +159,7 @@ public class SubsetsController {
 
         if (!editableNewVersionOfSubset.has(Field.VALID_UNTIL)){
             editableNewVersionOfSubset.set(Field.VALID_UNTIL, null);
-            LOG.error("The PUT version did not have a validUntil value defined. validUntil was defined and set to null");
+            LOG.debug("The PUT version did not have a validUntil value defined. validUntil was defined and set to null");
         }
 
         if (getVersionsStatus.equals(HttpStatus.NOT_FOUND))
@@ -381,6 +389,7 @@ public class SubsetsController {
                                 if (latestPublishedVersionNode.has(Field.SHORT_NAME)){
                                     editableVersionNode.set(Field.SHORT_NAME, latestPublishedVersionNode.get(Field.SHORT_NAME));
                                 }
+                                //TODO: update ValidFrom and validUntil of all versions
                             }
                         }
 
