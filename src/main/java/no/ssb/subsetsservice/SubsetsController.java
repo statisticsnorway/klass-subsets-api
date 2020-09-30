@@ -226,7 +226,7 @@ public class SubsetsController {
                     HttpStatus.BAD_REQUEST,
                     LOG);
 
-        if (!(newVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0))
+        if (newVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) > 0)
             return ErrorHandler.newHttpError(
                     "'versionValidFrom' can not be earlier than subset 'validFrom'",
                     HttpStatus.BAD_REQUEST,
@@ -247,7 +247,7 @@ public class SubsetsController {
                     HttpStatus.BAD_REQUEST,
                     LOG);
 
-        if (!(newVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) <= 0))
+        if (newVersionOfSubset.get(Field.VALID_FROM).asText().compareTo(newVersionOfSubset.get(Field.VERSION_VALID_FROM).asText()) > 0)
             return ErrorHandler.newHttpError(
                     "'versionValidFrom' can not be earlier than subset 'validFrom'",
                     HttpStatus.BAD_REQUEST,
