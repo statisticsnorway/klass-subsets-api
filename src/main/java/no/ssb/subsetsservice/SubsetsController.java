@@ -285,7 +285,7 @@ public class SubsetsController {
                             "You can't turn back validUntil, only turn it forward",
                             HttpStatus.BAD_REQUEST,
                             LOG);
-                if (!(newVersionValidFrom.compareTo(lastVersionValidFrom) >= 0))
+                if (newVersionValidFrom.compareTo(lastVersionValidFrom) < 0)
                     return ErrorHandler.newHttpError(
                             "You can only update the validUntil by changing the latest version, or publishing a new latest version",
                             HttpStatus.BAD_REQUEST,
