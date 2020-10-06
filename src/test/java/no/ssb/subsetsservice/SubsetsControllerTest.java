@@ -263,7 +263,9 @@ class SubsetsControllerTest {
 
         JsonNode subsetJsonNode = getSubset(fv0_4);
         ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
-        assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
+        // posted versionValidUntil should be ignored by the server because it is generated automatically
+        // This means the subset should be created even if versionValidFrom is wrong
+        assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
     }
 
     @Test
@@ -273,7 +275,9 @@ class SubsetsControllerTest {
 
         JsonNode subsetJsonNode = getSubset(fv0_5);
         ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
-        assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
+        // posted versionValidUntil should be ignored by the server because it is generated automatically
+        // This means the subset should be created even if versionValidFrom is wrong
+        assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
     }
 
     @Test
