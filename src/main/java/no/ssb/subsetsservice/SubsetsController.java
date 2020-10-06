@@ -376,6 +376,7 @@ public class SubsetsController {
 
                 String[] changeableFieldsInPublishedVersion = {
                         Field.VERSION_RATIONALE,
+                        Field.VALID_FROM,
                         Field.VALID_UNTIL,
                         Field.VERSION_VALID_UNTIL,
                         Field.LAST_UPDATED_BY,
