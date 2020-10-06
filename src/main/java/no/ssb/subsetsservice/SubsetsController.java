@@ -351,11 +351,15 @@ public class SubsetsController {
                 }
             } else {
                 // The new version being PUT is neither the first or the last version, but is valid in between existing versions
-                // TODO: Should this be illegal?
+                return ErrorHandler.newHttpError(
+                        "New versions of a subset must be valid either before the previous first version or after the previous last version.",
+                        HttpStatus.BAD_REQUEST,
+                        LOG);
             }
         } else {
             // The new version being put is the new last version
             // If defined, the subset's 'validUntil' in the new version must be the same as the subsets 'versionValidUntil' .
+            editableNewVersionOfSubset.set(Field.VERSION_VALID_UNTIL, editableNewVersionOfSubset.get(Field.VALID_UNTIL));
         }
 
         ResponseEntity<JsonNode> prevPatchOfThisVersionRE = getVersion(id, newVersionString, true, true, true);
