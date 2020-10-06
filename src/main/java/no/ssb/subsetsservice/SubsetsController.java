@@ -92,13 +92,6 @@ public class SubsetsController {
                     HttpStatus.BAD_REQUEST,
                     LOG);
 
-        if (subsetJson.has(Field.VALID_UNTIL) && subsetJson.has(Field.VERSION_VALID_UNTIL)
-                && subsetJson.get(Field.VALID_UNTIL).asText().compareTo(subsetJson.get(Field.VERSION_VALID_UNTIL).asText()) != 0)
-            return ErrorHandler.newHttpError(
-                    "'versionValidUntil' can not be different from the subset's 'validUntil'",
-                    HttpStatus.BAD_REQUEST,
-                    LOG);
-
         if (subsetJson.has(Field.VALID_UNTIL)
                 && subsetJson.get(Field.VALID_UNTIL).asText().compareTo(subsetJson.get(Field.VERSION_VALID_FROM).asText()) <= 0)
             return ErrorHandler.newHttpError(
@@ -138,13 +131,8 @@ public class SubsetsController {
 
         if (!editableSubset.has(Field.VALID_UNTIL))
             editableSubset.set(Field.VALID_UNTIL, null);
-        else if (editableSubset.has(Field.VERSION_VALID_UNTIL)){
-            if (!editableSubset.get(Field.VERSION_VALID_UNTIL).asText().equals(editableSubset.get(Field.VALID_UNTIL).asText()))
-                return ErrorHandler.newHttpError(
-                        "validUntil must be equal versionValidUntil for the first version of the subset (this one)",
-                        HttpStatus.BAD_REQUEST,
-                        LOG);
-        }
+
+        editableSubset.set(Field.VERSION_VALID_UNTIL, editableSubset.get(Field.VALID_UNTIL));
 
         JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
         ResponseEntity<JsonNode> responseEntity = new LDSFacade().createSubset(cleanSubset, id);
