@@ -15,7 +15,7 @@ variables:
   - name: fullSha
     value: '$(Build.SourceVersion)'
   - name: imageName
-    value: 'eu.gcr.io/prod-bip/ssb/dapla/klass-subsets-api-v2'
+    value: 'eu.gcr.io/prod-bip/ssb/dapla/klass-subsets-api'
   - name: repoName
     value: 'prod-bip/ssb/dapla/klass-subsets-api'
 
