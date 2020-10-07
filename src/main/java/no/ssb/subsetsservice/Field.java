@@ -5,6 +5,7 @@ public class Field {
     public static final String VALID_UNTIL = "validUntil";
     public static final String VERSION = "version";
     public static final String VERSION_VALID_FROM = "versionValidFrom";
+    public static final String VERSION_VALID_UNTIL = "versionValidUntil";
     public static final String VERSION_RATIONALE = "versionRationale";
     public static final String DOCUMENT = "document";
     public static final String CODES = "codes";
@@ -23,5 +24,4 @@ public class Field {
     public static final String CODE = "code";
     public static final String _LINKS = "_links";
     public static final String SELF = "self";
-    public static final String VERSION_VALID_UNTIL = "versionValidUntil";
 }
