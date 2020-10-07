@@ -3,6 +3,8 @@ name: $(Build.SourceBranch)-$(date:yyyyMMdd)$(rev:.r)
 trigger:
   branches:
     include:
+      - 'v2'
+    exclude:
       - 'development'
 
 pool:
@@ -13,7 +15,7 @@ variables:
   - name: fullSha
     value: '$(Build.SourceVersion)'
   - name: imageName
-    value: 'eu.gcr.io/prod-bip/ssb/dapla/klass-subsets-api'
+    value: 'eu.gcr.io/prod-bip/ssb/dapla/klass-subsets-api-v2'
   - name: repoName
     value: 'prod-bip/ssb/dapla/klass-subsets-api'
 
