@@ -556,8 +556,6 @@ public class SubsetsController {
                     JsonNode latestPublishedName = publishedVersionExists && latestPublishedVersionNode.has(Field.NAME) ? latestPublishedVersionNode.get(Field.NAME) : null;
                     JsonNode latestPublishedShortName = publishedVersionExists && latestPublishedVersionNode.has(Field.SHORT_NAME) ? latestPublishedVersionNode.get(Field.SHORT_NAME) : null;
                     JsonNode latestPublishedValidUntil = publishedVersionExists && latestPublishedVersionNode.has(Field.VALID_UNTIL) ? latestPublishedVersionNode.get(Field.VALID_UNTIL) : null;
-                    if (latestPublishedValidUntil == null && publishedVersionExists && latestPublishedVersionNode.has(Field.VERSION_VALID_UNTIL))
-                        latestPublishedValidUntil = latestPublishedVersionNode.get(Field.VERSION_VALID_UNTIL);
                     JsonNode firstPublishedValidFrom = firstPublishedVersionExists && firstPublishedVersionNode.has(Field.VALID_FROM) ? firstPublishedVersionNode.get(Field.VALID_FROM) : null;
 
                     ArrayNode majorVersionsObjectNodeArray = mapper.createArrayNode();
