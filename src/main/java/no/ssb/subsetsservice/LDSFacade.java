@@ -13,7 +13,9 @@ import java.util.List;
 public class LDSFacade implements LDSInterface {
 
     String API_LDS = "";
-    String SUBSETS_API = "/ns/ClassificationSubset";
+    String SUBSETS_API =    "/ns/ClassificationSubset";
+    String SERIES_API =     "/ns/ClassificationSubsetSeries";
+    String VERSIONS_API =   "/ns/ClassificationSubsetVersion";
 
     LDSFacade(){}
 
@@ -41,6 +43,30 @@ public class LDSFacade implements LDSInterface {
             throw new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "GET all subsets body was null");
         }
         throw new HttpClientErrorException(allSubsetsRE.getStatusCode());
+    }
+
+    public ResponseEntity<JsonNode> getVersionsInSubsetWithID(String subsetId){
+        ResponseEntity<JsonNode> seriesRE = new LDSConsumer(API_LDS).getFrom(SERIES_API+"/"+subsetId);
+        JsonNode subsetSeriesJsonNode = seriesRE.getBody();
+        ArrayNode versionArrayNode = subsetSeriesJsonNode.get("versions").deepCopy();
+        /*
+        for (JsonNode version : versionArrayNode){
+            String versionID = version.get("_links").get("self").get("href").asText();
+        }
+        */
+        return new ResponseEntity<>(versionArrayNode, HttpStatus.OK);
+    }
+
+    public ResponseEntity<JsonNode> getVersionByID(String versionId){
+        return new LDSConsumer(API_LDS).getFrom(VERSIONS_API+"/"+versionId);
+    }
+
+    public ResponseEntity<JsonNode> getSubsetSeries(String id){
+        return new LDSConsumer(API_LDS).getFrom(SERIES_API+"/"+id);
+    }
+
+    public ResponseEntity<JsonNode> getAllSubsetSeries(){
+        return new LDSConsumer(API_LDS).getFrom(SERIES_API+"");
     }
 
     public ResponseEntity<JsonNode> getLastUpdatedVersionOfAllSubsets(){

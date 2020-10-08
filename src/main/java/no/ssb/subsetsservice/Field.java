@@ -24,4 +24,6 @@ public class Field {
     public static final String CODE = "code";
     public static final String _LINKS = "_links";
     public static final String SELF = "self";
+    public static final String SUBSET = "subset";
+    public static final String CLASSIFICATION_TYPE = "classificationType";
 }

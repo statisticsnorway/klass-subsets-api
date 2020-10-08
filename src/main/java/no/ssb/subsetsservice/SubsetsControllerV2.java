@@ -7,99 +7,84 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
 @CrossOrigin
 @RestController
-public class SubsetsController {
+public class SubsetsControllerV2 {
 
     private MetricsService metricsService;
 
-    private static SubsetsController instance;
-    private static final Logger LOG = LoggerFactory.getLogger(SubsetsController.class);
+    private static SubsetsControllerV2 instance;
+    private static final Logger LOG = LoggerFactory.getLogger(SubsetsControllerV2.class);
 
     @Autowired
-    public SubsetsController(MetricsService metricsService){
+    public SubsetsControllerV2(MetricsService metricsService){
         this.metricsService = metricsService;
         instance = this;
     }
 
-    public SubsetsController(){
+    public SubsetsControllerV2(){
         instance = this;
     }
 
-    public static SubsetsController getInstance(){
+    public static SubsetsControllerV2 getInstance(){
         return instance;
     }
 
-    @GetMapping("/v1/subsets")
+    @GetMapping("/v2/subsets")
     public ResponseEntity<JsonNode> getSubsets(
-            @RequestParam(defaultValue = "false") boolean includeDrafts,
-            @RequestParam(defaultValue = "false") boolean includeFuture,
-            @RequestParam(defaultValue = "false") boolean rankedUrnOnly) {
+            @RequestParam(defaultValue = "true") boolean includeDrafts,
+            @RequestParam(defaultValue = "true") boolean includeFuture,
+            @RequestParam(defaultValue = "true") boolean includeExpired) {
         metricsService.incrementGETCounter();
 
-        LOG.info("GET subsets");
+        LOG.info("GET subsets includeDrafts="+includeDrafts+" includeFuture="+includeFuture+" includeExpired="+includeExpired);
         LDSFacade ldsFacade = new LDSFacade();
-        List<String> subsetIDsList = ldsFacade.getAllSubsetIDs();
-        ArrayNode arrayNode = new ObjectMapper().createArrayNode();
-        for (String id : subsetIDsList) {
-            ResponseEntity<JsonNode> subsetRE = getSubset(id, includeDrafts, includeFuture, rankedUrnOnly);
-            if (subsetRE.getStatusCode() == HttpStatus.OK)
-                arrayNode.add(subsetRE.getBody());
-            else
-                ErrorHandler.newHttpError(
-                        "On GET subsets, attempt to retrieve subset with ID "+id+" returned from LDS with "+subsetRE.getStatusCode().toString(),
-                        HttpStatus.INTERNAL_SERVER_ERROR,
-                        LOG);
+        ResponseEntity<JsonNode> subsetSeriesRE = ldsFacade.getAllSubsetSeries();
+        ArrayNode subsetSeriesArray = subsetSeriesRE.getBody().deepCopy();
+        String nowDate = Utils.getNowISO().split("T")[0];
+        if (!includeDrafts || !includeFuture || !includeExpired){
+            for (int i = subsetSeriesArray.size() - 1; i >= 0; i--) {
+                JsonNode subsetSeries = subsetSeriesArray.get(i);
+                if (!includeDrafts && subsetSeries.get(Field.ADMINISTRATIVE_STATUS).equals(Field.DRAFT))
+                    subsetSeriesArray.remove(i);
+                else if (!includeFuture && subsetSeries.get(Field.VALID_FROM).asText().compareTo(nowDate) > 0)
+                    subsetSeriesArray.remove(i);
+                else if (!includeExpired
+                        && subsetSeries.has(Field.VALID_UNTIL)
+                        && !subsetSeries.get(Field.VALID_UNTIL).asText().isBlank()
+                        && subsetSeries.get(Field.VALID_UNTIL).asText().compareTo(nowDate) < 0)
+                    subsetSeriesArray.remove(i);
+            }
         }
-        return new ResponseEntity<>(arrayNode, HttpStatus.OK);
+        return new ResponseEntity<>(subsetSeriesArray, HttpStatus.OK);
     }
 
     /**
-     * This method figures out what the 'id' of the subset is from the value inside the JSON
-     * and then post to subsets/{id}
-     * @param subsetJson
+     * Create a new ClassificationSubsetSeries resource, with no versions yet
+     * @param subsetSeriesJson
      * @return
      */
-    @PostMapping("/v1/subsets")
-    public ResponseEntity<JsonNode> postSubset(@RequestBody JsonNode subsetJson) {
+    @PostMapping("/v2/subsets")
+    public ResponseEntity<JsonNode> postSubset(@RequestBody JsonNode subsetSeriesJson) {
         metricsService.incrementPOSTCounter();
 
-        if (subsetJson == null)
+        if (subsetSeriesJson == null)
             return ErrorHandler.newHttpError("POST: Can not create subset from empty body", HttpStatus.BAD_REQUEST, LOG);
 
-        //TODO: Validate that body is a val subset, somehow?
+        ObjectNode editableSubsetSeries = subsetSeriesJson.deepCopy();
+        subsetSeriesJson = null;
 
-        if (!subsetJson.has(Field.VERSION))
-            return ErrorHandler.newHttpError(
-                    "Each subset must have the field 'version', which uniquely identifies the version of the subset",
-                    HttpStatus.BAD_REQUEST,
-                    LOG);
+        if (!editableSubsetSeries.has(Field.ID))
+            return ErrorHandler.newHttpError("Subset series must have field ID", HttpStatus.BAD_REQUEST, LOG);
 
-        if(subsetJson.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN) && subsetJson.get(Field.CODES).isEmpty())
-            return ErrorHandler.newHttpError(
-                    "Can not publish a subset with an empty code list",
-                    HttpStatus.BAD_REQUEST,
-                    LOG);
-
-        if ((subsetJson.get(Field.VALID_FROM).asText().compareTo(subsetJson.get(Field.VERSION_VALID_FROM).asText()) != 0))
-            return ErrorHandler.newHttpError(
-                    "'versionValidFrom' can not be different from the subset's 'validFrom'",
-                    HttpStatus.BAD_REQUEST,
-                    LOG);
-
-        if (subsetJson.has(Field.VALID_UNTIL)
-                && subsetJson.get(Field.VALID_UNTIL).asText().compareTo(subsetJson.get(Field.VALID_FROM).asText()) <= 0)
-            return ErrorHandler.newHttpError(
-                    "The subset's 'validUntil' must be set to a date after 'versionValidFrom' and 'validFrom'",
-                    HttpStatus.BAD_REQUEST,
-                    LOG);
-
-        String id = subsetJson.get(Field.ID).textValue();
+        String id = editableSubsetSeries.get(Field.ID).textValue();
         LOG.info("POST subset with id "+id);
 
         if (!Utils.isClean(id))
@@ -112,73 +97,34 @@ public class SubsetsController {
                     HttpStatus.BAD_REQUEST,
                     LOG);
 
-        ObjectNode editableSubset = subsetJson.deepCopy();
-        subsetJson = null;
+        //TODO: Validate that body is a valid subset series, somehow
 
-        String isoNow = Utils.getNowISO();
-        editableSubset.put(Field.LAST_UPDATED_DATE, isoNow);
-        editableSubset.put(Field.CREATED_DATE, isoNow);
+        String isoNowDate = Utils.getNowDate();
+        editableSubsetSeries.put(Field.LAST_UPDATED_DATE, isoNowDate);
+        editableSubsetSeries.put(Field.CREATED_DATE, isoNowDate);
 
-        String versionValidFrom = editableSubset.get(Field.VERSION_VALID_FROM).asText();
-        String validFrom = editableSubset.get(Field.VALID_FROM).asText();
+        editableSubsetSeries.put(Field.CLASSIFICATION_TYPE, Field.SUBSET);
 
-        if (!versionValidFrom.equals(validFrom)){
-            return ErrorHandler.newHttpError(
-                    "validFrom must be equal versionValidFrom for the first version of the subset (this one)",
-                    HttpStatus.BAD_REQUEST,
-                    LOG);
-        }
-
-        /*
-        if (!editableSubset.has(Field.VALID_UNTIL))
-            editableSubset.set(Field.VALID_UNTIL, null);
-        */
-
-        editableSubset.set(Field.VERSION_VALID_UNTIL, editableSubset.get(Field.VALID_UNTIL));
-
-        JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
-        ResponseEntity<JsonNode> responseEntity = new LDSFacade().createSubset(cleanSubset, id);
+        ResponseEntity<JsonNode> responseEntity = new LDSFacade().createSubset(editableSubsetSeries, id);
         if (responseEntity.getStatusCode().equals(HttpStatus.CREATED)){
-            responseEntity = new ResponseEntity<>(cleanSubset, HttpStatus.CREATED);
+            responseEntity = new ResponseEntity<>(editableSubsetSeries, HttpStatus.CREATED);
         }
         return responseEntity;
     }
 
-    @GetMapping("/v1/subsets/{id}")
-    public ResponseEntity<JsonNode> getSubset(
-            @PathVariable("id") String id,
-            @RequestParam(defaultValue = "false") boolean includeDrafts,
-            @RequestParam(defaultValue = "false") boolean includeFuture,
-            @RequestParam(defaultValue = "false") boolean rankedUrnOnly) {
+    @GetMapping("/v2/subsets/{id}")
+    public ResponseEntity<JsonNode> getSubsetSeriesByID(@PathVariable("id") String id) {
         metricsService.incrementGETCounter();
-        LOG.info("GET subset with id "+id+" includeDrafts");
+        LOG.info("GET subset series with id "+id);
 
-        if (Utils.isClean(id)){
-            ResponseEntity<JsonNode> majorVersionsRE = getVersions(id, includeFuture, includeDrafts, rankedUrnOnly);
-            if (majorVersionsRE.getStatusCode() != HttpStatus.OK) {
-                LOG.error("Failed to get version of subset "+id);
-                return majorVersionsRE;
-            }
-            JsonNode majorVersionsBody = majorVersionsRE.getBody();
-            if (majorVersionsBody != null && majorVersionsBody.isArray()){
-                LOG.debug("The array node with major versions");
-                if (majorVersionsBody.has(0))
-                    return new ResponseEntity<>(majorVersionsBody.get(0), HttpStatus.OK);
-                return ErrorHandler.newHttpError(
-                        "No subset matched the parameters",
-                        HttpStatus.NOT_FOUND,
-                        LOG);
-            } else {
-                return ErrorHandler.newHttpError(
-                        "internal call to /versions did not return array",
-                        HttpStatus.INTERNAL_SERVER_ERROR,
-                        LOG);
-            }
-        }
-        return ErrorHandler.illegalID(LOG);
+        if (!Utils.isClean(id))
+            return ErrorHandler.illegalID(LOG);
+
+        ResponseEntity<JsonNode> subsetSeriesByIDRE = new LDSFacade().getSubsetSeries(id);
+        return subsetSeriesByIDRE;
     }
 
-    @PutMapping(value = "/v1/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/v2/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> putSubset(@PathVariable("id") String id, @RequestBody JsonNode newVersionOfSubset) {
         metricsService.incrementPUTCounter();
         LOG.info("PUT subset with id "+id);
@@ -446,7 +392,7 @@ public class SubsetsController {
         return responseEntity;
     }
 
-    @GetMapping("/v1/subsets/{id}/versions")
+    @GetMapping("/v2/subsets/{id}/versions")
     public ResponseEntity<JsonNode> getVersions(
             @PathVariable("id") String id,
             @RequestParam(defaultValue = "false") boolean includeFuture,
@@ -614,7 +560,7 @@ public class SubsetsController {
      * @param version
      * @return
      */
-    @GetMapping("/v1/subsets/{id}/versions/{version}")
+    @GetMapping("/v2/subsets/{id}/versions/{version}")
     public ResponseEntity<JsonNode> getVersion(
             @PathVariable("id") String id,
             @PathVariable("version") String version,
@@ -656,7 +602,7 @@ public class SubsetsController {
      * @param to
      * @return
      */
-    @GetMapping("/v1/subsets/{id}/codes")
+    @GetMapping("/v2/subsets/{id}/codes")
     public ResponseEntity<JsonNode> getSubsetCodes(@PathVariable("id") String id,
                                                    @RequestParam(required = false) String from,
                                                    @RequestParam(required = false) String to,
@@ -780,7 +726,7 @@ public class SubsetsController {
      * @param date
      * @return
      */
-    @GetMapping("/v1/subsets/{id}/codesAt")
+    @GetMapping("/v2/subsets/{id}/codesAt")
     public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id,
                                                      @RequestParam String date,
                                                      @RequestParam(defaultValue = "false") boolean includeFuture,
@@ -828,7 +774,7 @@ public class SubsetsController {
                 LOG);
     }
 
-    @GetMapping("/v1/subsets/schema")
+    @GetMapping("/v2/subsets/schema")
     public ResponseEntity<JsonNode> getSchema(){
         metricsService.incrementGETCounter();
         LOG.info("GET schema for subsets");

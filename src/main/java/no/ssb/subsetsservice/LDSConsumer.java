@@ -6,6 +6,8 @@ import okhttp3.*;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
@@ -19,6 +21,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
@@ -96,7 +99,7 @@ public class LDSConsumer {
             EntityUtils.consume(entity1);
             return responseEntity;
         } catch (Exception e) {
-            LOG.error(e.toString());
+            e.printStackTrace();
             return ErrorHandler.newHttpError("Could not retrieve "+LDS_URL+additional+" because of an exception: "+e.toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
         } finally {
             try {
@@ -118,12 +121,45 @@ public class LDSConsumer {
         return response;
     }
 
+    /**
+     * Using a true HTTP PUT request to the LDS will create or overwrite a managed resource by id,
+     * or an embedded resource (property) within a managed resource.
+     * In the LDS API docs, POST is never mentioned. But I've used POST until now and it worked.
+     * @param additional
+     * @param json
+     * @return
+     */
     ResponseEntity<JsonNode> putTo(String additional, JsonNode json){
-        ResponseEntity<JsonNode> postRE = postTo(additional, json);
-        HttpStatus statusCode = postRE.getStatusCode();
-        if (postRE.getStatusCode().equals(HttpStatus.CREATED))
-            statusCode = HttpStatus.OK;
-        return new ResponseEntity<>(postRE.getBody(), statusCode);
+        CloseableHttpClient httpclient = HttpClients.createDefault();
+        HttpPut httpPut = new HttpPut(LDS_URL+additional);
+        httpPut.setHeader("Accept", "application/json");
+        httpPut.setHeader("Content-type", "application/json");
+        StringEntity stringEntity = null;
+        try {
+            stringEntity = new StringEntity(json.toString());
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            return ErrorHandler.newHttpError(
+                    "Could not parse jsonNode.toString() into a StringEntity. Exception "+e.toString(),
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    LOG);
+        }
+        httpPut.setEntity(stringEntity);
+        try {
+            CloseableHttpResponse response = httpclient.execute(httpPut);
+            HttpEntity entity = response.getEntity();
+            int status = response.getStatusLine().getStatusCode();
+            HttpStatus httpStatus = HttpStatus.resolve(status);
+            JsonNode jsonNode = new ObjectMapper().readTree(entity.getContent());
+            LOG.debug("POST to "+LDS_URL+additional+" - Status: "+httpStatus.toString());
+            return new ResponseEntity<>(jsonNode, httpStatus);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ErrorHandler.newHttpError(
+                    "Could not PUT because of an exception "+e.toString(),
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    LOG);
+        }
     }
 
     public void delete(String url) {
