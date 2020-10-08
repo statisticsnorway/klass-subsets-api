@@ -15,9 +15,9 @@ variables:
   - name: fullSha
     value: '$(Build.SourceVersion)'
   - name: imageName
-    value: 'eu.gcr.io/prod-bip/ssb/dapla/klass-subsets-api'
+    value: 'eu.gcr.io/prod-bip/ssb/klass/subsets-api'
   - name: repoName
-    value: 'prod-bip/ssb/dapla/klass-subsets-api'
+    value: 'prod-bip/ssb/klass/subsets-api'
 
 jobs:
   - job: buildTestDockerBuildDockerPush
