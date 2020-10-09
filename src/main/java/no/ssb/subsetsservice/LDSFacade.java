@@ -1,6 +1,7 @@
 package no.ssb.subsetsservice;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -110,5 +111,18 @@ public class LDSFacade implements LDSInterface {
         List<String> idList = getAllSubsetIDs();
         LoggerFactory.getLogger(LDSFacade.class).info("DELETE all "+idList.size()+" subset(s) from LDS");
         idList.forEach(this::deleteSubset);
+    }
+
+    public ResponseEntity<JsonNode> putVersionInSeries(String id, String versionID, JsonNode versionJsonNode) {
+        String versionUID = id+"_"+versionID;
+        ResponseEntity<JsonNode> putVersionRE = new LDSConsumer(API_LDS).putTo(VERSIONS_API+"/"+versionUID, versionJsonNode);
+        if (!putVersionRE.getStatusCode().equals(HttpStatus.OK)){
+            return ErrorHandler.newHttpError("Trying to PUT a subset version to LDS failed with status code "+putVersionRE.getStatusCode(), putVersionRE.getStatusCode(), LoggerFactory.getLogger(LDSFacade.class));
+        }
+        ResponseEntity<JsonNode> putLinkRE = new LDSConsumer(API_LDS).putTo(SERIES_API+"/"+id+"/versions/ClassificationSubsetVersion/"+versionUID, new ObjectMapper().createObjectNode());
+        if (!putLinkRE.getStatusCode().equals(HttpStatus.OK)){
+            return ErrorHandler.newHttpError("Trying to PUT a link between the subset Series and subset Version in LDS failed, with status code "+putLinkRE.getStatusCode(), putLinkRE.getStatusCode(), LoggerFactory.getLogger(LDSFacade.class));
+        }
+        return putLinkRE;
     }
 }

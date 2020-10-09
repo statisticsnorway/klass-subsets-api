@@ -70,4 +70,6 @@ public interface LDSInterface {
     void deleteSubset(String url);
 
     ResponseEntity<JsonNode> editSeries(JsonNode newVersionOfSeries, String seriesID);
+
+    ResponseEntity<JsonNode> putVersionInSeries(String id, String versionID, JsonNode versionNode);
 }

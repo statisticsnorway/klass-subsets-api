@@ -28,4 +28,5 @@ public class Field {
     public static final String CLASSIFICATION_TYPE = "classificationType";
     public static final String VERSIONS = "versions";
     public static final String LAST_MODIFIED = "lastModified";
+    public static final String SUBSET_ID = "subsetId";
 }

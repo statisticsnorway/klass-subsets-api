@@ -282,6 +282,50 @@ public class SubsetsControllerV2 {
         return responseEntity;
     }
 
+    @PutMapping(value = "/v2/subsets/{id}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("id") String id, @RequestBody JsonNode version) {
+
+        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(id);
+        if (!getSeriesByIDRE.getStatusCode().equals(HttpStatus.OK))
+            return getSeriesByIDRE;
+        ObjectNode editableVersion = version.deepCopy();
+
+        //TODO: Validate the 'version' input's validity: Does it contain the right fields with the right values?
+
+        //TODO: Make sure validFrom is before validUntil
+
+        //TODO: Make sure validFrom and validUntil does not overlap existing versions
+
+        //TODO: If OPEN and is new latest version, set validUntil of previous version to be == this version's validFrom
+
+        //TODO: If OPEN and is new first version, set validUntil of this version to be == validFrom of next version
+
+        JsonNode series = getSeriesByIDRE.getBody();
+        if (!series.has(Field.VERSIONS))
+            return new ResponseEntity<>(new ObjectMapper().createArrayNode(), HttpStatus.OK);
+
+        editableVersion.put(Field.SUBSET_ID, id);
+
+        int versionsSize = series.get(Field.VERSIONS).size();
+        String versionID = Integer.toString(versionsSize+1);
+        editableVersion.put(Field.VERSION, versionID);
+
+        String nowDate = Utils.getNowDate();
+        editableVersion.put(Field.LAST_MODIFIED, nowDate);
+        editableVersion.put(Field.CREATED_DATE, nowDate);
+
+        //TODO: IF this has administrative status OPEN, then set the SubsetSeries' status to OPEN too
+
+        //TODO: If this has admin status OPEN, make sure there are codes present in the codes list
+
+        ResponseEntity<JsonNode> ldsPUT = new LDSFacade().putVersionInSeries(id, versionID, editableVersion);
+
+        if (ldsPUT.getStatusCode().equals(HttpStatus.OK))
+            return new ResponseEntity<>(editableVersion, HttpStatus.OK);
+        else
+            return ldsPUT;
+    }
+
     @GetMapping("/v2/subsets/{id}/versions")
     public ResponseEntity<JsonNode> getVersions(
             @PathVariable("id") String id,
@@ -305,14 +349,12 @@ public class SubsetsControllerV2 {
 
         ArrayNode versions = body.get(Field.VERSIONS).deepCopy();
 
-        // Resolve individual versions given in the version array on the form "v2/subsets/{id}/versions/{version_id}" with GET /ns/ClassificationSubsetVersion/{id}_{version_id}
-        // Resolve individual versions given in the version array on the form "/ClassificationSubsetVersion/{id}_{version_id}" with GET /ns/ClassificationSubsetVersion/{id}_{version_id}
         for (int i = 0; i < versions.size(); i++) {
-            String versionPath = versions.get(i).asText(); // v2/subsets/{id}/versions/{version_id}
+            String versionPath = versions.get(i).asText(); // should be "/ClassificationSubsetVersion/{version_id}"
             String[] splitBySlash = versionPath.split("/");
-            String seriesID = splitBySlash[2];
-            String versionID = splitBySlash[4];
-            String versionUID = seriesID+"_"+versionID;
+            assert splitBySlash[0].isBlank() : "Index 0 in the array that splits the versionPath by '/' is not blank";
+            assert splitBySlash[1].equals("ClassificationSubsetVersion") : "Index 1 in the array that splits the versionPath by '/' is not 'ClassificationSubsetVersion'"; //TODO: these checks should be removed later when i know it works
+            String versionUID = splitBySlash[2];
             ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionUID);
             JsonNode versionBody = versionRE.getBody();
             versions.set(i, versionBody);
@@ -604,7 +646,6 @@ public class SubsetsControllerV2 {
     }
 
     private static JsonNode cleanSeries(JsonNode subsetSeries){
-        //TODO: replace content in the "versions" array: In LDS version pointers are stored as "/ClassificationSubsetVersion/{id}_{version_id}", but we want to return them as "v2/subsets/{id}/versions/{version_id}"
         return subsetSeries;
     }
 
