@@ -1,6 +1,7 @@
 package no.ssb.subsetsservice;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 
@@ -67,4 +68,6 @@ public interface LDSInterface {
     boolean healthReady();
 
     void deleteSubset(String url);
+
+    ResponseEntity<JsonNode> editSeries(JsonNode newVersionOfSeries, String seriesID);
 }

@@ -102,6 +102,10 @@ public class LDSFacade implements LDSInterface {
        new LDSConsumer(API_LDS).delete(url);
     }
 
+    public ResponseEntity<JsonNode> editSeries(JsonNode series, String id) {
+        return new LDSConsumer(API_LDS).putTo(SERIES_API+"/" + id, series);
+    }
+
     public void deleteAllSubsets(){
         List<String> idList = getAllSubsetIDs();
         LoggerFactory.getLogger(LDSFacade.class).info("DELETE all "+idList.size()+" subset(s) from LDS");
