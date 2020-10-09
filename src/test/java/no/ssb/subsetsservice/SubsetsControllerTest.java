@@ -33,8 +33,10 @@ class SubsetsControllerTest {
     File fv1_2 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.2.json"); // try to change validFrom and versionValidFrom to a later date
     File fv1_3 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.3.json"); // try to change versionValidFrom to a later date than validFrom, even if this is only version of subset
     File fv1_4 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.4.json"); // from 1.0 change validUntil, versionValidUntil and versionRationale
+    File fv1_5 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v1.5.json"); // no versionValidUntil given
     File fv2_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v2.json");
     File fv2_1 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v2.1.json"); // OPEN, with same changes as 0.91
+    File fv2_2 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v2.2.json"); // no validUntil or versionValidUntil
     File fv3_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v3.0.json"); // A valid DRAFT
     File fv3_1 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v3.1.json"); // same versionValidFrom as 1.0
     File fv4_0 = new File("src/test/resources/subset_examples/uttrekk_for_publiseringstesting_v4.0.json"); // DRAFT with no codes
@@ -59,8 +61,10 @@ class SubsetsControllerTest {
         assertTrue(fv1_2.exists());
         assertTrue(fv1_3.exists());
         assertTrue(fv1_4.exists());
+        assertTrue(fv1_5.exists());
         assertTrue(fv2_0.exists());
         assertTrue(fv2_1.exists());
+        assertTrue(fv2_2.exists());
         assertTrue(fv3_0.exists());
         assertTrue(fv3_1.exists());
         assertTrue(fv4_0.exists());
@@ -263,7 +267,9 @@ class SubsetsControllerTest {
 
         JsonNode subsetJsonNode = getSubset(fv0_4);
         ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
-        assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
+        // posted versionValidUntil should be ignored by the server because it is generated automatically
+        // This means the subset should be created even if versionValidFrom is wrong
+        assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
     }
 
     @Test
@@ -273,7 +279,36 @@ class SubsetsControllerTest {
 
         JsonNode subsetJsonNode = getSubset(fv0_5);
         ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
-        assertEquals(HttpStatus.BAD_REQUEST, postRE.getStatusCode());
+        // posted versionValidUntil should be ignored by the server because it is generated automatically
+        // This means the subset should be created even if versionValidFrom is wrong
+        assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
+    }
+
+    @Test
+    void postOpenThenPutDifferentValidUntil(){
+        SubsetsController instance = SubsetsController.getInstance();
+        instance.deleteAll();
+
+        JsonNode subsetJsonNode = getSubset(fv1_5);
+        ResponseEntity<JsonNode> postRE = instance.postSubset(subsetJsonNode);
+        assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
+
+
+        JsonNode subsetJsonNode2 = getSubset(fv2_2);
+        String id = subsetJsonNode2.get(Field.ID).asText();
+        ResponseEntity<JsonNode> putRE = instance.putSubset(id, subsetJsonNode2);
+
+        assertEquals(HttpStatus.OK, putRE.getStatusCode());
+        ResponseEntity<JsonNode> versions = instance.getVersions(
+                subsetJsonNode.get(Field.ID).asText(),
+                true,
+                false,
+                true);
+        ArrayNode versionsArr = (ArrayNode) versions.getBody();
+        for (JsonNode version : versionsArr){
+
+            assertTrue(!version.has(Field.VALID_UNTIL) || version.get(Field.VALID_UNTIL).isNull() || version.get(Field.VALID_UNTIL).asText().isBlank());
+        }
     }
 
     @Test

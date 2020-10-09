@@ -1,19 +1,30 @@
 {
-    "administrativeStatus": "OPEN",
     "id": "uttrekk_for_publiseringstesting",
-    "version": "2",
+    "shortName": "Test av Publisering",
     "name": [
         {
-            "languageText": "Uttrekk for Testing av Publisering og Endring, endring av draft",
+            "languageText": "Uttrekk for Testing av Publisering og Endring",
             "languageCode": "nb"
         }
     ],
-    "shortName": "Test av Publisering, endring draft",
-    "validFrom": "2020-08-08T00:00:00.000Z",
-    "validUntil": "2020-11-11T00:00:00.000Z",
-    "versionValidFrom": "2020-10-10T00:00:00.000Z",
-    "versionValidUntil": "2020-11-11T00:00:00.000Z",
+    "description": [
+        {
+            "languageText": "Test av publisering, endringer og versjonering",
+            "languageCode": "nb"
+        }
+    ],
     "createdBy": "702 - Seksjon for IT-arkitektur",
+    "validFrom": "2020-08-08T00:00:00.000Z",
+    "validUntil": "2020-09-09T00:00:00.000Z",
+    "version": "1",
+    "administrativeStatus": "OPEN",
+    "versionValidFrom": "2020-08-08T00:00:00.000Z",
+    "versionRationale": [
+        {
+            "languageText": "Dette er versjonens rasjonale.",
+            "languageCode": "nb"
+        }
+    ],
     "administrativeDetails": [
         {
             "administrativeDetailType": "ANNOTATION",
@@ -28,18 +39,6 @@
                 "urn:ssb:klass-api:classifications:17",
                 "urn:ssb:klass-api:classifications:19"
             ]
-        }
-    ],
-    "description": [
-        {
-            "languageText": "Test av publisering, endringer og versjonering. Test endring",
-            "languageCode": "nb"
-        }
-    ],
-    "versionRationale": [
-        {
-            "languageText": "Dette er versjonens rasjonale. Test endring",
-            "languageCode": "nb"
         }
     ],
     "codes": [
@@ -142,6 +141,40 @@
             "parentCode": "031",
             "level": "4",
             "name": "Menige",
+            "shortName": "",
+            "presentationName": ""
+        },
+        {
+            "code": "0210",
+            "urn": "urn:ssb:klass-api:classifications:7:code:0210",
+            "rank": 7,
+            "classificationId": "7",
+            "_links": {
+                "self": {
+                    "href": "https://data.ssb.no/api/klass/v1//classifications/7/codesAt.json?date=2020-08-10&selectCodes=0210"
+                }
+            },
+            "classification": "undefined - Standard for yrkesklassifisering",
+            "parentCode": "021",
+            "level": "4",
+            "name": "Befal med sersjant grad",
+            "shortName": "",
+            "presentationName": ""
+        },
+        {
+            "code": "0110",
+            "urn": "urn:ssb:klass-api:classifications:7:code:0110",
+            "rank": 8,
+            "classificationId": "7",
+            "_links": {
+                "self": {
+                    "href": "https://data.ssb.no/api/klass/v1//classifications/7/codesAt.json?date=2020-08-10&selectCodes=0110"
+                }
+            },
+            "classification": "undefined - Standard for yrkesklassifisering",
+            "parentCode": "011",
+            "level": "4",
+            "name": "Offiserer fra fenrik og høyere grad",
             "shortName": "",
             "presentationName": ""
         }
