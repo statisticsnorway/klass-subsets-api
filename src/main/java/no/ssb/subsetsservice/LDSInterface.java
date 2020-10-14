@@ -20,6 +20,12 @@ public interface LDSInterface {
      */
     List<String> getAllSubsetIDs() throws HttpClientErrorException;
 
+    ResponseEntity<JsonNode> getVersionByID(String versionId);
+
+    ResponseEntity<JsonNode> getSubsetSeries(String id);
+
+    ResponseEntity<JsonNode> getAllSubsetSeries();
+
     /**
      * GET a list of all the version of each subset that was last UPDATED by the user.
      * This does NOT necessarily return the version with the most recent subsetValidFrom,
@@ -69,7 +75,11 @@ public interface LDSInterface {
 
     void deleteSubset(String url);
 
+    public void deleteAllSubsets();
+
     ResponseEntity<JsonNode> editSeries(JsonNode newVersionOfSeries, String seriesID);
 
     ResponseEntity<JsonNode> putVersionInSeries(String id, String versionID, JsonNode versionNode);
+
+    ResponseEntity<JsonNode> resolveVersionLink(String versionLink);
 }
