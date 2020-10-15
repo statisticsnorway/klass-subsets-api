@@ -282,7 +282,7 @@ public class SubsetsControllerV2 {
         return responseEntity;
     }
 
-    @PutMapping(value = "/v2/subsets/{id}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/v2/subsets/{id}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("id") String id, @RequestBody JsonNode version) {
 
         ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(id);
@@ -292,7 +292,7 @@ public class SubsetsControllerV2 {
         version = null;
 
         //TODO: Validate the 'version' input's validity: Does it contain the right fields with the right values?
-        
+
         String validFrom = editableVersion.get(Field.VALID_FROM).asText();
         String validUntil = editableVersion.has(Field.VALID_UNTIL) && !editableVersion.get(Field.VALID_UNTIL).isNull() ? editableVersion.get(Field.VALID_UNTIL).asText() : null;
         boolean hasValidUntil = validUntil != null;
@@ -329,10 +329,10 @@ public class SubsetsControllerV2 {
         ArrayNode versionJsonNodes = new ObjectMapper().createArrayNode();
         versionLinks.forEach(link -> versionJsonNodes.add(new LDSFacade().resolveVersionLink(link.asText()).getBody()));
         if (!versionLinks.isEmpty()){
-            String firstValidFrom = versionLinks.get(0).get(Field.VALID_FROM).asText();
             JsonNode firstPublishedVersion = versionLinks.get(0);
+            JsonNode lastPublishedVersion = firstPublishedVersion;
+            String firstValidFrom = firstPublishedVersion.get(Field.VALID_FROM).asText();
             String lastValidFrom = firstValidFrom;
-            JsonNode lastPublishedVersion = versionLinks.get(0);
             for (JsonNode versionJsonNode : versionJsonNodes) {
                 if (versionJsonNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)) {
                     String versionValidFrom = versionJsonNode.get(Field.VALID_FROM).asText();
