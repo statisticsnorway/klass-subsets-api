@@ -58,6 +58,11 @@ public class LDSFacade implements LDSInterface {
         return new ResponseEntity<>(versionArrayNode, HttpStatus.OK);
     }
 
+    /**
+     * Get a specific subset version by its UID, without going through the subset series.
+     * @param versionId is the UID for the version, unique among all versions, that is used in LDS
+     * @return
+     */
     public ResponseEntity<JsonNode> getVersionByID(String versionId){
         return new LDSConsumer(API_LDS).getFrom(VERSIONS_API+"/"+versionId);
     }
@@ -124,5 +129,21 @@ public class LDSFacade implements LDSInterface {
             return ErrorHandler.newHttpError("Trying to PUT a link between the subset Series and subset Version in LDS failed, with status code "+putLinkRE.getStatusCode(), putLinkRE.getStatusCode(), LoggerFactory.getLogger(LDSFacade.class));
         }
         return putLinkRE;
+    }
+
+    /**
+     * versionLink should be on the form "/ClassificationSubsetVersion/{versionUID}"
+     * @param versionLink
+     * @return
+     */
+    public ResponseEntity<JsonNode> resolveVersionLink(String versionLink) {
+        String[] splitOnSlash = versionLink.split("/");
+        if (!splitOnSlash[1].equals("ClassificationSubsetVersion"))
+            throw new IllegalArgumentException("versionLink must be on format '/ClassificationSubsetVersion/{versionUID}'");
+        String versionID = splitOnSlash[2];
+        if (!Utils.isClean(versionID))
+            throw new IllegalArgumentException("versionID must be clean (no special characters except '-' and '_')");
+        ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionID);
+        return null;
     }
 }
