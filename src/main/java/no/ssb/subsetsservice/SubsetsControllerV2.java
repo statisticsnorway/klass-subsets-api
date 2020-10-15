@@ -289,34 +289,98 @@ public class SubsetsControllerV2 {
         if (!getSeriesByIDRE.getStatusCode().equals(HttpStatus.OK))
             return getSeriesByIDRE;
         ObjectNode editableVersion = version.deepCopy();
+        version = null;
 
         //TODO: Validate the 'version' input's validity: Does it contain the right fields with the right values?
-
-        //TODO: Make sure validFrom is before validUntil
-
-        //TODO: Make sure validFrom and validUntil does not overlap existing versions
-
-        //TODO: If OPEN and is new latest version, set validUntil of previous version to be == this version's validFrom
-
-        //TODO: If OPEN and is new first version, set validUntil of this version to be == validFrom of next version
-
-        JsonNode series = getSeriesByIDRE.getBody();
-        if (!series.has(Field.VERSIONS))
-            return new ResponseEntity<>(new ObjectMapper().createArrayNode(), HttpStatus.OK);
+        
+        String validFrom = editableVersion.get(Field.VALID_FROM).asText();
+        String validUntil = editableVersion.has(Field.VALID_UNTIL) && !editableVersion.get(Field.VALID_UNTIL).isNull() ? editableVersion.get(Field.VALID_UNTIL).asText() : null;
+        boolean hasValidUntil = validUntil != null;
+        if (hasValidUntil && validFrom.compareTo(validUntil) >= 0)
+            return ErrorHandler.newHttpError(
+                    "validFrom can not be the same date as- or before validUntil, when validUntil is defined",
+                    HttpStatus.BAD_REQUEST,
+                    LOG);
 
         editableVersion.put(Field.SUBSET_ID, id);
-
-        int versionsSize = series.get(Field.VERSIONS).size();
-        String versionID = Integer.toString(versionsSize+1);
-        editableVersion.put(Field.VERSION, versionID);
 
         String nowDate = Utils.getNowDate();
         editableVersion.put(Field.LAST_MODIFIED, nowDate);
         editableVersion.put(Field.CREATED_DATE, nowDate);
 
-        //TODO: IF this has administrative status OPEN, then set the SubsetSeries' status to OPEN too
+        JsonNode series = getSeriesByIDRE.getBody();
+        int versionsSize = series.has(Field.VERSIONS) ? series.get(Field.VERSIONS).size() : 0;
+        String versionID = Integer.toString(versionsSize+1);
+        editableVersion.put(Field.VERSION, versionID);
 
-        //TODO: If this has admin status OPEN, make sure there are codes present in the codes list
+        boolean isStatusOpen = editableVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
+
+        if (isStatusOpen){
+            if (!editableVersion.has(Field.CODES) || editableVersion.get(Field.CODES).size() == 0){
+                return ErrorHandler.newHttpError("Published subset versions must have a non-empty code list", HttpStatus.BAD_REQUEST, LOG);
+            }
+        }
+
+        if (versionsSize == 0) {
+            new LDSFacade().putVersionInSeries(id, versionID, editableVersion);
+        }
+
+        ArrayNode versionLinks = series.get(Field.VERSIONS).deepCopy();
+        ArrayNode versionJsonNodes = new ObjectMapper().createArrayNode();
+        versionLinks.forEach(link -> versionJsonNodes.add(new LDSFacade().resolveVersionLink(link.asText()).getBody()));
+        if (!versionLinks.isEmpty()){
+            String firstValidFrom = versionLinks.get(0).get(Field.VALID_FROM).asText();
+            JsonNode firstPublishedVersion = versionLinks.get(0);
+            String lastValidFrom = firstValidFrom;
+            JsonNode lastPublishedVersion = versionLinks.get(0);
+            for (JsonNode versionJsonNode : versionJsonNodes) {
+                if (versionJsonNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)) {
+                    String versionValidFrom = versionJsonNode.get(Field.VALID_FROM).asText();
+                    if (versionValidFrom.compareTo(firstValidFrom) < 0){
+                        firstValidFrom = versionValidFrom;
+                    }
+                    if (versionValidFrom.compareTo(lastValidFrom) > 0){
+                        lastValidFrom = versionValidFrom;
+                    }
+                    if (validFrom.compareTo(versionValidFrom) == 0)
+                        return ErrorHandler.newHttpError(
+                                "validFrom can not be the same as existing subset's valid from",
+                                HttpStatus.BAD_REQUEST,
+                                LOG);
+                    String versionValidUntil = versionJsonNode.has(Field.VALID_UNTIL) ? versionJsonNode.get(Field.VALID_UNTIL).asText() : null;
+                    if (versionValidUntil != null && hasValidUntil) {
+                        if (validUntil.compareTo(versionValidUntil) <= 0 && validUntil.compareTo(versionValidFrom) >= 0)
+                            return ErrorHandler.newHttpError(
+                                    "The new version's validUntil is within the validity range of an existing subset",
+                                    HttpStatus.BAD_REQUEST,
+                                    LOG);
+                        if (validFrom.compareTo(versionValidFrom) >= 0 && validFrom.compareTo(versionValidUntil) <= 0)
+                            return ErrorHandler.newHttpError(
+                                    "The new version's validFrom is within the validity range of an existing subset",
+                                    HttpStatus.BAD_REQUEST,
+                                    LOG);
+                        if (validUntil.compareTo(versionValidUntil) == 0)
+                            return ErrorHandler.newHttpError(
+                                    "validUntil can not be the same as existing subset's validUntil, when they are explicit",
+                                    HttpStatus.BAD_REQUEST,
+                                    LOG);
+                    }
+                }
+            }
+            if (validFrom.compareTo(firstValidFrom) >= 0 && validFrom.compareTo(lastValidFrom) <= 0)
+                return ErrorHandler.newHttpError("The validity period of a new subset must be before or after all existing versions", HttpStatus.BAD_REQUEST, LOG);
+            boolean isNewLatestVersion = validFrom.compareTo(lastValidFrom) > 0;
+            boolean isNewFirstVersion = validFrom.compareTo(firstValidFrom) < 0;
+
+            if (isStatusOpen && versionsSize > 0) {
+                if (isNewLatestVersion) {
+                    //TODO: If OPEN and is new latest version and other versions exist from before, set validUntil of previous version to be == this version's validFrom ?
+                }
+                if (isNewFirstVersion) {
+                    //TODO: If OPEN and is new first version and other versions exist from before, set validUntil of this version to be == validFrom of next version ?
+                }
+            }
+        }
 
         ResponseEntity<JsonNode> ldsPUT = new LDSFacade().putVersionInSeries(id, versionID, editableVersion);
 
@@ -330,8 +394,7 @@ public class SubsetsControllerV2 {
     public ResponseEntity<JsonNode> getVersions(
             @PathVariable("id") String id,
             @RequestParam(defaultValue = "true") boolean includeFuture,
-            @RequestParam(defaultValue = "true") boolean includeDrafts,
-            @RequestParam(defaultValue = "true") boolean rankedUrnOnly) {
+            @RequestParam(defaultValue = "true") boolean includeDrafts) {
         metricsService.incrementGETCounter();
         LOG.info("GET all versions of subset with id: "+id+" includeFuture: "+includeFuture+" includeDrafts: "+includeDrafts);
 
@@ -433,8 +496,7 @@ public class SubsetsControllerV2 {
                                                    @RequestParam(required = false) String from,
                                                    @RequestParam(required = false) String to,
                                                    @RequestParam(defaultValue = "false") boolean includeDrafts,
-                                                   @RequestParam(defaultValue = "false") boolean includeFuture,
-                                                   @RequestParam(defaultValue = "false") boolean rankedUrnOnly) {
+                                                   @RequestParam(defaultValue = "false") boolean includeFuture) {
         LOG.info("GET codes of subset with id "+id);
         metricsService.incrementGETCounter();
 
@@ -443,7 +505,7 @@ public class SubsetsControllerV2 {
             boolean isToDate = to != null;
             if (!isFromDate && !isToDate) {
                 LOG.debug("getting all codes of the latest/current version of subset "+id);
-                ResponseEntity<JsonNode> versionsByIDRE = getVersions(id, includeDrafts, includeFuture, rankedUrnOnly);
+                ResponseEntity<JsonNode> versionsByIDRE = getVersions(id, includeDrafts, includeFuture);
                 JsonNode responseBodyJSON = versionsByIDRE.getBody();
                 if (!versionsByIDRE.getStatusCode().equals(HttpStatus.OK))
                     return versionsByIDRE;
@@ -461,7 +523,7 @@ public class SubsetsControllerV2 {
 
             if ((!isFromDate || Utils.isYearMonthDay(from)) && (!isToDate || Utils.isYearMonthDay(to))) { // If a date is given as param, it must be valid format
                 // If a date interval is specified using 'from' and 'to' query parameters
-                ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts, rankedUrnOnly);
+                ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts);
                 if (!versionsResponseEntity.getStatusCode().equals(HttpStatus.OK))
                     return versionsResponseEntity;
                 JsonNode versionsResponseBodyJson = versionsResponseEntity.getBody();
@@ -555,13 +617,12 @@ public class SubsetsControllerV2 {
     public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id,
                                                      @RequestParam String date,
                                                      @RequestParam(defaultValue = "false") boolean includeFuture,
-                                                     @RequestParam(defaultValue = "false") boolean includeDrafts,
-                                                     @RequestParam(defaultValue = "false") boolean rankedUrnOnly) {
+                                                     @RequestParam(defaultValue = "false") boolean includeDrafts) {
         metricsService.incrementGETCounter();
         LOG.info("GET codes valid at date "+date+" for subset with id "+id);
 
         if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
-            ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts, rankedUrnOnly);
+            ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts);
             JsonNode versionsResponseBodyJSON = versionsResponseEntity.getBody();
             if (versionsResponseBodyJSON != null){
                 if (versionsResponseBodyJSON.isArray()) {
