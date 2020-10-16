@@ -82,4 +82,6 @@ public interface LDSInterface {
     ResponseEntity<JsonNode> putVersionInSeries(String id, String versionID, JsonNode versionNode);
 
     ResponseEntity<JsonNode> resolveVersionLink(String versionLink);
+
+    ResponseEntity<JsonNode> getSubsetSeriesSchema();
 }

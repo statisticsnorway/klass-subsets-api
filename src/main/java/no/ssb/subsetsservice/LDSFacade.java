@@ -146,4 +146,9 @@ public class LDSFacade implements LDSInterface {
         ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionID);
         return null;
     }
+
+    @Override
+    public ResponseEntity<JsonNode> getSubsetSeriesSchema() {
+        return new LDSConsumer(API_LDS).getFrom(SERIES_API+"/?schema");
+    }
 }

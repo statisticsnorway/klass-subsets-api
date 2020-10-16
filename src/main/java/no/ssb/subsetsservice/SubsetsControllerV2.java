@@ -500,110 +500,92 @@ public class SubsetsControllerV2 {
         LOG.info("GET codes of subset with id "+id);
         metricsService.incrementGETCounter();
 
-        if (Utils.isClean(id)){
-            boolean isFromDate = from != null;
-            boolean isToDate = to != null;
-            if (!isFromDate && !isToDate) {
-                LOG.debug("getting all codes of the latest/current version of subset "+id);
-                ResponseEntity<JsonNode> versionsByIDRE = getVersions(id, includeDrafts, includeFuture);
-                JsonNode responseBodyJSON = versionsByIDRE.getBody();
-                if (!versionsByIDRE.getStatusCode().equals(HttpStatus.OK))
-                    return versionsByIDRE;
-                else if (responseBodyJSON != null){
-                    ArrayNode codes = (ArrayNode) responseBodyJSON.get(Field.CODES);
-                    ObjectMapper mapper = new ObjectMapper();
-                    ArrayNode urnArray = mapper.createArrayNode();
-                    for (JsonNode code : codes) {
-                        urnArray.add(code.get(Field.URN).textValue());
-                    }
-                    return new ResponseEntity<>(urnArray, HttpStatus.OK);
-                }
-                return ErrorHandler.newHttpError("response body of getSubset with id "+id+" was null, so could not get codes.", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
-            }
-
-            if ((!isFromDate || Utils.isYearMonthDay(from)) && (!isToDate || Utils.isYearMonthDay(to))) { // If a date is given as param, it must be valid format
-                // If a date interval is specified using 'from' and 'to' query parameters
-                ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts);
-                if (!versionsResponseEntity.getStatusCode().equals(HttpStatus.OK))
-                    return versionsResponseEntity;
-                JsonNode versionsResponseBodyJson = versionsResponseEntity.getBody();
-                LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
-                ObjectMapper mapper = new ObjectMapper();
-                Map<String, Integer> codeMap = new HashMap<>();
-                int nrOfVersions;
-                if (versionsResponseBodyJson != null) {
-                    if (versionsResponseBodyJson.isArray()) {
-                        ArrayNode versionsArrayNode = (ArrayNode) versionsResponseBodyJson;
-                        nrOfVersions = versionsArrayNode.size();
-                        LOG.debug("Nr of versions: " + nrOfVersions);
-                        JsonNode firstVersion = versionsArrayNode.get(versionsArrayNode.size() - 1).get(Field.DOCUMENT);
-                        JsonNode lastVersion = versionsArrayNode.get(0).get(Field.DOCUMENT);
-                        ArrayNode intersectionValidCodesInIntervalArrayNode = mapper.createArrayNode();
-                        // Check if first version includes fromDate, and last version includes toDate. If not, then return an empty list.
-
-                        boolean isFirstValidAtOrBeforeFromDate = true; // If no "from" date is given, version is automatically valid at or before "from" date
-                        if (isFromDate) {
-                            String firstVersionValidFromString = firstVersion.get(Field.VALID_FROM).textValue().split("T")[0];
-                            LOG.debug("First version valid from: " + firstVersionValidFromString);
-                            isFirstValidAtOrBeforeFromDate = firstVersionValidFromString.compareTo(from) <= 0;
-                        }
-                        LOG.debug("isFirstValidAtOrBeforeFromDate? " + isFirstValidAtOrBeforeFromDate);
-
-                        boolean isLastValidAtOrAfterToDate = true; // If no "to" date is given, it is automatically valid at or after "to" date
-                        if (isToDate && lastVersion.has(Field.VALID_UNTIL) && !lastVersion.get(Field.VALID_UNTIL).isNull() && !lastVersion.get(Field.VALID_UNTIL).asText().isBlank()) {
-                            String lastVersionValidUntilString = lastVersion.get(Field.VALID_UNTIL).textValue().split("T")[0];
-                            LOG.debug("Last version valid until: " + lastVersionValidUntilString);
-                            isLastValidAtOrAfterToDate = lastVersionValidUntilString.compareTo(to) >= 0;
-                        }
-                        LOG.debug("isLastValidAtOrAfterToDate? " + isLastValidAtOrAfterToDate);
-
-                        if (isFirstValidAtOrBeforeFromDate && isLastValidAtOrAfterToDate) {
-                            for (JsonNode subsetVersion : versionsArrayNode) {
-                                if (includeDrafts || subsetVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)){
-                                    // if this version has any overlap with the valid interval . . .
-                                    boolean validUntilGTFrom = true;
-                                    if (isFromDate) {
-                                        String validUntilDateString = subsetVersion.get(Field.VALID_UNTIL).textValue().split("T")[0];
-                                        validUntilGTFrom = validUntilDateString.compareTo(from) > 0;
-                                    }
-
-                                    boolean validFromLTTo = true;
-                                    if (isToDate) {
-                                        String validFromDateString = subsetVersion.get(Field.VALID_FROM).textValue().split("T")[0];
-                                        validFromLTTo = validFromDateString.compareTo(to) < 0;
-                                    }
-
-                                    if (validUntilGTFrom || validFromLTTo) {
-                                        LOG.debug("Version " + subsetVersion.get(Field.VERSION) + " is valid in the interval, so codes will be added to map");
-                                        // . . . using each code in this version as key, increment corresponding integer value in map
-                                        JsonNode codes = subsetVersion.get(Field.CODES);
-                                        ArrayNode codesArrayNode = (ArrayNode) codes;
-                                        LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
-                                        for (JsonNode jsonNode : codesArrayNode) {
-                                            String codeURN = jsonNode.get(Field.URN).asText();
-                                            codeMap.merge(codeURN, 1, Integer::sum);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Only return codes that were in every version in the interval, (=> they were always valid)
-                        for (String key : codeMap.keySet()) {
-                            int value = codeMap.get(key);
-                            LOG.trace("key:" + key + " value:" + value);
-                            if (value == nrOfVersions)
-                                intersectionValidCodesInIntervalArrayNode.add(key);
-                        }
-                        
-                        LOG.debug("nr of valid codes: " + intersectionValidCodesInIntervalArrayNode.size());
-                        return new ResponseEntity<>(intersectionValidCodesInIntervalArrayNode, HttpStatus.OK);
-                    }
-                }
-                return ErrorHandler.newHttpError("Response body was null", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
-            }
+        if (!Utils.isClean(id)) {
+            return ErrorHandler.illegalID(LOG);
         }
-        return ErrorHandler.illegalID(LOG);
+        
+        boolean isFromDate = from != null;
+        boolean isToDate = to != null;
+
+        if ((isFromDate && ! Utils.isYearMonthDay(from)) || (isToDate && ! Utils.isYearMonthDay(to))){
+            return ErrorHandler.newHttpError("'from' and 'to' need to be dates on the form 'yyyy-MM-dd'", HttpStatus.BAD_REQUEST, LOG);
+        }
+
+        if (!isFromDate && !isToDate) {
+            LOG.debug("getting all codes of the latest/current version of subset "+id);
+            ResponseEntity<JsonNode> versionsByIDRE = getVersions(id, includeDrafts, includeFuture);
+            JsonNode responseBodyJSON = versionsByIDRE.getBody();
+            if (!versionsByIDRE.getStatusCode().equals(HttpStatus.OK))
+                return resolveNonOKLDSResponse("get versions of series with id "+id+" ", versionsByIDRE);
+            else if (responseBodyJSON != null){
+                String date = Utils.getNowDate();
+                ResponseEntity<JsonNode> codesAtRE = getSubsetCodesAt(id, date, includeFuture, includeDrafts);
+                if (!codesAtRE.getStatusCode().equals(HttpStatus.OK))
+                    return resolveNonOKLDSResponse("get codesAt "+date+" in series with id "+id+" ", versionsByIDRE);
+                ArrayNode codes = (ArrayNode) codesAtRE.getBody();
+                return new ResponseEntity<>(codes, HttpStatus.OK);
+            }
+            return ErrorHandler.newHttpError("response body of getSubset with id "+id+" was null, so could not get codes.", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+        }
+
+        // If a date interval is specified using 'from' and 'to' query parameters
+        ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts);
+        if (!versionsResponseEntity.getStatusCode().equals(HttpStatus.OK))
+            return versionsResponseEntity;
+        JsonNode versionsResponseBodyJson = versionsResponseEntity.getBody();
+        LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Integer> codeMap = new HashMap<>();
+        int nrOfVersions;
+        if (versionsResponseBodyJson == null) {
+            return ErrorHandler.newHttpError("Response body was null", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+        }
+        if (versionsResponseBodyJson.isArray()) {
+            ArrayNode versionsValidInDateRange = (ArrayNode) versionsResponseBodyJson;
+            nrOfVersions = versionsValidInDateRange.size();
+            LOG.debug("Nr of versions: " + nrOfVersions);
+
+            for (int i = versionsValidInDateRange.size() - 1; i >= 0; i--) {
+                JsonNode version = versionsValidInDateRange.get(i);
+                if (!includeDrafts && !version.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)) {
+                    versionsValidInDateRange.remove(i);
+                }
+                if (isToDate && version.get(Field.VALID_FROM).asText().compareTo(to) > 0) {
+                    versionsValidInDateRange.remove(i);
+                }
+                if (isFromDate && version.has(Field.VALID_UNTIL) && version.get(Field.VALID_UNTIL).asText().compareTo(from) < 0) {
+                    versionsValidInDateRange.remove(i);
+                }
+            }
+
+            // Check if first version includes fromDate, and last version includes toDate. If not, then return an empty list.
+
+            for (JsonNode subsetVersion : versionsValidInDateRange) {
+                LOG.debug("Version " + subsetVersion.get(Field.VERSION) + " is valid in the interval, so codes will be added to map");
+                // . . . using each code in this version as key, increment corresponding integer value in map
+                JsonNode codes = subsetVersion.get(Field.CODES);
+                ArrayNode codesArrayNode = (ArrayNode) codes;
+                LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
+                for (JsonNode jsonNode : codesArrayNode) {
+                    String codeURN = jsonNode.get(Field.URN).asText();
+                    codeMap.merge(codeURN, 1, Integer::sum);
+                }
+            }
+
+            ArrayNode intersectionValidCodesInIntervalArrayNode = mapper.createArrayNode();
+
+            // Only return codes that were in every version in the interval, (=> they were always valid)
+            for (String key : codeMap.keySet()) {
+                int value = codeMap.get(key);
+                LOG.trace("key:" + key + " value:" + value);
+                if (value == nrOfVersions)
+                    intersectionValidCodesInIntervalArrayNode.add(key);
+            }
+
+            LOG.debug("nr of valid codes: " + intersectionValidCodesInIntervalArrayNode.size());
+            return new ResponseEntity<>(intersectionValidCodesInIntervalArrayNode, HttpStatus.OK);
+        }
+        return ErrorHandler.newHttpError("Response body was null", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
     }
 
     /**
@@ -623,27 +605,25 @@ public class SubsetsControllerV2 {
 
         if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
             ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts);
+            if (!versionsResponseEntity.getStatusCode().equals(HttpStatus.OK)){
+                return resolveNonOKLDSResponse("Call for versions of subset with id "+id+" ", versionsResponseEntity);
+            }
             JsonNode versionsResponseBodyJSON = versionsResponseEntity.getBody();
             if (versionsResponseBodyJSON != null){
                 if (versionsResponseBodyJSON.isArray()) {
                     ArrayNode versionsArrayNode = (ArrayNode) versionsResponseBodyJSON;
                     for (JsonNode versionJsonNode : versionsArrayNode) {
                         String entryValidFrom = versionJsonNode.get(Field.VALID_FROM).textValue();
-                        String entryValidUntil = versionJsonNode.get(Field.VALID_UNTIL).textValue();
-                        if (entryValidFrom.compareTo(date) <= 0 && entryValidUntil.compareTo(date) >= 0 ){
-                            LOG.debug("Found valid codes at "+date+". "+versionJsonNode.get(Field.CODES).size());
-                            ObjectMapper mapper = new ObjectMapper();
-                            ArrayNode codeArray = mapper.createArrayNode();
-                            versionJsonNode.get(Field.CODES).forEach(e -> codeArray.add(e.get(Field.URN)));
-                            return new ResponseEntity<>(codeArray, HttpStatus.OK);
+                        String entryValidUntil = versionJsonNode.has(Field.VALID_UNTIL) ? versionJsonNode.get(Field.VALID_UNTIL).textValue() : null;
+                        if (entryValidFrom.compareTo(date) <= 0 && (entryValidUntil == null || entryValidUntil.compareTo(date) >= 0) ){
+                            JsonNode codes = versionJsonNode.get(Field.CODES);
+                            return new ResponseEntity<>(codes, HttpStatus.OK);
                         }
                     }
-                    return ErrorHandler.newHttpError(
-                            "Subset w id "+id+" not found",
-                            HttpStatus.NOT_FOUND,
-                            LOG);
                 }
+                return ErrorHandler.newHttpError("versions response body was not array", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
             }
+            return ErrorHandler.newHttpError("versions response body was null", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
         }
         StringBuilder stringBuilder = new StringBuilder();
         if (date == null){
@@ -663,8 +643,8 @@ public class SubsetsControllerV2 {
     @GetMapping("/v2/subsets/schema")
     public ResponseEntity<JsonNode> getSchema(){
         metricsService.incrementGETCounter();
-        LOG.info("GET schema for subsets");
-        return new LDSFacade().getClassificationSubsetSchema();
+        LOG.info("GET schema for subsets series");
+        return new LDSFacade().getSubsetSeriesSchema();
     }
 
     void deleteAll(){
@@ -675,41 +655,30 @@ public class SubsetsControllerV2 {
         new LDSFacade().deleteSubset(id);
     }
 
-    private ArrayList<JsonNode> resolveURNsOfCodesInAllVersions(ArrayList<JsonNode> versionListInput){
-        ArrayList<JsonNode> versionList = new ArrayList<>(versionListInput.size());
-        versionListInput.forEach(v -> versionList.add(v.deepCopy()));
-        versionList.sort(Utils::versionComparator);
-
-        String validTo = ""; //FIXME: This means the most recent version does not have a validTo. Is it potentially a mistake?
-        for (int i = 0; i < versionList.size(); i++) {
-            ObjectNode editableSubset = versionList.get(i).deepCopy();
-            ArrayNode resolvedCodes = resolveURNsOfCodesInThisSubset(editableSubset, validTo);
-            editableSubset.set(Field.CODES, resolvedCodes);
-            validTo = editableSubset.get(Field.VERSION_VALID_FROM).asText();
-            versionList.set(i, editableSubset.deepCopy());
-        }
-        LOG.debug("URNs of all versions are resolved");
-        return versionList;
-    }
-
-    private ArrayNode resolveURNsOfCodesInThisSubset(JsonNode subset, String subsetValidTo){
-        subsetValidTo = subsetValidTo.split("T")[0];
-        if (subsetValidTo.equals("") || Utils.isYearMonthDay(subsetValidTo)){
-            try {
-                ArrayNode codeURNArrayNode = new KlassURNResolver().resolveURNs(subset, subsetValidTo);
-                return codeURNArrayNode;
-            } catch (Exception | Error e){
-                LOG.error(e.toString());
-                return (ArrayNode)subset.get(Field.CODES);
-            }
-        }
-        throw new IllegalArgumentException("'to' must be empty string '' or on the form YYYY-MM-DD, but was "+subsetValidTo);
-    }
-
     private static JsonNode cleanSeries(JsonNode subsetSeries){
-        return subsetSeries;
+        // Replace "/ClassificationSubsetSeries/id" with "/id"
+        ObjectNode editableSeries = subsetSeries.deepCopy();
+        ArrayNode versions = editableSeries.get(Field.VERSIONS).deepCopy();
+        ArrayNode newVersions = new ObjectMapper().createArrayNode();
+        for (int i = 0; i < versions.size(); i++) {
+            JsonNode version = versions.get(i);
+            String versionPath = version.asText(); // should be "/ClassificationSubsetVersion/{version_id}", since this is how LDS links a resource of a different type
+            String[] splitBySlash = versionPath.split("/");
+            assert splitBySlash[0].isBlank() : "Index 0 in the array that splits the versionPath by '/' is not blank";
+            assert splitBySlash[1].equals("ClassificationSubsetVersion") : "Index 1 in the array that splits the versionPath by '/' is not 'ClassificationSubsetVersion'"; //TODO: these checks should be removed later when i know it works
+            String versionUID = splitBySlash[2];
+            newVersions.add(versionUID);
+        }
+        editableSeries.set(Field.VERSIONS, newVersions);
+        return editableSeries;
     }
 
+    /**
+     *
+     * @param description of what the call to LDS was
+     * @param ldsRE response entity gotten from the LDS instance
+     * @return
+     */
     private static ResponseEntity<JsonNode> resolveNonOKLDSResponse(String description, ResponseEntity<JsonNode> ldsRE){
         String body = "";
         if (ldsRE.hasBody())
