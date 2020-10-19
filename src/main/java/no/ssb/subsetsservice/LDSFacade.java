@@ -136,7 +136,7 @@ public class LDSFacade implements LDSInterface {
         if (!putLinkRE.getStatusCode().equals(HttpStatus.OK)){
             return ErrorHandler.newHttpError("Trying to PUT a link between the subset Series and subset Version in LDS failed, with status code "+putLinkRE.getStatusCode(), putLinkRE.getStatusCode(), LoggerFactory.getLogger(LDSFacade.class));
         }
-        return putLinkRE;
+        return new ResponseEntity<>(versionJsonNode, HttpStatus.OK);
     }
 
     /**

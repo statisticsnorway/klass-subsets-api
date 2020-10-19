@@ -325,7 +325,7 @@ public class SubsetsControllerV2 {
         }
 
         if (versionsSize == 0) {
-            new LDSFacade().putVersionInSeries(id, versionID, editableVersion);
+            return new LDSFacade().putVersionInSeries(id, versionID, editableVersion);
         }
 
         ArrayNode versionLinks = series.get(Field.VERSIONS).deepCopy();
@@ -390,7 +390,7 @@ public class SubsetsControllerV2 {
         if (ldsPUT.getStatusCode().equals(HttpStatus.OK))
             return new ResponseEntity<>(editableVersion, HttpStatus.OK);
         else
-            return ldsPUT;
+            return resolveNonOKLDSResponse("PUT version of series with id "+id+" ", ldsPUT);
     }
 
     @GetMapping("/v2/subsets/{id}/versions")
