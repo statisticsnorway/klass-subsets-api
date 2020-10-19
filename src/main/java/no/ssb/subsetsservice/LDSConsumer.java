@@ -7,6 +7,7 @@ import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPut;
+import org.apache.http.conn.HttpHostConnectException;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -22,6 +23,7 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.ConnectException;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
@@ -88,7 +90,11 @@ public class LDSConsumer {
         HttpGet httpGet = new HttpGet(LDS_URL + additional);
         CloseableHttpResponse response1 = null;
         try {
-            response1 = httpclient.execute(httpGet);
+            try {
+                response1 = httpclient.execute(httpGet);
+            } catch (ConnectException e){
+                return ErrorHandler.newHttpError("Could not retrieve "+LDS_URL+additional+" because of an exception: "+e.toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+            }
             System.out.println(response1.getStatusLine());
             System.out.println(response1.toString());
             HttpEntity entity1 = response1.getEntity();
@@ -112,12 +118,15 @@ public class LDSConsumer {
     }
 
     ResponseEntity<JsonNode> postTo(String additional, JsonNode json){
+        String fullURLString = LDS_URL+additional;
+        LOG.debug("Building request for POSTing to "+fullURLString);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         org.springframework.http.HttpEntity<JsonNode> request = new org.springframework.http.HttpEntity<>(json, headers);
-        ResponseEntity<JsonNode> response = new RestTemplate().postForEntity(LDS_URL+additional, request, JsonNode.class);
-        LOG.debug("POST to "+LDS_URL+additional+" - Status: "+response.getStatusCodeValue()+" "+response.getStatusCode().name());
+        LOG.debug("POSTing to "+fullURLString);
+        ResponseEntity<JsonNode> response = new RestTemplate().postForEntity(fullURLString, request, JsonNode.class);
+        LOG.debug("POST to "+fullURLString+" - Status: "+response.getStatusCodeValue()+" "+response.getStatusCode().name());
         return response;
     }
 
@@ -150,9 +159,15 @@ public class LDSConsumer {
             HttpEntity entity = response.getEntity();
             int status = response.getStatusLine().getStatusCode();
             HttpStatus httpStatus = HttpStatus.resolve(status);
-            JsonNode jsonNode = new ObjectMapper().readTree(entity.getContent());
-            LOG.debug("POST to "+LDS_URL+additional+" - Status: "+httpStatus.toString());
-            return new ResponseEntity<>(jsonNode, httpStatus);
+            LOG.debug("PUT to "+LDS_URL+additional+" - Status: "+httpStatus.toString());
+            if (!httpStatus.equals(HttpStatus.CREATED)){
+                String responseBodyString = EntityUtils.toString(entity);
+                return ErrorHandler.newHttpError(
+                        "LDS returned code "+httpStatus+" and body "+responseBodyString,
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        LOG);
+            }
+            return new ResponseEntity<>(json, HttpStatus.CREATED);
         } catch (IOException e) {
             e.printStackTrace();
             return ErrorHandler.newHttpError(

@@ -94,24 +94,29 @@ public class SubsetsControllerV2 {
         if (!Utils.isClean(id))
             return ErrorHandler.illegalID(LOG);
 
-        boolean subsetExists = new LDSFacade().existsSubsetWithID(id);
+        boolean subsetExists = new LDSFacade().existsSubsetSeriesWithID(id);
         if (subsetExists)
             return ErrorHandler.newHttpError(
                     "POST: Can not create subset. ID already in use",
                     HttpStatus.BAD_REQUEST,
                     LOG);
+        LOG.info("Subset with id "+id+" does not exist from before");
 
         //TODO: Validate that body is a valid subset series, somehow
 
-        String isoNowDate = Utils.getNowDate();
-        editableSubsetSeries.put(Field.LAST_UPDATED_DATE, isoNowDate);
-        editableSubsetSeries.put(Field.CREATED_DATE, isoNowDate);
-
+        editableSubsetSeries.put(Field.LAST_MODIFIED, Utils.getNowISO());
+        editableSubsetSeries.put(Field.CREATED_DATE, Utils.getNowDate());
         editableSubsetSeries.put(Field.CLASSIFICATION_TYPE, Field.SUBSET);
-
-        ResponseEntity<JsonNode> responseEntity = new LDSFacade().createSubset(editableSubsetSeries, id);
+        if (!editableSubsetSeries.has(Field.VERSIONS)){
+            editableSubsetSeries.set(Field.VERSIONS, new ObjectMapper().createArrayNode());
+        }
+        LOG.debug("POSTING subset series with id "+id+" to LDS");
+        ResponseEntity<JsonNode> responseEntity = new LDSFacade().createSubsetSeries(editableSubsetSeries, id);
         if (responseEntity.getStatusCode().equals(HttpStatus.CREATED)){
+            LOG.info("Series with id "+id+" was successfully created in LDS");
             responseEntity = new ResponseEntity<>(editableSubsetSeries, HttpStatus.CREATED);
+        } else {
+            LOG.error("Subset series with id " + id + " was NOT CREATED in LDS! Returning LDS responseEntity . . .");
         }
         return responseEntity;
     }
@@ -129,9 +134,7 @@ public class SubsetsControllerV2 {
         if (status.equals(HttpStatus.OK)) {
             JsonNode series = cleanSeries(subsetSeriesByIDRE.getBody());
             return new ResponseEntity<>(series, HttpStatus.OK);
-        } else if (status.equals(HttpStatus.NOT_FOUND))
-            return subsetSeriesByIDRE;
-        else
+        } else
             return resolveNonOKLDSResponse("GET subsetSeries w id '"+id+"'", subsetSeriesByIDRE);
     }
 
@@ -503,7 +506,7 @@ public class SubsetsControllerV2 {
         if (!Utils.isClean(id)) {
             return ErrorHandler.illegalID(LOG);
         }
-        
+
         boolean isFromDate = from != null;
         boolean isToDate = to != null;
 
@@ -647,12 +650,12 @@ public class SubsetsControllerV2 {
         return new LDSFacade().getSubsetSeriesSchema();
     }
 
-    void deleteAll(){
-        new LDSFacade().deleteAllSubsets();
+    void deleteAllSeries(){
+        new LDSFacade().deleteAllSubsetSeries();
     }
 
-    void deleteById(String id){
-        new LDSFacade().deleteSubset(id);
+    void deleteSeriesById(String id){
+        new LDSFacade().deleteSubsetSeries(id);
     }
 
     private static JsonNode cleanSeries(JsonNode subsetSeries){

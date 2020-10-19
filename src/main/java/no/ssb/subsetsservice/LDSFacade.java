@@ -87,6 +87,10 @@ public class LDSFacade implements LDSInterface {
         return new LDSConsumer(API_LDS).getFrom(SUBSETS_API+"/"+id).getStatusCode().equals(HttpStatus.OK);
     }
 
+    public boolean existsSubsetSeriesWithID(String id){
+        return new LDSConsumer(API_LDS).getFrom(SERIES_API+"/"+id).getStatusCode().equals(HttpStatus.OK);
+    }
+
     public ResponseEntity<JsonNode> getClassificationSubsetSchema(){
         return new LDSConsumer(API_LDS).getFrom(SUBSETS_API+"/?schema");
     }
@@ -97,6 +101,10 @@ public class LDSFacade implements LDSInterface {
 
     public ResponseEntity<JsonNode> createSubset(JsonNode subset, String id){
         return new LDSConsumer(API_LDS).postTo(SUBSETS_API+"/" + id, subset);
+    }
+
+    public ResponseEntity<JsonNode> createSubsetSeries(JsonNode subset, String id){
+        return new LDSConsumer(API_LDS).putTo(SERIES_API+"/" + id, subset);
     }
 
     public boolean healthReady() {
@@ -150,5 +158,15 @@ public class LDSFacade implements LDSInterface {
     @Override
     public ResponseEntity<JsonNode> getSubsetSeriesSchema() {
         return new LDSConsumer(API_LDS).getFrom(SERIES_API+"/?schema");
+    }
+
+    @Override
+    public void deleteAllSubsetSeries() {
+        //TODO: implement
+    }
+
+    @Override
+    public void deleteSubsetSeries(String id) {
+        //TODO: implement
     }
 }
