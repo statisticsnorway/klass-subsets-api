@@ -160,14 +160,14 @@ public class LDSConsumer {
             int status = response.getStatusLine().getStatusCode();
             HttpStatus httpStatus = HttpStatus.resolve(status);
             LOG.debug("PUT to "+LDS_URL+additional+" - Status: "+httpStatus.toString());
-            if (!httpStatus.equals(HttpStatus.CREATED)){
+            if (!httpStatus.equals(HttpStatus.CREATED) && !httpStatus.equals(HttpStatus.OK)){
                 String responseBodyString = EntityUtils.toString(entity);
                 return ErrorHandler.newHttpError(
                         "LDS returned code "+httpStatus+" and body "+responseBodyString,
                         HttpStatus.INTERNAL_SERVER_ERROR,
                         LOG);
             }
-            return new ResponseEntity<>(json, HttpStatus.CREATED);
+            return new ResponseEntity<>(json, httpStatus);
         } catch (IOException e) {
             e.printStackTrace();
             return ErrorHandler.newHttpError(

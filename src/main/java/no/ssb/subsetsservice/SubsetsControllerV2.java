@@ -109,6 +109,8 @@ public class SubsetsControllerV2 {
         editableSubsetSeries.put(Field.CLASSIFICATION_TYPE, Field.SUBSET);
         if (!editableSubsetSeries.has(Field.VERSIONS)){
             editableSubsetSeries.set(Field.VERSIONS, new ObjectMapper().createArrayNode());
+        } else {
+            return ErrorHandler.newHttpError("Not allowed to POST subset series with versions in it", HttpStatus.BAD_REQUEST, LOG);
         }
         LOG.debug("POSTING subset series with id "+id+" to LDS");
         ResponseEntity<JsonNode> responseEntity = new LDSFacade().createSubsetSeries(editableSubsetSeries, id);
@@ -306,10 +308,8 @@ public class SubsetsControllerV2 {
                     LOG);
 
         editableVersion.put(Field.SUBSET_ID, id);
-
-        String nowDate = Utils.getNowDate();
-        editableVersion.put(Field.LAST_MODIFIED, nowDate);
-        editableVersion.put(Field.CREATED_DATE, nowDate);
+        editableVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
+        editableVersion.put(Field.CREATED_DATE, Utils.getNowDate());
 
         JsonNode series = getSeriesByIDRE.getBody();
         int versionsSize = series.has(Field.VERSIONS) ? series.get(Field.VERSIONS).size() : 0;
@@ -387,9 +387,10 @@ public class SubsetsControllerV2 {
 
         ResponseEntity<JsonNode> ldsPUT = new LDSFacade().putVersionInSeries(id, versionID, editableVersion);
 
-        if (ldsPUT.getStatusCode().equals(HttpStatus.OK))
-            return new ResponseEntity<>(editableVersion, HttpStatus.OK);
-        else
+        if (ldsPUT.getStatusCode().equals(HttpStatus.CREATED)) {
+            //TODO: Do I have to edit the "versions" array in the series?
+            return new ResponseEntity<>(editableVersion, HttpStatus.CREATED);
+        } else
             return resolveNonOKLDSResponse("PUT version of series with id "+id+" ", ldsPUT);
     }
 
@@ -416,11 +417,7 @@ public class SubsetsControllerV2 {
         ArrayNode versions = body.get(Field.VERSIONS).deepCopy();
 
         for (int i = 0; i < versions.size(); i++) {
-            String versionPath = versions.get(i).asText(); // should be "/ClassificationSubsetVersion/{version_id}"
-            String[] splitBySlash = versionPath.split("/");
-            assert splitBySlash[0].isBlank() : "Index 0 in the array that splits the versionPath by '/' is not blank";
-            assert splitBySlash[1].equals("ClassificationSubsetVersion") : "Index 1 in the array that splits the versionPath by '/' is not 'ClassificationSubsetVersion'"; //TODO: these checks should be removed later when i know it works
-            String versionUID = splitBySlash[2];
+            String versionUID = versions.get(i).asText(); // should be "version_id"
             ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionUID);
             JsonNode versionBody = versionRE.getBody();
             versions.set(i, versionBody);
