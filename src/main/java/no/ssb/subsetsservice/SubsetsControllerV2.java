@@ -541,7 +541,7 @@ public class SubsetsControllerV2 {
                 String date = Utils.getNowDate();
                 ResponseEntity<JsonNode> codesAtRE = getSubsetCodesAt(id, date, includeFuture, includeDrafts);
                 if (!codesAtRE.getStatusCode().equals(HttpStatus.OK))
-                    return resolveNonOKLDSResponse("get codesAt "+date+" in series with id "+id+" ", versionsByIDRE);
+                    return resolveNonOKLDSResponse("get codesAt "+date+" in series with id "+id+" ", codesAtRE);
                 ArrayNode codes = (ArrayNode) codesAtRE.getBody();
                 return new ResponseEntity<>(codes, HttpStatus.OK);
             }
@@ -624,11 +624,11 @@ public class SubsetsControllerV2 {
         LOG.info("GET codes valid at date "+date+" for subset with id "+id);
 
         if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
-            ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts);
-            if (!versionsResponseEntity.getStatusCode().equals(HttpStatus.OK)){
-                return resolveNonOKLDSResponse("Call for versions of subset with id "+id+" ", versionsResponseEntity);
+            ResponseEntity<JsonNode> versionsRE = getVersions(id, includeFuture, includeDrafts);
+            if (!versionsRE.getStatusCode().equals(HttpStatus.OK)){
+                return resolveNonOKLDSResponse("Call for versions of subset with id "+id+" ", versionsRE);
             }
-            JsonNode versionsResponseBodyJSON = versionsResponseEntity.getBody();
+            JsonNode versionsResponseBodyJSON = versionsRE.getBody();
             if (versionsResponseBodyJSON != null){
                 if (versionsResponseBodyJSON.isArray()) {
                     ArrayNode versionsArrayNode = (ArrayNode) versionsResponseBodyJSON;
@@ -640,6 +640,7 @@ public class SubsetsControllerV2 {
                             return new ResponseEntity<>(codes, HttpStatus.OK);
                         }
                     }
+                    return new ResponseEntity<>(new ObjectMapper().createArrayNode(), HttpStatus.OK);
                 }
                 return ErrorHandler.newHttpError("versions response body was not array", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
             }
