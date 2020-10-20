@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
+import static org.springframework.http.HttpStatus.*;
+
 @CrossOrigin
 @RestController
 public class SubsetsControllerV2 {
@@ -66,7 +68,7 @@ public class SubsetsControllerV2 {
                     subsetSeriesArray.remove(i);
             }
         }
-        return new ResponseEntity<>(subsetSeriesArray, HttpStatus.OK);
+        return new ResponseEntity<>(subsetSeriesArray, OK);
     }
 
     /**
@@ -79,13 +81,13 @@ public class SubsetsControllerV2 {
         metricsService.incrementPOSTCounter();
 
         if (subsetSeriesJson == null)
-            return ErrorHandler.newHttpError("POST: Can not create subset from empty body", HttpStatus.BAD_REQUEST, LOG);
+            return ErrorHandler.newHttpError("POST: Can not create subset from empty body", BAD_REQUEST, LOG);
 
         ObjectNode editableSubsetSeries = subsetSeriesJson.deepCopy();
         subsetSeriesJson = null;
 
         if (!editableSubsetSeries.has(Field.ID))
-            return ErrorHandler.newHttpError("Subset series must have field ID", HttpStatus.BAD_REQUEST, LOG);
+            return ErrorHandler.newHttpError("Subset series must have field ID", BAD_REQUEST, LOG);
 
         String id = editableSubsetSeries.get(Field.ID).textValue();
         LOG.info("POST subset with id "+id);
@@ -97,7 +99,7 @@ public class SubsetsControllerV2 {
         if (subsetExists)
             return ErrorHandler.newHttpError(
                     "POST: Can not create subset. ID already in use",
-                    HttpStatus.BAD_REQUEST,
+                    BAD_REQUEST,
                     LOG);
         LOG.info("Subset with id "+id+" does not exist from before");
 
@@ -109,13 +111,13 @@ public class SubsetsControllerV2 {
         if (!editableSubsetSeries.has(Field.VERSIONS)){
             editableSubsetSeries.set(Field.VERSIONS, new ObjectMapper().createArrayNode());
         } else {
-            return ErrorHandler.newHttpError("Not allowed to POST subset series with versions in it", HttpStatus.BAD_REQUEST, LOG);
+            return ErrorHandler.newHttpError("Not allowed to POST subset series with versions in it", BAD_REQUEST, LOG);
         }
         LOG.debug("POSTING subset series with id "+id+" to LDS");
         ResponseEntity<JsonNode> responseEntity = new LDSFacade().createSubsetSeries(editableSubsetSeries, id);
-        if (responseEntity.getStatusCode().equals(HttpStatus.CREATED)){
+        if (responseEntity.getStatusCode().equals(CREATED)){
             LOG.info("Series with id "+id+" was successfully created in LDS");
-            responseEntity = new ResponseEntity<>(editableSubsetSeries, HttpStatus.CREATED);
+            responseEntity = new ResponseEntity<>(editableSubsetSeries, CREATED);
         } else {
             LOG.error("Subset series with id " + id + " was NOT CREATED in LDS! Returning LDS responseEntity . . .");
         }
@@ -132,9 +134,9 @@ public class SubsetsControllerV2 {
 
         ResponseEntity<JsonNode> subsetSeriesByIDRE = new LDSFacade().getSubsetSeries(id);
         HttpStatus status = subsetSeriesByIDRE.getStatusCode();
-        if (status.equals(HttpStatus.OK)) {
+        if (status.equals(OK)) {
             JsonNode series = cleanSeries(subsetSeriesByIDRE.getBody());
-            return new ResponseEntity<>(series, HttpStatus.OK);
+            return new ResponseEntity<>(series, OK);
         } else
             return resolveNonOKLDSResponse("GET subsetSeries w id '"+id+"'", subsetSeriesByIDRE);
     }
@@ -159,13 +161,13 @@ public class SubsetsControllerV2 {
 
         ResponseEntity<JsonNode> getSeriesRE = new LDSFacade().getSubsetSeries(id);
 
-        if (getSeriesRE.getStatusCode().equals(HttpStatus.NOT_FOUND))
+        if (getSeriesRE.getStatusCode().equals(NOT_FOUND))
             return ErrorHandler.newHttpError(
                     "Can not PUT (edit) a subset that does not exist from before. POST the subset instead if you wish to create it",
-                    HttpStatus.BAD_REQUEST,
+                    BAD_REQUEST,
                     LOG);
 
-        if (!getSeriesRE.getStatusCode().equals(HttpStatus.OK)) {
+        if (!getSeriesRE.getStatusCode().equals(OK)) {
             return resolveNonOKLDSResponse("GET subsetSeries w id '"+id+"'", getSeriesRE);
         }
 
@@ -201,7 +203,7 @@ public class SubsetsControllerV2 {
                 errorStringBuilder.append("- ID of submitted subset series (").append(newID).append(") was not the same as id in request param (").append(id).append("). ");
             return ErrorHandler.newHttpError(
                     errorStringBuilder.toString(),
-                    HttpStatus.BAD_REQUEST,
+                    BAD_REQUEST,
                     LOG);
         }
 
@@ -261,7 +263,7 @@ public class SubsetsControllerV2 {
             if (!allSameFields) {
                 return ErrorHandler.newHttpError(
                         fieldErrorBuilder.toString(),
-                        HttpStatus.BAD_REQUEST,
+                        BAD_REQUEST,
                         LOG);
             }
 
@@ -272,7 +274,7 @@ public class SubsetsControllerV2 {
                     if (!currentLatestEditionOfSeries.get(field).asText().equals(editableNewVersionOfSeries.get(field).asText())) {
                         return ErrorHandler.newHttpError(
                                 "The version of the subset you are trying to change is published, which means you can only change validUntil and versionRationale.",
-                                HttpStatus.BAD_REQUEST,
+                                BAD_REQUEST,
                                 LOG);
                     }
                 }
@@ -280,17 +282,53 @@ public class SubsetsControllerV2 {
         }
 
         ResponseEntity<JsonNode> responseEntity = new LDSFacade().editSeries(editableNewVersionOfSeries, id);
-        if (responseEntity.getStatusCode().equals(HttpStatus.OK)){
-            responseEntity = new ResponseEntity<>(editableNewVersionOfSeries, HttpStatus.OK);
+        if (responseEntity.getStatusCode().equals(OK)){
+            responseEntity = new ResponseEntity<>(editableNewVersionOfSeries, OK);
         }
         return responseEntity;
     }
 
+    @PutMapping(value = "/v2/subsets/{seriesId}/versions/{versionUID}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("seriesId") String seriesId, @PathVariable("versionUID") String versionUID, @RequestBody JsonNode version) {
+        if (!Utils.isClean(seriesId))
+            return ErrorHandler.illegalID(LOG);
+        if (!Utils.isClean(versionUID))
+            return ErrorHandler.newHttpError("Illegal characters in versionUID", BAD_REQUEST, LOG);
+
+        ResponseEntity<JsonNode> getPreviousEditionOfVersion = getVersion(seriesId, versionUID);
+        HttpStatus status = getPreviousEditionOfVersion.getStatusCode();
+        if (status.equals(NOT_FOUND)){
+            return ErrorHandler.newHttpError("Can not edit a subset version that does not exist.", BAD_REQUEST, LOG);
+        }
+        if (!status.equals(OK))
+            return getPreviousEditionOfVersion;
+        JsonNode previousEditionOfVersion = getPreviousEditionOfVersion.getBody();
+        ObjectNode editableVersion = version.deepCopy();
+
+
+        // version field is set to be the same
+        // createdDate is set to be the same
+        // seriedId is set to be the same
+        // Update lastModified
+
+        // One set of rules for if the old version is DRAFT:
+            // If the new version is OPEN and the old one was DRAFT:
+                // check validity period overlap with other OPEN versions
+            //If validFrom or validUntil is changed, check again for overlap against the published versions
+
+        // Another stricter set of rules for if the old version is OPEN
+            // Make sure codes are not changed.
+            // Make sure validFrom is not changed.
+        return new ResponseEntity<>(editableVersion, OK);
+    }
+
     @PostMapping(value = "/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("seriesId") String seriesId, @RequestBody JsonNode version) {
+        if (!Utils.isClean(seriesId))
+            return ErrorHandler.illegalID(LOG);
 
         ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(seriesId);
-        if (!getSeriesByIDRE.getStatusCode().equals(HttpStatus.OK)) {
+        if (!getSeriesByIDRE.getStatusCode().equals(OK)) {
             LOG.error("Attempt to get subset series by id '"+seriesId+"' returned a non-OK status code.");
             return getSeriesByIDRE;
         }
@@ -305,7 +343,7 @@ public class SubsetsControllerV2 {
         if (hasValidUntil && validFrom.compareTo(validUntil) >= 0)
             return ErrorHandler.newHttpError(
                     "validFrom can not be the same date as- or before validUntil, when validUntil is defined",
-                    HttpStatus.BAD_REQUEST,
+                    BAD_REQUEST,
                     LOG);
 
         JsonNode series = getSeriesByIDRE.getBody();
@@ -321,12 +359,12 @@ public class SubsetsControllerV2 {
 
         if (isStatusOpen)
             if (!editableVersion.has(Field.CODES) || editableVersion.get(Field.CODES).size() == 0)
-                return ErrorHandler.newHttpError("Published subset version must have a non-empty code list", HttpStatus.BAD_REQUEST, LOG);
+                return ErrorHandler.newHttpError("Published subset version must have a non-empty code list", BAD_REQUEST, LOG);
 
         if (versionsSize == 0) {
             LOG.debug("Since there are no versions from before, we post new version to LDS right away");
             ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionNr, editableVersion);
-            if (!ldsPostRE.getStatusCode().equals(HttpStatus.OK))
+            if (!ldsPostRE.getStatusCode().equals(OK))
                 return resolveNonOKLDSResponse("POST version 0 in series "+seriesId+" ", ldsPostRE);
             return ldsPostRE;
         }
@@ -353,31 +391,31 @@ public class SubsetsControllerV2 {
                     if (validFrom.compareTo(versionValidFrom) == 0)
                         return ErrorHandler.newHttpError(
                                 "validFrom can not be the same as existing subset's valid from",
-                                HttpStatus.BAD_REQUEST,
+                                BAD_REQUEST,
                                 LOG);
                     String versionValidUntil = versionJsonNode.has(Field.VALID_UNTIL) ? versionJsonNode.get(Field.VALID_UNTIL).asText() : null;
                     if (versionValidUntil != null && hasValidUntil) {
                         if (validUntil.compareTo(versionValidUntil) <= 0 && validUntil.compareTo(versionValidFrom) >= 0)
                             return ErrorHandler.newHttpError(
                                     "The new version's validUntil is within the validity range of an existing subset",
-                                    HttpStatus.BAD_REQUEST,
+                                    BAD_REQUEST,
                                     LOG);
                         if (validFrom.compareTo(versionValidFrom) >= 0 && validFrom.compareTo(versionValidUntil) <= 0)
                             return ErrorHandler.newHttpError(
                                     "The new version's validFrom is within the validity range of an existing subset",
-                                    HttpStatus.BAD_REQUEST,
+                                    BAD_REQUEST,
                                     LOG);
                         if (validUntil.compareTo(versionValidUntil) == 0)
                             return ErrorHandler.newHttpError(
                                     "validUntil can not be the same as existing subset's validUntil, when they are explicit",
-                                    HttpStatus.BAD_REQUEST,
+                                    BAD_REQUEST,
                                     LOG);
                     }
                 }
             }
             LOG.debug("Done iterating over all existing versions of the subset to check validity period overlaps");
             if (firstValidFrom != null && validFrom.compareTo(firstValidFrom) >= 0 && lastValidFrom != null && validFrom.compareTo(lastValidFrom) <= 0)
-                return ErrorHandler.newHttpError("The validity period of a new subset must be before or after all existing versions", HttpStatus.BAD_REQUEST, LOG);
+                return ErrorHandler.newHttpError("The validity period of a new subset must be before or after all existing versions", BAD_REQUEST, LOG);
             boolean isNewLatestVersion = lastValidFrom == null || validFrom.compareTo(lastValidFrom) > 0;
             boolean isNewFirstVersion = firstValidFrom == null || validFrom.compareTo(firstValidFrom) < 0;
 
@@ -395,10 +433,10 @@ public class SubsetsControllerV2 {
         LOG.debug("Attempting to POST version nr "+versionNr+" of subset series "+seriesId+" to LDS");
         ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionNr, editableVersion);
 
-        if (ldsPostRE.getStatusCode().equals(HttpStatus.CREATED)) {
+        if (ldsPostRE.getStatusCode().equals(CREATED)) {
             //TODO: Do I have to edit the "versions" array in the series?
             LOG.debug("Successfully POSTed version nr "+versionNr+" of subset series "+seriesId+" to LDS");
-            return new ResponseEntity<>(editableVersion, HttpStatus.CREATED);
+            return new ResponseEntity<>(editableVersion, CREATED);
         } else
             return resolveNonOKLDSResponse("POST version nr "+versionNr+" of series with id "+seriesId+" ", ldsPostRE);
     }
@@ -416,12 +454,12 @@ public class SubsetsControllerV2 {
         }
 
         ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(id);
-        if (!getSeriesByIDRE.getStatusCode().equals(HttpStatus.OK))
+        if (!getSeriesByIDRE.getStatusCode().equals(OK))
             return getSeriesByIDRE;
 
         JsonNode body = getSeriesByIDRE.getBody();
         if (!body.has(Field.VERSIONS))
-            return ErrorHandler.newHttpError("The subset series exists, but has no versions", HttpStatus.NOT_FOUND, LOG);
+            return ErrorHandler.newHttpError("The subset series exists, but has no versions", NOT_FOUND, LOG);
 
         ArrayNode versions = body.get(Field.VERSIONS).deepCopy();
 
@@ -441,7 +479,7 @@ public class SubsetsControllerV2 {
                 versions.remove(v);
         }
 
-        return new ResponseEntity<>(versions, HttpStatus.OK);
+        return new ResponseEntity<>(versions, OK);
     }
 
     /**
@@ -460,7 +498,7 @@ public class SubsetsControllerV2 {
         if (!Utils.isClean(seriesID))
             return ErrorHandler.illegalID(LOG);
         if (!Utils.isClean(versionID))
-            return ErrorHandler.newHttpError("Illegal version ID", HttpStatus.BAD_REQUEST, LOG);
+            return ErrorHandler.newHttpError("Illegal version ID", BAD_REQUEST, LOG);
 
         String[] splitUnderscore = versionID.split("_");
         if (splitUnderscore.length < 2) {
@@ -469,12 +507,12 @@ public class SubsetsControllerV2 {
                 int versionNrInt = Integer.parseInt(versionNr);
                 versionID = String.format("%s_%d", seriesID, versionNrInt);
             } catch (NumberFormatException e){
-                return ErrorHandler.newHttpError("version id must be given either as an integer indicating the version nr, or as a full versionUID on the form '{seriesUID}_{versionNr}'", HttpStatus.BAD_REQUEST, LOG);
+                return ErrorHandler.newHttpError("version id must be given either as an integer indicating the version nr, or as a full versionUID on the form '{seriesUID}_{versionNr}'", BAD_REQUEST, LOG);
             }
         }
         ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionID);
         HttpStatus status = versionRE.getStatusCode();
-        if (status.equals(HttpStatus.OK) || status.equals(HttpStatus.NOT_FOUND))
+        if (status.equals(OK) || status.equals(NOT_FOUND))
             return versionRE;
         else
             return resolveNonOKLDSResponse("GET version by id '"+versionID+"' ", versionRE);
@@ -491,11 +529,11 @@ public class SubsetsControllerV2 {
         LOG.info("GET version w id '"+versionUID+"'.");
 
         if (!Utils.isClean(versionUID))
-            return ErrorHandler.newHttpError("Illegal characters in versionUID", HttpStatus.BAD_REQUEST, LOG);
+            return ErrorHandler.newHttpError("Illegal characters in versionUID", BAD_REQUEST, LOG);
 
         ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionUID);
         HttpStatus status = versionRE.getStatusCode();
-        if (status.equals(HttpStatus.OK) || status.equals(HttpStatus.NOT_FOUND))
+        if (status.equals(OK) || status.equals(NOT_FOUND))
             return versionRE;
         else
             return resolveNonOKLDSResponse("GET version by id '"+versionUID+"' ", versionRE);
@@ -528,29 +566,29 @@ public class SubsetsControllerV2 {
         boolean isToDate = to != null;
 
         if ((isFromDate && ! Utils.isYearMonthDay(from)) || (isToDate && ! Utils.isYearMonthDay(to))){
-            return ErrorHandler.newHttpError("'from' and 'to' need to be dates on the form 'yyyy-MM-dd'", HttpStatus.BAD_REQUEST, LOG);
+            return ErrorHandler.newHttpError("'from' and 'to' need to be dates on the form 'yyyy-MM-dd'", BAD_REQUEST, LOG);
         }
 
         if (!isFromDate && !isToDate) {
             LOG.debug("getting all codes of the latest/current version of subset "+id);
             ResponseEntity<JsonNode> versionsByIDRE = getVersions(id, includeDrafts, includeFuture);
             JsonNode responseBodyJSON = versionsByIDRE.getBody();
-            if (!versionsByIDRE.getStatusCode().equals(HttpStatus.OK))
+            if (!versionsByIDRE.getStatusCode().equals(OK))
                 return resolveNonOKLDSResponse("get versions of series with id "+id+" ", versionsByIDRE);
             else if (responseBodyJSON != null){
                 String date = Utils.getNowDate();
                 ResponseEntity<JsonNode> codesAtRE = getSubsetCodesAt(id, date, includeFuture, includeDrafts);
-                if (!codesAtRE.getStatusCode().equals(HttpStatus.OK))
+                if (!codesAtRE.getStatusCode().equals(OK))
                     return resolveNonOKLDSResponse("get codesAt "+date+" in series with id "+id+" ", codesAtRE);
                 ArrayNode codes = (ArrayNode) codesAtRE.getBody();
-                return new ResponseEntity<>(codes, HttpStatus.OK);
+                return new ResponseEntity<>(codes, OK);
             }
-            return ErrorHandler.newHttpError("response body of getSubset with id "+id+" was null, so could not get codes.", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+            return ErrorHandler.newHttpError("response body of getSubset with id "+id+" was null, so could not get codes.", INTERNAL_SERVER_ERROR, LOG);
         }
 
         // If a date interval is specified using 'from' and 'to' query parameters
         ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts);
-        if (!versionsResponseEntity.getStatusCode().equals(HttpStatus.OK))
+        if (!versionsResponseEntity.getStatusCode().equals(OK))
             return versionsResponseEntity;
         JsonNode versionsResponseBodyJson = versionsResponseEntity.getBody();
         LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
@@ -558,7 +596,7 @@ public class SubsetsControllerV2 {
         Map<String, Integer> codeMap = new HashMap<>();
         int nrOfVersions;
         if (versionsResponseBodyJson == null) {
-            return ErrorHandler.newHttpError("Response body was null", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+            return ErrorHandler.newHttpError("Response body was null", INTERNAL_SERVER_ERROR, LOG);
         }
         if (versionsResponseBodyJson.isArray()) {
             ArrayNode versionsValidInDateRange = (ArrayNode) versionsResponseBodyJson;
@@ -603,9 +641,9 @@ public class SubsetsControllerV2 {
             }
 
             LOG.debug("nr of valid codes: " + intersectionValidCodesInIntervalArrayNode.size());
-            return new ResponseEntity<>(intersectionValidCodesInIntervalArrayNode, HttpStatus.OK);
+            return new ResponseEntity<>(intersectionValidCodesInIntervalArrayNode, OK);
         }
-        return ErrorHandler.newHttpError("Response body was null", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+        return ErrorHandler.newHttpError("Response body was null", INTERNAL_SERVER_ERROR, LOG);
     }
 
     /**
@@ -625,7 +663,7 @@ public class SubsetsControllerV2 {
 
         if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
             ResponseEntity<JsonNode> versionsRE = getVersions(id, includeFuture, includeDrafts);
-            if (!versionsRE.getStatusCode().equals(HttpStatus.OK)){
+            if (!versionsRE.getStatusCode().equals(OK)){
                 return resolveNonOKLDSResponse("Call for versions of subset with id "+id+" ", versionsRE);
             }
             JsonNode versionsResponseBodyJSON = versionsRE.getBody();
@@ -637,14 +675,14 @@ public class SubsetsControllerV2 {
                         String entryValidUntil = versionJsonNode.has(Field.VALID_UNTIL) ? versionJsonNode.get(Field.VALID_UNTIL).textValue() : null;
                         if (entryValidFrom.compareTo(date) <= 0 && (entryValidUntil == null || entryValidUntil.compareTo(date) >= 0) ){
                             JsonNode codes = versionJsonNode.get(Field.CODES);
-                            return new ResponseEntity<>(codes, HttpStatus.OK);
+                            return new ResponseEntity<>(codes, OK);
                         }
                     }
-                    return new ResponseEntity<>(new ObjectMapper().createArrayNode(), HttpStatus.OK);
+                    return new ResponseEntity<>(new ObjectMapper().createArrayNode(), OK);
                 }
-                return ErrorHandler.newHttpError("versions response body was not array", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+                return ErrorHandler.newHttpError("versions response body was not array", INTERNAL_SERVER_ERROR, LOG);
             }
-            return ErrorHandler.newHttpError("versions response body was null", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+            return ErrorHandler.newHttpError("versions response body was null", INTERNAL_SERVER_ERROR, LOG);
         }
         StringBuilder stringBuilder = new StringBuilder();
         if (date == null){
@@ -657,7 +695,7 @@ public class SubsetsControllerV2 {
         }
         return ErrorHandler.newHttpError(
                 stringBuilder.toString(),
-                HttpStatus.BAD_REQUEST,
+                BAD_REQUEST,
                 LOG);
     }
 
@@ -707,7 +745,7 @@ public class SubsetsControllerV2 {
         body = body.replaceAll("\n", "\\n_");
         return ErrorHandler.newHttpError(
                 description+" returned non-200 status code "+ldsRE.getStatusCode().toString()+". Body: "+body,
-                HttpStatus.INTERNAL_SERVER_ERROR,
+                INTERNAL_SERVER_ERROR,
                 LOG);
     }
 
