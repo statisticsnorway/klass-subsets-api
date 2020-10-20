@@ -52,7 +52,7 @@ public class SubsetsControllerV2 {
         ArrayNode subsetSeriesArray = subsetSeriesRE.getBody().deepCopy();
         String nowDate = Utils.getNowDate();
         for (int i = 0; i < subsetSeriesArray.size(); i++) {
-            subsetSeriesArray.set(i, cleanSeries(subsetSeriesArray.get(i))); //TODO: performance wise it would be best not to do this
+            subsetSeriesArray.set(i, cleanSeries(subsetSeriesArray.get(i))); //FIXME: performance wise it would be best not to do this
         }
         if (!includeDrafts || !includeFuture || !includeExpired){
             for (int i = subsetSeriesArray.size() - 1; i >= 0; i--) {
@@ -79,18 +79,19 @@ public class SubsetsControllerV2 {
     @PostMapping("/v2/subsets")
     public ResponseEntity<JsonNode> postSubset(@RequestBody JsonNode subsetSeriesJson) {
         metricsService.incrementPOSTCounter();
+        LOG.info("POST subset series received. Checking body . . .");
 
         if (subsetSeriesJson == null)
-            return ErrorHandler.newHttpError("POST: Can not create subset from empty body", BAD_REQUEST, LOG);
+            return ErrorHandler.newHttpError("POST subset series: Can not create subset series from an empty body", BAD_REQUEST, LOG);
 
         ObjectNode editableSubsetSeries = subsetSeriesJson.deepCopy();
         subsetSeriesJson = null;
 
         if (!editableSubsetSeries.has(Field.ID))
-            return ErrorHandler.newHttpError("Subset series must have field ID", BAD_REQUEST, LOG);
+            return ErrorHandler.newHttpError("POST subset series: Subset series must contain the field 'id'", BAD_REQUEST, LOG);
 
         String id = editableSubsetSeries.get(Field.ID).textValue();
-        LOG.info("POST subset with id "+id);
+        LOG.info("POST subset series with id "+id);
 
         if (!Utils.isClean(id))
             return ErrorHandler.illegalID(LOG);
@@ -108,11 +109,8 @@ public class SubsetsControllerV2 {
         editableSubsetSeries.put(Field.LAST_MODIFIED, Utils.getNowISO());
         editableSubsetSeries.put(Field.CREATED_DATE, Utils.getNowDate());
         editableSubsetSeries.put(Field.CLASSIFICATION_TYPE, Field.SUBSET);
-        if (!editableSubsetSeries.has(Field.VERSIONS)){
-            editableSubsetSeries.set(Field.VERSIONS, new ObjectMapper().createArrayNode());
-        } else {
-            return ErrorHandler.newHttpError("Not allowed to POST subset series with versions in it", BAD_REQUEST, LOG);
-        }
+        editableSubsetSeries.set(Field.VERSIONS, new ObjectMapper().createArrayNode());
+
         LOG.debug("POSTING subset series with id "+id+" to LDS");
         ResponseEntity<JsonNode> responseEntity = new LDSFacade().createSubsetSeries(editableSubsetSeries, id);
         if (responseEntity.getStatusCode().equals(CREATED)){
@@ -147,19 +145,19 @@ public class SubsetsControllerV2 {
      * Changes to the versions array will not be accepted.
      * To add a new version to the versions array you must instead use POST /v2/subsets/{id}/versions
      * To edit an existing version you must use PUT /v2/subsets/{id}/versions/{version_id}
-     * @param id
+     * @param seriesId
      * @param newVersionOfSeries
      * @return
      */
     @PutMapping(value = "/v2/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> putSubset(@PathVariable("id") String id, @RequestBody JsonNode newVersionOfSeries) {
+    public ResponseEntity<JsonNode> putSubset(@PathVariable("id") String seriesId, @RequestBody JsonNode newVersionOfSeries) {
         metricsService.incrementPUTCounter();
-        LOG.info("PUT subset series with id "+id);
+        LOG.info("PUT subset series with id "+seriesId);
 
-        if (!Utils.isClean(id))
+        if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
 
-        ResponseEntity<JsonNode> getSeriesRE = new LDSFacade().getSubsetSeries(id);
+        ResponseEntity<JsonNode> getSeriesRE = new LDSFacade().getSubsetSeries(seriesId);
 
         if (getSeriesRE.getStatusCode().equals(NOT_FOUND))
             return ErrorHandler.newHttpError(
@@ -168,7 +166,7 @@ public class SubsetsControllerV2 {
                     LOG);
 
         if (!getSeriesRE.getStatusCode().equals(OK)) {
-            return resolveNonOKLDSResponse("GET subsetSeries w id '"+id+"'", getSeriesRE);
+            return resolveNonOKLDSResponse("GET subsetSeries w id '"+seriesId+"'", getSeriesRE);
         }
 
         JsonNode currentLatestEditionOfSeries = getSeriesRE.getBody();
@@ -178,11 +176,6 @@ public class SubsetsControllerV2 {
         //TODO: Validate that the incoming subset series edition contains all the right and legal fields?
 
         ArrayNode oldVersionsArray = currentLatestEditionOfSeries.has(Field.VERSIONS) ? currentLatestEditionOfSeries.get(Field.VERSIONS).deepCopy() : new ObjectMapper().createArrayNode();
-
-        //TODO: Test whether there is a difference between the submitted series' versions array and the existing series' versions array.
-        //TODO: If submitted series contains any new versions that are valid, add them to the series?
-        //TODO: If the submitted series' versions constitute legal edits to any versions, perform those edits?
-
         editableNewVersionOfSeries.set(Field.VERSIONS, oldVersionsArray);
 
         assert editableNewVersionOfSeries.has(Field.ID) : "Subset series did not have the field '"+Field.ID+"'.";
@@ -193,14 +186,14 @@ public class SubsetsControllerV2 {
         String newID = editableNewVersionOfSeries.get(Field.ID).asText();
 
         boolean sameID = oldID.equals(newID);
-        boolean sameIDAsRequest = newID.equals(id);
+        boolean sameIDAsRequest = newID.equals(seriesId);
         boolean consistentID = sameID && sameIDAsRequest;
         if (!consistentID){
             StringBuilder errorStringBuilder = new StringBuilder();
             if (!sameID)
                 errorStringBuilder.append("- ID of submitted subset series (").append(newID).append(") was not the same as id of stored subset (").append(oldID).append("). ");
             if(!sameIDAsRequest)
-                errorStringBuilder.append("- ID of submitted subset series (").append(newID).append(") was not the same as id in request param (").append(id).append("). ");
+                errorStringBuilder.append("- ID of submitted subset series (").append(newID).append(") was not the same as id in request param (").append(seriesId).append("). ");
             return ErrorHandler.newHttpError(
                     errorStringBuilder.toString(),
                     BAD_REQUEST,
@@ -281,7 +274,7 @@ public class SubsetsControllerV2 {
             }
         }
 
-        ResponseEntity<JsonNode> responseEntity = new LDSFacade().editSeries(editableNewVersionOfSeries, id);
+        ResponseEntity<JsonNode> responseEntity = new LDSFacade().editSeries(editableNewVersionOfSeries, seriesId);
         if (responseEntity.getStatusCode().equals(OK)){
             responseEntity = new ResponseEntity<>(editableNewVersionOfSeries, OK);
         }
