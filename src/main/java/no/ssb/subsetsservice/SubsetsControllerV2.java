@@ -400,7 +400,7 @@ public class SubsetsControllerV2 {
             LOG.debug("Successfully POSTed version nr "+versionNr+" of subset series "+seriesId+" to LDS");
             return new ResponseEntity<>(editableVersion, HttpStatus.CREATED);
         } else
-            return resolveNonOKLDSResponse("PUT version "+versionNr+" of series with id "+seriesId+" ", ldsPostRE);
+            return resolveNonOKLDSResponse("POST version nr "+versionNr+" of series with id "+seriesId+" ", ldsPostRE);
     }
 
     @GetMapping("/v2/subsets/{id}/versions")

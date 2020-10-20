@@ -3,6 +3,7 @@ package no.ssb.subsetsservice;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -127,15 +128,19 @@ public class LDSFacade implements LDSInterface {
     }
 
     public ResponseEntity<JsonNode> postVersionInSeries(String seriesID, String versionNr, JsonNode versionJsonNode) {
+        Logger logger = LoggerFactory.getLogger(LDSFacade.class);
         String versionUID = seriesID+"_"+versionNr;
+        logger.debug("Attempting to POST version with UID "+versionUID+" to LDS");
         ResponseEntity<JsonNode> putVersionRE = new LDSConsumer(API_LDS).postTo(VERSIONS_API+"/"+versionUID, versionJsonNode);
-        if (!putVersionRE.getStatusCode().equals(HttpStatus.OK)){
-            return ErrorHandler.newHttpError("Trying to PUT a subset version to LDS failed with status code "+putVersionRE.getStatusCode(), putVersionRE.getStatusCode(), LoggerFactory.getLogger(LDSFacade.class));
+        if (!putVersionRE.getStatusCode().equals(HttpStatus.CREATED)) {
+            return ErrorHandler.newHttpError("Trying to PUT a subset version to LDS failed with status code "+putVersionRE.getStatusCode(), putVersionRE.getStatusCode(), logger);
         }
-        ResponseEntity<JsonNode> putLinkRE = new LDSConsumer(API_LDS).postTo(SERIES_API+"/"+seriesID+"/versions/ClassificationSubsetVersion/"+versionUID, new ObjectMapper().createObjectNode());
-        if (!putLinkRE.getStatusCode().equals(HttpStatus.OK)){
-            return ErrorHandler.newHttpError("Trying to PUT a link between the subset Series "+seriesID+" and subset Version "+versionUID+" in LDS failed, with status code "+putLinkRE.getStatusCode(), putLinkRE.getStatusCode(), LoggerFactory.getLogger(LDSFacade.class));
+        logger.debug("Attempting to PUT link from series with seriesID "+seriesID+" to version with UID "+versionUID+" to LDS");
+        ResponseEntity<JsonNode> putLinkRE = new LDSConsumer(API_LDS).putTo(SERIES_API+"/"+seriesID+"/versions/ClassificationSubsetVersion/"+versionUID, new ObjectMapper().createObjectNode());
+        if (!putLinkRE.getStatusCode().equals(HttpStatus.OK)) {
+            return ErrorHandler.newHttpError("Trying to PUT a link between the subset Series "+seriesID+" and subset Version "+versionUID+" in LDS failed, with status code "+putLinkRE.getStatusCode(), putLinkRE.getStatusCode(), logger);
         }
+        logger.debug("Successfully posted and linked version with UID "+versionUID+" to subset series with id "+seriesID);
         return new ResponseEntity<>(versionJsonNode, HttpStatus.CREATED);
     }
 
