@@ -406,7 +406,10 @@ public class SubsetsControllerV2 {
             }
             LOG.debug("Done processing and checking new version in relation to old versions");
         }
-        return new ResponseEntity<>("Subset version had no overlap with published versions", OK, LOG);
+        ObjectNode body = new ObjectMapper().createObjectNode();
+        body.put("message", "Subset version had no overlap with published versions");
+        body.put("status", OK.value());
+        return new ResponseEntity<>(body, OK);
     }
 
     @PostMapping(value = "/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -456,60 +459,9 @@ public class SubsetsControllerV2 {
             return ldsPostRE;
         }
 
-        ArrayNode subsetVersionsArray = getVersions(seriesId, true, false).getBody().deepCopy();
-        if (!subsetVersionsArray.isEmpty()){
-            JsonNode firstPublishedVersion = null;
-            JsonNode lastPublishedVersion = null;
-            String firstValidFrom = null;
-            String lastValidFrom = null;
-            for (JsonNode versionJsonNode : subsetVersionsArray) {
-                if (versionJsonNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)) { // We only care about cheching against published subset versions
-                    LOG.debug("Checking version "+versionJsonNode.get(Field.SERIES_ID)+"_"+versionJsonNode.get(Field.VERSION)+" for overlap with the new version, since it is published.");
-                    String versionValidFrom = versionJsonNode.get(Field.VALID_FROM).asText();
-                    if (firstValidFrom == null || versionValidFrom.compareTo(firstValidFrom) < 0)
-                        firstValidFrom = versionValidFrom;
-                    if (lastValidFrom == null || versionValidFrom.compareTo(lastValidFrom) > 0)
-                        lastValidFrom = versionValidFrom;
-                    if (validFrom.compareTo(versionValidFrom) == 0)
-                        return ErrorHandler.newHttpError(
-                                "validFrom can not be the same as existing subset's valid from",
-                                BAD_REQUEST,
-                                LOG);
-                    String versionValidUntil = versionJsonNode.has(Field.VALID_UNTIL) ? versionJsonNode.get(Field.VALID_UNTIL).asText() : null;
-                    if (versionValidUntil != null && hasValidUntil) {
-                        if (validUntil.compareTo(versionValidUntil) <= 0 && validUntil.compareTo(versionValidFrom) >= 0)
-                            return ErrorHandler.newHttpError(
-                                    "The new version's validUntil is within the validity range of an existing subset",
-                                    BAD_REQUEST,
-                                    LOG);
-                        if (validFrom.compareTo(versionValidFrom) >= 0 && validFrom.compareTo(versionValidUntil) <= 0)
-                            return ErrorHandler.newHttpError(
-                                    "The new version's validFrom is within the validity range of an existing subset",
-                                    BAD_REQUEST,
-                                    LOG);
-                        if (validUntil.compareTo(versionValidUntil) == 0)
-                            return ErrorHandler.newHttpError(
-                                    "validUntil can not be the same as existing subset's validUntil, when they are explicit",
-                                    BAD_REQUEST,
-                                    LOG);
-                    }
-                }
-            }
-            LOG.debug("Done iterating over all existing versions of the subset to check validity period overlaps");
-            if (firstValidFrom != null && validFrom.compareTo(firstValidFrom) >= 0 && lastValidFrom != null && validFrom.compareTo(lastValidFrom) <= 0)
-                return ErrorHandler.newHttpError("The validity period of a new subset must be before or after all existing versions", BAD_REQUEST, LOG);
-            boolean isNewLatestVersion = lastValidFrom == null || validFrom.compareTo(lastValidFrom) > 0;
-            boolean isNewFirstVersion = firstValidFrom == null || validFrom.compareTo(firstValidFrom) < 0;
-
-            if (isStatusOpen && versionsSize > 0) {
-                if (isNewLatestVersion) {
-                    //TODO: If OPEN and is new latest version and other versions exist from before, set validUntil of previous version to be == this version's validFrom ?
-                }
-                if (isNewFirstVersion) {
-                    //TODO: If OPEN and is new first version and other versions exist from before, set validUntil of this version to be == validFrom of next version ?
-                }
-            }
-            LOG.debug("Done processing and checking new version in relation to old versions");
+        ResponseEntity<JsonNode> isOverlappingValidityRE = isOverlappingValidity(editableVersion);
+        if (!isOverlappingValidityRE.getStatusCode().is2xxSuccessful()){
+            return isOverlappingValidityRE;
         }
 
         LOG.debug("Attempting to POST version nr "+versionNr+" of subset series "+seriesId+" to LDS");
