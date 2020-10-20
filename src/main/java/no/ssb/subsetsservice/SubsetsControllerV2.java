@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.api.client.json.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,7 +44,7 @@ public class SubsetsControllerV2 {
             @RequestParam(defaultValue = "true") boolean includeExpired) {
         metricsService.incrementGETCounter();
 
-        LOG.info("GET subsets includeDrafts="+includeDrafts+" includeFuture="+includeFuture+" includeExpired="+includeExpired);
+        LOG.info("GET all subsets includeDrafts="+includeDrafts+" includeFuture="+includeFuture+" includeExpired="+includeExpired);
         LDSFacade ldsFacade = new LDSFacade();
         ResponseEntity<JsonNode> subsetSeriesRE = ldsFacade.getAllSubsetSeries();
         ArrayNode subsetSeriesArray = subsetSeriesRE.getBody().deepCopy();
@@ -170,24 +169,25 @@ public class SubsetsControllerV2 {
             return resolveNonOKLDSResponse("GET subsetSeries w id '"+id+"'", getSeriesRE);
         }
 
-        JsonNode currentVersionOfSeries = getSeriesRE.getBody();
+        JsonNode currentLatestEditionOfSeries = getSeriesRE.getBody();
         ObjectNode editableNewVersionOfSeries = newVersionOfSeries.deepCopy();
         newVersionOfSeries = null;
 
-        //TODO: Validate that the incoming subset version contains the legal fields?
+        //TODO: Validate that the incoming subset series edition contains all the right and legal fields?
 
-        ArrayNode versionsArray = currentVersionOfSeries.has(Field.VERSIONS) ? currentVersionOfSeries.get(Field.VERSIONS).deepCopy() : new ObjectMapper().createArrayNode();
+        ArrayNode oldVersionsArray = currentLatestEditionOfSeries.has(Field.VERSIONS) ? currentLatestEditionOfSeries.get(Field.VERSIONS).deepCopy() : new ObjectMapper().createArrayNode();
 
-        // This makes it so that you can not edit the versions list by PUTing a SubsetSeries.
-        // In other words, you must PUT /ns/ClassificationSubsetSeries/{id}/versions/ClassificationSubsetVersion/{subset_version_id}
-        // and POST /ns/ClassificationSubsetVersion/{subset_version_id}
-        editableNewVersionOfSeries.set(Field.VERSIONS, versionsArray);
+        //TODO: Test whether there is a difference between the submitted series' versions array and the existing series' versions array.
+        //TODO: If submitted series contains any new versions that are valid, add them to the series?
+        //TODO: If the submitted series' versions constitute legal edits to any versions, perform those edits?
+
+        editableNewVersionOfSeries.set(Field.VERSIONS, oldVersionsArray);
 
         assert editableNewVersionOfSeries.has(Field.ID) : "Subset series did not have the field '"+Field.ID+"'.";
 
         editableNewVersionOfSeries.put(Field.LAST_MODIFIED, Utils.getNowISO());
 
-        String oldID = currentVersionOfSeries.get(Field.ID).asText();
+        String oldID = currentLatestEditionOfSeries.get(Field.ID).asText();
         String newID = editableNewVersionOfSeries.get(Field.ID).asText();
 
         boolean sameID = oldID.equals(newID);
@@ -205,19 +205,18 @@ public class SubsetsControllerV2 {
                     LOG);
         }
 
-        boolean thisSeriesIsPublished = currentVersionOfSeries.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
+        boolean thisSeriesIsPublished = currentLatestEditionOfSeries.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
 
         if (thisSeriesIsPublished) {
-            Iterator<String> prevPatchFieldNames = currentVersionOfSeries.fieldNames();
+            Iterator<String> prevPatchFieldNames = currentLatestEditionOfSeries.fieldNames();
             Iterator<String> newPatchFieldNames = editableNewVersionOfSeries.fieldNames();
 
             String[] changeableFieldsInPublishedSeries = {
-                    Field.VERSION_RATIONALE,
                     Field.VALID_FROM,
                     Field.VALID_UNTIL,
-                    Field.VERSION_VALID_UNTIL,
-                    Field.LAST_UPDATED_BY,
-                    Field.LAST_UPDATED_DATE};
+                    Field.LAST_MODIFIED_BY,
+                    Field.LAST_UPDATED_DATE,
+                    Field.VERSIONS};
             ArrayList<String> changeableFieldsList = new ArrayList<>();
             Collections.addAll(changeableFieldsList, changeableFieldsInPublishedSeries);
             StringBuilder fieldErrorBuilder = new StringBuilder();
@@ -233,11 +232,11 @@ public class SubsetsControllerV2 {
                             .append("- The new patch of version (")
                             .append(editableNewVersionOfSeries.get(Field.VERSION).asText())
                             .append(") of the subset with ID '")
-                            .append(currentVersionOfSeries.get(Field.ID).asText())
+                            .append(currentLatestEditionOfSeries.get(Field.ID).asText())
                             .append("' does not contain the field '")
                             .append(field)
                             .append("' that is present in the old patch of this version (")
-                            .append(currentVersionOfSeries.get(Field.ID).asText())
+                            .append(currentLatestEditionOfSeries.get(Field.ID).asText())
                             .append("), and is a field that is not allowed to change when a version is already published. ");
                     allSameFields = false;
                 }
@@ -245,11 +244,11 @@ public class SubsetsControllerV2 {
 
             while (allSameFields && newPatchFieldNames.hasNext()) {
                 String field = newPatchFieldNames.next();
-                if (!currentVersionOfSeries.has(field) && !changeableFieldsList.contains(field)) {
+                if (!currentLatestEditionOfSeries.has(field) && !changeableFieldsList.contains(field)) {
                     fieldErrorBuilder
                             .append("- The previous patch of version (")
-                            .append(currentVersionOfSeries.get(Field.VERSION).asText())
-                            .append(") of the subset with ID '").append(currentVersionOfSeries.get(Field.ID).asText())
+                            .append(currentLatestEditionOfSeries.get(Field.VERSION).asText())
+                            .append(") of the subset with ID '").append(currentLatestEditionOfSeries.get(Field.ID).asText())
                             .append("' does not contain the field '")
                             .append(field)
                             .append("' that is present in the new patch of this version version (")
@@ -270,7 +269,7 @@ public class SubsetsControllerV2 {
             while (newPatchFieldNames.hasNext()) {
                 String field = newPatchFieldNames.next();
                 if (!changeableFieldsList.contains(field)) {
-                    if (!currentVersionOfSeries.get(field).asText().equals(editableNewVersionOfSeries.get(field).asText())) {
+                    if (!currentLatestEditionOfSeries.get(field).asText().equals(editableNewVersionOfSeries.get(field).asText())) {
                         return ErrorHandler.newHttpError(
                                 "The version of the subset you are trying to change is published, which means you can only change validUntil and versionRationale.",
                                 HttpStatus.BAD_REQUEST,
@@ -287,12 +286,14 @@ public class SubsetsControllerV2 {
         return responseEntity;
     }
 
-    @PostMapping(value = "/v2/subsets/{id}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("id") String id, @RequestBody JsonNode version) {
+    @PostMapping(value = "/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("seriesId") String seriesId, @RequestBody JsonNode version) {
 
-        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(id);
-        if (!getSeriesByIDRE.getStatusCode().equals(HttpStatus.OK))
+        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(seriesId);
+        if (!getSeriesByIDRE.getStatusCode().equals(HttpStatus.OK)) {
+            LOG.error("Attempt to get subset series by id '"+seriesId+"' returned a non-OK status code.");
             return getSeriesByIDRE;
+        }
         ObjectNode editableVersion = version.deepCopy();
         version = null;
 
@@ -307,44 +308,48 @@ public class SubsetsControllerV2 {
                     HttpStatus.BAD_REQUEST,
                     LOG);
 
-        editableVersion.put(Field.SUBSET_ID, id);
+        JsonNode series = getSeriesByIDRE.getBody();
+        int versionsSize = series.has(Field.VERSIONS) ? series.get(Field.VERSIONS).size() : 0;
+        LOG.debug("series "+seriesId+" versions size: "+versionsSize);
+        String versionNr = Integer.toString(versionsSize+1);
+        editableVersion.put(Field.VERSION, versionNr);
+        editableVersion.put(Field.SERIES_ID, seriesId);
         editableVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
         editableVersion.put(Field.CREATED_DATE, Utils.getNowDate());
 
-        JsonNode series = getSeriesByIDRE.getBody();
-        int versionsSize = series.has(Field.VERSIONS) ? series.get(Field.VERSIONS).size() : 0;
-        String versionID = Integer.toString(versionsSize+1);
-        editableVersion.put(Field.VERSION, versionID);
-
         boolean isStatusOpen = editableVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
 
-        if (isStatusOpen){
-            if (!editableVersion.has(Field.CODES) || editableVersion.get(Field.CODES).size() == 0){
-                return ErrorHandler.newHttpError("Published subset versions must have a non-empty code list", HttpStatus.BAD_REQUEST, LOG);
-            }
-        }
+        if (isStatusOpen)
+            if (!editableVersion.has(Field.CODES) || editableVersion.get(Field.CODES).size() == 0)
+                return ErrorHandler.newHttpError("Published subset version must have a non-empty code list", HttpStatus.BAD_REQUEST, LOG);
 
         if (versionsSize == 0) {
-            return new LDSFacade().putVersionInSeries(id, versionID, editableVersion);
+            LOG.debug("Since there are no versions from before, we post new version to LDS right away");
+            ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionNr, editableVersion);
+            if (!ldsPostRE.getStatusCode().equals(HttpStatus.OK))
+                return resolveNonOKLDSResponse("POST version 0 in series "+seriesId+" ", ldsPostRE);
+            return ldsPostRE;
         }
 
-        ArrayNode versionLinks = series.get(Field.VERSIONS).deepCopy();
+        ArrayNode versionUIDArrayNode = series.get(Field.VERSIONS).deepCopy();
         ArrayNode versionJsonNodes = new ObjectMapper().createArrayNode();
-        versionLinks.forEach(link -> versionJsonNodes.add(new LDSFacade().resolveVersionLink(link.asText()).getBody()));
-        if (!versionLinks.isEmpty()){
-            JsonNode firstPublishedVersion = versionLinks.get(0);
-            JsonNode lastPublishedVersion = firstPublishedVersion;
-            String firstValidFrom = firstPublishedVersion.get(Field.VALID_FROM).asText();
-            String lastValidFrom = firstValidFrom;
+        LOG.debug("Resolving "+versionUIDArrayNode.size()+" version UIDs against LDS");
+        versionUIDArrayNode.forEach(versionUID -> versionJsonNodes.add(new LDSFacade().getVersionByID(versionUID.asText()).getBody()));
+        LOG.debug("DONE resolving versions against LDS");
+        if (!versionUIDArrayNode.isEmpty()){
+            JsonNode firstPublishedVersion = null;
+            JsonNode lastPublishedVersion = null;
+            String firstValidFrom = null;
+            String lastValidFrom = null;
             for (JsonNode versionJsonNode : versionJsonNodes) {
+                LOG.debug("Checking version "+versionJsonNode.get(Field.SERIES_ID)+"_"+versionJsonNode.get(Field.VERSION)+" for overlap with the new version, if it is published");
                 if (versionJsonNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)) {
+                    LOG.debug("Checking version "+versionJsonNode.get(Field.SERIES_ID)+"_"+versionJsonNode.get(Field.VERSION)+" for overlap with the new version, since it is published.");
                     String versionValidFrom = versionJsonNode.get(Field.VALID_FROM).asText();
-                    if (versionValidFrom.compareTo(firstValidFrom) < 0){
+                    if (firstValidFrom == null || versionValidFrom.compareTo(firstValidFrom) < 0)
                         firstValidFrom = versionValidFrom;
-                    }
-                    if (versionValidFrom.compareTo(lastValidFrom) > 0){
+                    if (lastValidFrom == null || versionValidFrom.compareTo(lastValidFrom) > 0)
                         lastValidFrom = versionValidFrom;
-                    }
                     if (validFrom.compareTo(versionValidFrom) == 0)
                         return ErrorHandler.newHttpError(
                                 "validFrom can not be the same as existing subset's valid from",
@@ -370,10 +375,11 @@ public class SubsetsControllerV2 {
                     }
                 }
             }
-            if (validFrom.compareTo(firstValidFrom) >= 0 && validFrom.compareTo(lastValidFrom) <= 0)
+            LOG.debug("Done iterating over all existing versions of the subset to check validity period overlaps");
+            if (firstValidFrom != null && validFrom.compareTo(firstValidFrom) >= 0 && lastValidFrom != null && validFrom.compareTo(lastValidFrom) <= 0)
                 return ErrorHandler.newHttpError("The validity period of a new subset must be before or after all existing versions", HttpStatus.BAD_REQUEST, LOG);
-            boolean isNewLatestVersion = validFrom.compareTo(lastValidFrom) > 0;
-            boolean isNewFirstVersion = validFrom.compareTo(firstValidFrom) < 0;
+            boolean isNewLatestVersion = lastValidFrom == null || validFrom.compareTo(lastValidFrom) > 0;
+            boolean isNewFirstVersion = firstValidFrom == null || validFrom.compareTo(firstValidFrom) < 0;
 
             if (isStatusOpen && versionsSize > 0) {
                 if (isNewLatestVersion) {
@@ -383,15 +389,18 @@ public class SubsetsControllerV2 {
                     //TODO: If OPEN and is new first version and other versions exist from before, set validUntil of this version to be == validFrom of next version ?
                 }
             }
+            LOG.debug("Done processing and checking new version in relation to old versions");
         }
 
-        ResponseEntity<JsonNode> ldsPUT = new LDSFacade().putVersionInSeries(id, versionID, editableVersion);
+        LOG.debug("Attempting to POST version nr "+versionNr+" of subset series "+seriesId+" to LDS");
+        ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionNr, editableVersion);
 
-        if (ldsPUT.getStatusCode().equals(HttpStatus.CREATED)) {
+        if (ldsPostRE.getStatusCode().equals(HttpStatus.CREATED)) {
             //TODO: Do I have to edit the "versions" array in the series?
+            LOG.debug("Successfully POSTed version nr "+versionNr+" of subset series "+seriesId+" to LDS");
             return new ResponseEntity<>(editableVersion, HttpStatus.CREATED);
         } else
-            return resolveNonOKLDSResponse("PUT version of series with id "+id+" ", ldsPUT);
+            return resolveNonOKLDSResponse("PUT version "+versionNr+" of series with id "+seriesId+" ", ldsPostRE);
     }
 
     @GetMapping("/v2/subsets/{id}/versions")
@@ -437,48 +446,59 @@ public class SubsetsControllerV2 {
 
     /**
      * Get a subset corresponding to a given version id.
-     * @param id
-     * @param version
+     * @param seriesID
+     * @param versionID
      * @return
      */
-    @GetMapping("/v2/subsets/{id}/versions/{version}")
+    @GetMapping("/v2/subsets/{id}/versions/{versionID}")
     public ResponseEntity<JsonNode> getVersion(
-            @PathVariable("id") String id,
-            @PathVariable("version") String version) {
+            @PathVariable("id") String seriesID,
+            @PathVariable("versionID") String versionID) {
         metricsService.incrementGETCounter();
-        LOG.info("GET version "+version+" of subset with id "+id);
+        LOG.info("GET version "+versionID+" of subset with id "+seriesID);
 
-        if (!Utils.isClean(id) || !Utils.isClean(version)){
+        if (!Utils.isClean(seriesID))
             return ErrorHandler.illegalID(LOG);
+        if (!Utils.isClean(versionID))
+            return ErrorHandler.newHttpError("Illegal version ID", HttpStatus.BAD_REQUEST, LOG);
+
+        String[] splitUnderscore = versionID.split("_");
+        if (splitUnderscore.length < 2) {
+            String versionNr = splitUnderscore[0];
+            try {
+                int versionNrInt = Integer.parseInt(versionNr);
+                versionID = String.format("%s_%d", seriesID, versionNrInt);
+            } catch (NumberFormatException e){
+                return ErrorHandler.newHttpError("version id must be given either as an integer indicating the version nr, or as a full versionUID on the form '{seriesUID}_{versionNr}'", HttpStatus.BAD_REQUEST, LOG);
+            }
         }
-        String versionUID = id+"_"+version;
+        ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionID);
+        HttpStatus status = versionRE.getStatusCode();
+        if (status.equals(HttpStatus.OK) || status.equals(HttpStatus.NOT_FOUND))
+            return versionRE;
+        else
+            return resolveNonOKLDSResponse("GET version by id '"+versionID+"' ", versionRE);
+    }
+
+    /**
+     * Get a subset corresponding to a given version id.
+     * @param versionUID
+     * @return
+     */
+    @GetMapping("/v2/ClassificationSubsetVersion/{id}")
+    public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String versionUID) {
+        metricsService.incrementGETCounter();
+        LOG.info("GET version w id '"+versionUID+"'.");
+
+        if (!Utils.isClean(versionUID))
+            return ErrorHandler.newHttpError("Illegal characters in versionUID", HttpStatus.BAD_REQUEST, LOG);
+
         ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionUID);
         HttpStatus status = versionRE.getStatusCode();
         if (status.equals(HttpStatus.OK) || status.equals(HttpStatus.NOT_FOUND))
             return versionRE;
         else
             return resolveNonOKLDSResponse("GET version by id '"+versionUID+"' ", versionRE);
-    }
-
-    /**
-     * Get a subset corresponding to a given version id.
-     * @param id
-     * @return
-     */
-    @GetMapping("/v2/ClassificationSubsetVersion/{id}")
-    public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String id) {
-        metricsService.incrementGETCounter();
-        LOG.info("GET version w id '"+id+"'.");
-
-        if (!Utils.isClean(id)){
-            return ErrorHandler.illegalID(LOG);
-        }
-        ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(id);
-        HttpStatus status = versionRE.getStatusCode();
-        if (status.equals(HttpStatus.OK) || status.equals(HttpStatus.NOT_FOUND))
-            return versionRE;
-        else
-            return resolveNonOKLDSResponse("GET version by id '"+id+"' ", versionRE);
     }
 
     /**

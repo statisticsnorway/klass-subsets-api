@@ -126,17 +126,17 @@ public class LDSFacade implements LDSInterface {
         idList.forEach(this::deleteSubset);
     }
 
-    public ResponseEntity<JsonNode> putVersionInSeries(String id, String versionID, JsonNode versionJsonNode) {
-        String versionUID = id+"_"+versionID;
-        ResponseEntity<JsonNode> putVersionRE = new LDSConsumer(API_LDS).putTo(VERSIONS_API+"/"+versionUID, versionJsonNode);
-        if (!putVersionRE.getStatusCode().equals(HttpStatus.CREATED)){
+    public ResponseEntity<JsonNode> postVersionInSeries(String seriesID, String versionNr, JsonNode versionJsonNode) {
+        String versionUID = seriesID+"_"+versionNr;
+        ResponseEntity<JsonNode> putVersionRE = new LDSConsumer(API_LDS).postTo(VERSIONS_API+"/"+versionUID, versionJsonNode);
+        if (!putVersionRE.getStatusCode().equals(HttpStatus.OK)){
             return ErrorHandler.newHttpError("Trying to PUT a subset version to LDS failed with status code "+putVersionRE.getStatusCode(), putVersionRE.getStatusCode(), LoggerFactory.getLogger(LDSFacade.class));
         }
-        ResponseEntity<JsonNode> putLinkRE = new LDSConsumer(API_LDS).putTo(SERIES_API+"/"+id+"/versions/ClassificationSubsetVersion/"+versionUID, new ObjectMapper().createObjectNode());
+        ResponseEntity<JsonNode> putLinkRE = new LDSConsumer(API_LDS).postTo(SERIES_API+"/"+seriesID+"/versions/ClassificationSubsetVersion/"+versionUID, new ObjectMapper().createObjectNode());
         if (!putLinkRE.getStatusCode().equals(HttpStatus.OK)){
-            return ErrorHandler.newHttpError("Trying to PUT a link between the subset Series "+id+" and subset Version "+versionUID+" in LDS failed, with status code "+putLinkRE.getStatusCode(), putLinkRE.getStatusCode(), LoggerFactory.getLogger(LDSFacade.class));
+            return ErrorHandler.newHttpError("Trying to PUT a link between the subset Series "+seriesID+" and subset Version "+versionUID+" in LDS failed, with status code "+putLinkRE.getStatusCode(), putLinkRE.getStatusCode(), LoggerFactory.getLogger(LDSFacade.class));
         }
-        return new ResponseEntity<>(versionJsonNode, HttpStatus.OK);
+        return new ResponseEntity<>(versionJsonNode, HttpStatus.CREATED);
     }
 
     /**
@@ -152,7 +152,7 @@ public class LDSFacade implements LDSInterface {
         if (!Utils.isClean(versionID))
             throw new IllegalArgumentException("versionID must be clean (no special characters except '-' and '_')");
         ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionID);
-        return null;
+        return versionRE;
     }
 
     @Override
