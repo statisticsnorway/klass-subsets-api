@@ -439,7 +439,7 @@ public class SubsetsController {
             }
         }
 
-        ResponseEntity<JsonNode> responseEntity = new LDSFacade().createSubset(editableNewVersionOfSubset, id);
+        ResponseEntity<JsonNode> responseEntity = new LDSFacade().editSubset(editableNewVersionOfSubset, id);
         if (responseEntity.getStatusCode().equals(HttpStatus.OK)){
             responseEntity = new ResponseEntity<>(editableNewVersionOfSubset, HttpStatus.OK);
         }

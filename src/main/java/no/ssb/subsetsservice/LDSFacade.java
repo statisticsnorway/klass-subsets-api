@@ -97,7 +97,13 @@ public class LDSFacade implements LDSInterface {
     }
 
     public ResponseEntity<JsonNode> editSubset(JsonNode subset, String id){
-        return new LDSConsumer(API_LDS).putTo(SUBSETS_API+"/" + id, subset);
+        ResponseEntity<JsonNode> postRE = new LDSConsumer(API_LDS).postTo(SUBSETS_API+"/" + id, subset);
+        HttpStatus status = postRE.getStatusCode();
+        if (status.is2xxSuccessful())
+            status = HttpStatus.OK;
+        if (postRE.hasBody())
+            return new ResponseEntity<>(postRE.getBody(), postRE.getHeaders(), status);
+        return new ResponseEntity<>(postRE.getHeaders(), status);
     }
 
     public ResponseEntity<JsonNode> createSubset(JsonNode subset, String id){
