@@ -447,8 +447,8 @@ public class SubsetsControllerV2 {
         if (versionsSize == 0) {
             LOG.debug("Since there are no versions from before, we post new version to LDS right away");
             ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionNr, editableVersion);
-            if (!ldsPostRE.getStatusCode().equals(OK))
-                return resolveNonOKLDSResponse("POST version 0 in series "+seriesId+" ", ldsPostRE);
+            if (!ldsPostRE.getStatusCode().is2xxSuccessful())
+                return resolveNonOKLDSResponse("POST first version in series "+seriesId+" ", ldsPostRE);
             return ldsPostRE;
         }
 
