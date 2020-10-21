@@ -1,6 +1,6 @@
 package no.ssb.subsetsservice;
 
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -23,7 +23,7 @@ public class HelloController {
                     " |_|\\_\\______/_/    \\_\\_____/_____/  |_____/ \\__,_|_.__/|___/\\___|\\__|___/ /_/    \\_\\_|   |_____|   \\_/|____|\n</pre>" +
                     "                                                                                                             ";
 
-    @RequestMapping("/hello")
+    @GetMapping("/hello")
     public String hello() {
         return banner;
 

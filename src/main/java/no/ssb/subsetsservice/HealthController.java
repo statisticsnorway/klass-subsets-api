@@ -2,6 +2,7 @@ package no.ssb.subsetsservice;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -18,12 +19,12 @@ public class HealthController {
 
     private HealthController(){}
 
-    @RequestMapping("/health/alive")
+    @GetMapping("/health/alive")
     public ResponseEntity<String> alive() {
         return new ResponseEntity<>("The service is alive!", HttpStatus.OK);
     }
 
-    @RequestMapping("/health/ready")
+    @GetMapping("/health/ready")
     public ResponseEntity<String> ready() {
         boolean klassReady = new KlassURNResolver().pingKLASSClassifications();
         boolean ldsReady = new LDSFacade().healthReady();

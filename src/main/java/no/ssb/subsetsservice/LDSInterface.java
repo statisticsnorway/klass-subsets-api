@@ -1,6 +1,7 @@
 package no.ssb.subsetsservice;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 
@@ -18,6 +19,12 @@ public interface LDSInterface {
      * @throws HttpClientErrorException
      */
     List<String> getAllSubsetIDs() throws HttpClientErrorException;
+
+    ResponseEntity<JsonNode> getVersionByID(String versionId);
+
+    ResponseEntity<JsonNode> getSubsetSeries(String id);
+
+    ResponseEntity<JsonNode> getAllSubsetSeries();
 
     /**
      * GET a list of all the version of each subset that was last UPDATED by the user.
@@ -67,4 +74,18 @@ public interface LDSInterface {
     boolean healthReady();
 
     void deleteSubset(String url);
+
+    public void deleteAllSubsets();
+
+    ResponseEntity<JsonNode> editSeries(JsonNode newVersionOfSeries, String seriesID);
+
+    ResponseEntity<JsonNode> postVersionInSeries(String id, String versionID, JsonNode versionNode);
+
+    ResponseEntity<JsonNode> resolveVersionLink(String versionLink);
+
+    ResponseEntity<JsonNode> getSubsetSeriesSchema();
+
+    void deleteAllSubsetSeries();
+
+    void deleteSubsetSeries(String id);
 }

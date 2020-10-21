@@ -14,6 +14,7 @@ import java.util.*;
 
 public class Utils {
 
+    public static final String ISO_DATE_PATTERN = "yyyy-MM-dd";
     public static final String ISO_DATETIME_PATTERN = "yyyy-MM-dd'T'HH:mm:ss'Z'"; // Quoted "Z" to indicate UTC, no timezone offset
     public static final String CLEAN_ID_REGEX = "^[a-zA-Z0-9-_]+$";
     public static final String YEAR_MONTH_DAY_REGEX = "([12]\\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01]))";
@@ -132,5 +133,12 @@ public class Utils {
 
     public static String generateURN(String classification, String code) {
         return String.format(URN_FORMAT, classification, code);
+    }
+
+    public static String getNowDate() {
+        TimeZone tz = TimeZone.getTimeZone("UTC");
+        DateFormat df = new SimpleDateFormat(ISO_DATE_PATTERN);
+        df.setTimeZone(tz);
+        return df.format(new Date());
     }
 }
