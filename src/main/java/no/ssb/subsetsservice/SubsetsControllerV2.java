@@ -286,11 +286,11 @@ public class SubsetsControllerV2 {
      * Only edit versions that already have been created with post.
      * @param seriesId
      * @param versionUID
-     * @param version
+     * @param putVersion
      * @return
      */
     @PutMapping(value = "/v2/subsets/{seriesId}/versions/{versionUID}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("seriesId") String seriesId, @PathVariable("versionUID") String versionUID, @RequestBody JsonNode version) {
+    public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("seriesId") String seriesId, @PathVariable("versionUID") String versionUID, @RequestBody JsonNode putVersion) {
         if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
         if (!Utils.isClean(versionUID))
@@ -304,39 +304,42 @@ public class SubsetsControllerV2 {
         if (!status.equals(OK))
             return getPreviousEditionOfVersion;
         JsonNode previousEditionOfVersion = getPreviousEditionOfVersion.getBody();
-        ObjectNode editableVersion = version.deepCopy();
+        ObjectNode editablePutVersion = putVersion.deepCopy();
 
 
-        editableVersion.set(Field.VERSION, previousEditionOfVersion.get(Field.VERSION));
-        editableVersion.set(Field.CREATED_DATE, previousEditionOfVersion.get(Field.CREATED_DATE));
-        editableVersion.set(Field.SERIES_ID, previousEditionOfVersion.get(Field.SERIES_ID));
-        editableVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
+        editablePutVersion.set(Field.VERSION, previousEditionOfVersion.get(Field.VERSION));
+        editablePutVersion.set(Field.CREATED_DATE, previousEditionOfVersion.get(Field.CREATED_DATE));
+        editablePutVersion.set(Field.SERIES_ID, previousEditionOfVersion.get(Field.SERIES_ID));
+        editablePutVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
 
         boolean wasDraftFromBefore = previousEditionOfVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.DRAFT);
-        boolean attemptToPublish = editableVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
+        boolean attemptToPublish = editablePutVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
 
         // One set of rules for if the old version is DRAFT:
         if (wasDraftFromBefore){
             // If the new version is OPEN and the old one was DRAFT:
             // OR If validFrom or validUntil is changed
             if (attemptToPublish ||
-                    (!previousEditionOfVersion.get(Field.VALID_FROM).equals(editableVersion.get(Field.VALID_FROM))) ||
-                    (previousEditionOfVersion.has(Field.VALID_UNTIL) && (!editableVersion.has(Field.VALID_UNTIL)) || !editableVersion.get(Field.VALID_UNTIL).equals(previousEditionOfVersion.get(Field.VALID_UNTIL))) ||
-                    (editableVersion.has(Field.VALID_UNTIL) && !previousEditionOfVersion.has(Field.VALID_UNTIL)) ){
+                    (!previousEditionOfVersion.get(Field.VALID_FROM).equals(editablePutVersion.get(Field.VALID_FROM))) ||
+                    (previousEditionOfVersion.has(Field.VALID_UNTIL) && (!editablePutVersion.has(Field.VALID_UNTIL)) || !editablePutVersion.get(Field.VALID_UNTIL).equals(previousEditionOfVersion.get(Field.VALID_UNTIL))) ||
+                    (editablePutVersion.has(Field.VALID_UNTIL) && !previousEditionOfVersion.has(Field.VALID_UNTIL)) ){
                 // check validity period overlap with other OPEN versions
-                ResponseEntity<JsonNode> checkOverlapRE = isOverlappingValidity(editableVersion);
+                ResponseEntity<JsonNode> checkOverlapRE = isOverlappingValidity(editablePutVersion);
                 if (!checkOverlapRE.getStatusCode().is2xxSuccessful()){
                     return checkOverlapRE;
                 }
             }
+        } else {
+            JsonNode oldCodeList = previousEditionOfVersion.get(Field.CODES);
+            JsonNode newCodeList = editablePutVersion.get(Field.CODES);
+
+            //TODO:
+            // Another stricter set of rules for if the old version is OPEN
+            // Make sure codes are not changed.
+            // Make sure validFrom is not changed.
         }
 
-        //TODO:
-        // Another stricter set of rules for if the old version is OPEN
-        // Make sure codes are not changed.
-        // Make sure validFrom is not changed.
-
-        return new ResponseEntity<>(editableVersion, OK);
+        return new ResponseEntity<>(editablePutVersion, OK);
     }
 
     private ResponseEntity<JsonNode> isOverlappingValidity(JsonNode editableVersion) {
@@ -445,7 +448,7 @@ public class SubsetsControllerV2 {
                 return ErrorHandler.newHttpError("Published subset version must have a non-empty code list", BAD_REQUEST, LOG);
 
         if (versionsSize == 0) {
-            LOG.debug("Since there are no versions from before, we post new version to LDS right away");
+            LOG.debug("Since there are no versions from before, we post new version to LDS without checking validity overlap");
             ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionNr, editableVersion);
             if (!ldsPostRE.getStatusCode().is2xxSuccessful())
                 return resolveNonOKLDSResponse("POST first version in series "+seriesId+" ", ldsPostRE);
@@ -461,7 +464,6 @@ public class SubsetsControllerV2 {
         ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionNr, editableVersion);
 
         if (ldsPostRE.getStatusCode().equals(CREATED)) {
-            //TODO: Do I have to edit the "versions" array in the series?
             LOG.debug("Successfully POSTed version nr "+versionNr+" of subset series "+seriesId+" to LDS");
             return new ResponseEntity<>(editableVersion, CREATED);
         } else
@@ -742,10 +744,11 @@ public class SubsetsControllerV2 {
     }
 
     private static JsonNode cleanSeries(JsonNode subsetSeries){
-        // Replace "/ClassificationSubsetSeries/id" with "/id"
+        // Replace "/ClassificationSubsetVersion/id" with "subsets/id/versions/nr"
         ObjectNode editableSeries = subsetSeries.deepCopy();
         ArrayNode versions = editableSeries.get(Field.VERSIONS).deepCopy();
         ArrayNode newVersions = new ObjectMapper().createArrayNode();
+        String id = editableSeries.get(Field.ID).asText();
         for (int i = 0; i < versions.size(); i++) {
             JsonNode version = versions.get(i);
             String versionPath = version.asText(); // should be "/ClassificationSubsetVersion/{version_id}", since this is how LDS links a resource of a different type
@@ -753,7 +756,7 @@ public class SubsetsControllerV2 {
             assert splitBySlash[0].isBlank() : "Index 0 in the array that splits the versionPath by '/' is not blank";
             assert splitBySlash[1].equals("ClassificationSubsetVersion") : "Index 1 in the array that splits the versionPath by '/' is not 'ClassificationSubsetVersion'"; //TODO: these checks should be removed later when i know it works
             String versionUID = splitBySlash[2];
-            newVersions.add(versionUID);
+            newVersions.add("/subsets/"+id+"/versions/"+versionUID);
         }
         editableSeries.set(Field.VERSIONS, newVersions);
         return editableSeries;
