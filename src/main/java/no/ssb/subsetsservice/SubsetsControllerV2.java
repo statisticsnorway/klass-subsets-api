@@ -329,12 +329,35 @@ public class SubsetsControllerV2 {
                 }
             }
             if (attemptToPublish){
-                //TODO: Make sure there are codes present
-                if(editablePutVersion.get(Field.CODES).isEmpty())
+                if (editablePutVersion.get(Field.CODES).isEmpty())
                     return ErrorHandler.newHttpError(
                             "Can not publish a subset with an empty code list",
                             HttpStatus.BAD_REQUEST,
                             LOG);
+
+                ResponseEntity<JsonNode> versionSchemaRE = new LDSFacade().getSubsetVersionsSchema();
+                JsonNode versionsDefinition = versionSchemaRE.getBody().get("definitions").get("ClassificationSubsetVersion");
+                JsonNode properties = versionsDefinition.get("properties");
+                Iterator<String> submittedFieldNamesIterator = editablePutVersion.fieldNames();
+                while (submittedFieldNamesIterator.hasNext()){
+                    String field = submittedFieldNamesIterator.next();
+                    if (!properties.has(field)){
+                        return ErrorHandler.newHttpError(
+                                "Submitted field "+field+" is not legal in ClassificationSubsetVersion",
+                                BAD_REQUEST,
+                                LOG);
+                    }
+                }
+
+                ArrayNode required = (ArrayNode) versionsDefinition.get("required");
+                for (JsonNode jsonNode : required) {
+                    String requiredField = jsonNode.asText();
+                    if (!editablePutVersion.has(requiredField)){
+                        return ErrorHandler.newHttpError("Submitted version did not contain required field "+requiredField,
+                                BAD_REQUEST,
+                                LOG);
+                    }
+                }
             }
         } else { // Another stricter set of rules for if the old version is OPEN
             String oldCodeList = previousEditionOfVersion.get(Field.CODES).asText();
