@@ -172,6 +172,11 @@ public class LDSFacade implements LDSInterface {
     }
 
     @Override
+    public ResponseEntity<JsonNode> getSubsetVersionsSchema() {
+        return new LDSConsumer(API_LDS).getFrom(VERSIONS_API+"/?schema");
+    }
+
+    @Override
     public void deleteAllSubsetSeries() {
         //TODO: implement
     }
