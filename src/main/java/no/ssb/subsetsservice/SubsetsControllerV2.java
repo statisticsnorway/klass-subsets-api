@@ -306,7 +306,6 @@ public class SubsetsControllerV2 {
         JsonNode previousEditionOfVersion = getPreviousEditionOfVersion.getBody();
         ObjectNode editablePutVersion = putVersion.deepCopy();
 
-
         editablePutVersion.set(Field.VERSION, previousEditionOfVersion.get(Field.VERSION));
         editablePutVersion.set(Field.CREATED_DATE, previousEditionOfVersion.get(Field.CREATED_DATE));
         editablePutVersion.set(Field.SERIES_ID, previousEditionOfVersion.get(Field.SERIES_ID));
@@ -329,28 +328,37 @@ public class SubsetsControllerV2 {
                     return checkOverlapRE;
                 }
             }
-        } else {
-            JsonNode oldCodeList = previousEditionOfVersion.get(Field.CODES);
-            JsonNode newCodeList = editablePutVersion.get(Field.CODES);
+            if (attemptToPublish){
+                //TODO: Make sure there are codes present
+                if(editablePutVersion.get(Field.CODES).isEmpty())
+                    return ErrorHandler.newHttpError(
+                            "Can not publish a subset with an empty code list",
+                            HttpStatus.BAD_REQUEST,
+                            LOG);
+            }
+        } else { // Another stricter set of rules for if the old version is OPEN
+            String oldCodeList = previousEditionOfVersion.get(Field.CODES).asText();
+            String newCodeList = editablePutVersion.get(Field.CODES).asText();
+            if (!oldCodeList.equals(newCodeList)){
+                return ErrorHandler.newHttpError("Changes in code list not allowed to published subsets", BAD_REQUEST, LOG);
+            }
+            String oldValidFrom = previousEditionOfVersion.get(Field.VALID_FROM).asText();
+            String newValidFrom = editablePutVersion.get(Field.VALID_FROM).asText();
+            if (!oldValidFrom.equals(newValidFrom)){
+                return ErrorHandler.newHttpError("Changes in validFrom not allowed to published subset", BAD_REQUEST, LOG);
+            }
 
-            //TODO:
-            // Another stricter set of rules for if the old version is OPEN
-            // Make sure codes are not changed.
-            // Make sure validFrom is not changed.
+            //TODO: Make sure no illegal fields are added or edited
         }
-
         return new ResponseEntity<>(editablePutVersion, OK);
     }
 
     private ResponseEntity<JsonNode> isOverlappingValidity(JsonNode editableVersion) {
-
         String validFrom = editableVersion.get(Field.VALID_FROM).asText();
         String validUntil = editableVersion.has(Field.VALID_UNTIL) ? editableVersion.get(Field.VALID_UNTIL).asText() : null;
 
         ArrayNode subsetVersionsArray = getVersions(editableVersion.get(Field.SERIES_ID).asText(), true, false).getBody().deepCopy();
         if (!subsetVersionsArray.isEmpty()){
-            JsonNode firstPublishedVersion = null;
-            JsonNode lastPublishedVersion = null;
             String firstValidFrom = null;
             String lastValidFrom = null;
             for (JsonNode versionJsonNode : subsetVersionsArray) {
