@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.UnsupportedEncodingException;
@@ -28,6 +29,7 @@ public class Utils {
     public static final String VERSION_STRING_REGEX = "(\\d(\\.\\d)?(\\.\\d)?)";
     public static final String URN_FORMAT = "urn:ssb:klass-api:classifications:%s:code:%s";
     public static final String URN_FORMAT_ENCODED_NAME = "urn:ssb:klass-api:classifications:%s:code:%s:encodedName:%s";
+    public static final String URN_FORMAT_VALID_FROM_ENCODED_NAME = "urn:ssb:klass-api:classifications:%s:code:%s:validFrom:%s:name:%s";
 
     public static boolean isYearMonthDay(String date){
         return date.matches(YEAR_MONTH_DAY_REGEX);
@@ -151,6 +153,49 @@ public class Utils {
             e.printStackTrace();
         }
         return String.format(URN_FORMAT_ENCODED_NAME, classification, code, encodedName);
+    }
+
+    public static String generateURN(String classification, String code, String name, String validFrom) {
+        String encodedName = null;
+        try {
+            encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString());
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        return String.format(URN_FORMAT_VALID_FROM_ENCODED_NAME, classification, code, validFrom, encodedName);
+    }
+
+    public static String generateURN(JsonNode code, String versionValidFrom){
+        String name = code.get(Field.NAME).asText();
+        String classification = code.get(Field.CLASSIFICATION_ID).asText();
+        String encodedName = null;
+        try {
+            encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString());
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        return String.format(URN_FORMAT_VALID_FROM_ENCODED_NAME, classification, code, versionValidFrom, encodedName);
+    }
+
+    public static JsonNode addCodeVersion(JsonNode code) throws Exception {
+        String validFromInRequestedRange = code.get("validFromInRequestedRange").asText();
+        String classificationID = code.get(Field.CLASSIFICATION_ID).asText();
+        ResponseEntity<JsonNode> classificationJsonNodeRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSClassificationURL(classificationID));
+        if (!classificationJsonNodeRE.getStatusCode().is2xxSuccessful())
+            throw new HttpClientErrorException(classificationJsonNodeRE.getStatusCode(), "Did not successfully retrieve classification "+classificationID+" from klass api");
+        ArrayNode klassClassificationVersions = (ArrayNode)classificationJsonNodeRE.getBody().get(Field.VERSIONS);
+        for (JsonNode classificationVersion : klassClassificationVersions) {
+            String classificationVersionValidFrom = classificationVersion.get(Field.VALID_FROM).asText();
+            if (classificationVersionValidFrom.compareTo(validFromInRequestedRange) < 0){
+                if (!classificationVersion.has(Field.VALID_UNTIL) || classificationVersion.get(Field.VALID_UNTIL).asText().compareTo(validFromInRequestedRange) >= 0) {
+                    String codeVersionURL = classificationVersion.get(Field._LINKS).get(Field.SELF).get("href").asText();
+                    ObjectNode editableCode = code.deepCopy();
+                    editableCode.put(Field.VERSION, codeVersionURL);
+                    return editableCode;
+                }
+            }
+        }
+        throw new Exception("Could not find a version of the classification "+classificationID+" that encompassed the validFromInRequestedRange "+validFromInRequestedRange);
     }
 
     public static String getNowDate() {
