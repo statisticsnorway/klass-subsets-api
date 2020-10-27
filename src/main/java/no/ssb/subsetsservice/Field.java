@@ -31,4 +31,6 @@ public class Field {
     public static final String SUBSET_ID = "subsetId";
     public static final String LAST_MODIFIED_BY = "lastModifiedBy";
     public static final String SERIES_ID = "seriesId";
+    public static final String VALID_FROM_IN_REQUESTED_RANGE = "validFromInRequestedRange";
+    public static final String VALID_UNTIL_IN_REQUESTED_RANGE = "validUntilInRequestedRange";
 }

@@ -137,9 +137,9 @@ public class LDSFacade implements LDSInterface {
         Logger logger = LoggerFactory.getLogger(LDSFacade.class);
         String versionUID = seriesID+"_"+versionNr;
         logger.debug("Attempting to POST version with UID "+versionUID+" to LDS");
-        ResponseEntity<JsonNode> putVersionRE = new LDSConsumer(API_LDS).postTo(VERSIONS_API+"/"+versionUID, versionJsonNode);
-        if (!putVersionRE.getStatusCode().equals(HttpStatus.CREATED)) {
-            return ErrorHandler.newHttpError("Trying to PUT a subset version to LDS failed with status code "+putVersionRE.getStatusCode(), putVersionRE.getStatusCode(), logger);
+        ResponseEntity<JsonNode> postVersionRE = new LDSConsumer(API_LDS).postTo(VERSIONS_API+"/"+versionUID, versionJsonNode);
+        if (!postVersionRE.getStatusCode().equals(HttpStatus.CREATED)) {
+            return postVersionRE;
         }
         logger.debug("Attempting to PUT link from series with seriesID "+seriesID+" to version with UID "+versionUID+" to LDS");
         ResponseEntity<JsonNode> putLinkRE = new LDSConsumer(API_LDS).putTo(SERIES_API+"/"+seriesID+"/versions/ClassificationSubsetVersion/"+versionUID, new ObjectMapper().createObjectNode());
