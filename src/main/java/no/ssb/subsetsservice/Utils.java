@@ -6,11 +6,18 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.OK;
 
 public class Utils {
 
@@ -20,6 +27,7 @@ public class Utils {
     public static final String YEAR_MONTH_DAY_REGEX = "([12]\\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01]))";
     public static final String VERSION_STRING_REGEX = "(\\d(\\.\\d)?(\\.\\d)?)";
     public static final String URN_FORMAT = "urn:ssb:klass-api:classifications:%s:code:%s";
+    public static final String URN_FORMAT_ENCODED_NAME = "urn:ssb:klass-api:classifications:%s:code:%s:encodedName:%s";
 
     public static boolean isYearMonthDay(String date){
         return date.matches(YEAR_MONTH_DAY_REGEX);
@@ -135,10 +143,45 @@ public class Utils {
         return String.format(URN_FORMAT, classification, code);
     }
 
+    public static String generateURN(String classification, String code, String name) {
+        String encodedName = null;
+        try {
+            encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString());
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        return String.format(URN_FORMAT_ENCODED_NAME, classification, code, encodedName);
+    }
+
     public static String getNowDate() {
         TimeZone tz = TimeZone.getTimeZone("UTC");
         DateFormat df = new SimpleDateFormat(ISO_DATE_PATTERN);
         df.setTimeZone(tz);
         return df.format(new Date());
+    }
+
+    public static ResponseEntity<JsonNode> checkAgainstSchema(JsonNode definition, JsonNode instance, Logger LOG){
+        JsonNode properties = definition.get("properties");
+        Iterator<String> submittedFieldNamesIterator = instance.fieldNames();
+        while (submittedFieldNamesIterator.hasNext()){
+            String field = submittedFieldNamesIterator.next();
+            if (!properties.has(field)){
+                return ErrorHandler.newHttpError(
+                        "Submitted field "+field+" is not legal in ClassificationSubsetVersion",
+                        BAD_REQUEST,
+                        LOG);
+            }
+        }
+
+        ArrayNode required = (ArrayNode) definition.get("required");
+        for (JsonNode jsonNode : required) {
+            String requiredField = jsonNode.asText();
+            if (!instance.has(requiredField)){
+                return ErrorHandler.newHttpError("Submitted version did not contain required field "+requiredField,
+                        BAD_REQUEST,
+                        LOG);
+            }
+        }
+        return new ResponseEntity<>(OK);
     }
 }
