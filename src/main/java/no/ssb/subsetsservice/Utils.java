@@ -177,7 +177,7 @@ public class Utils {
         return String.format(URN_FORMAT_VALID_FROM_ENCODED_NAME, classification, code, versionValidFrom, encodedName);
     }
 
-    public static JsonNode addCodeVersion(JsonNode code) throws Exception {
+    public static JsonNode addCodeVersionAndValidFrom(JsonNode code) throws Exception {
         String validFromInRequestedRange = code.get("validFromInRequestedRange").asText();
         String classificationID = code.get(Field.CLASSIFICATION_ID).asText();
         ResponseEntity<JsonNode> classificationJsonNodeRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSClassificationURL(classificationID));
@@ -191,6 +191,7 @@ public class Utils {
                     String codeVersionURL = classificationVersion.get(Field._LINKS).get(Field.SELF).get("href").asText();
                     ObjectNode editableCode = code.deepCopy();
                     editableCode.put(Field.VERSION, codeVersionURL);
+                    editableCode.put(Field.VALID_FROM, classificationVersionValidFrom);
                     return editableCode;
                 }
             }
