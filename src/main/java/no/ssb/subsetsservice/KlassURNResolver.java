@@ -41,7 +41,13 @@ public class KlassURNResolver {
         LOG.info("Resolving all code URNs in a subset");
 
         ArrayNode codes = (ArrayNode)subset.get(Field.CODES);
-        String from = subset.get(Field.VERSION_VALID_FROM).asText();
+        String from = null;
+        if (subset.has(Field.VALID_FROM))
+            from = subset.get(Field.VALID_FROM).asText();
+        else if (subset.has(Field.VERSION_VALID_FROM))
+            from = subset.get(Field.VERSION_VALID_FROM).asText();
+        else
+            throw new IllegalArgumentException("subset did not contain validFrom or versionValidFrom");
         String fromDate = from.split("T")[0];
         String toDate = to.split("T")[0];
 
