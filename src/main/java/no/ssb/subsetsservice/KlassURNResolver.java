@@ -12,7 +12,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -114,8 +113,7 @@ public class KlassURNResolver {
         return String.format("%s%s/%s.json", KLASS_BASE_URL, CLASSIFICATIONS_API, classificationID);
     }
 
-    static ResponseEntity<JsonNode> getFrom(String url)
-    {
+    static ResponseEntity<JsonNode> getFrom(String url){
         LOG.info("Attempting to GET "+url);
         try {
             return new RestTemplate().getForEntity(url, JsonNode.class);

@@ -750,7 +750,7 @@ public class SubsetsControllerV2 {
             String versionPath = version.asText(); // should be "/ClassificationSubsetVersion/{version_id}", since this is how LDS links a resource of a different type
             String[] splitBySlash = versionPath.split("/");
             assert splitBySlash[0].isBlank() : "Index 0 in the array that splits the versionPath by '/' is not blank";
-            assert splitBySlash[1].equals("ClassificationSubsetVersion") : "Index 1 in the array that splits the versionPath by '/' is not 'ClassificationSubsetVersion'"; //TODO: these checks should be removed later when i know it works
+            assert splitBySlash[1].equals("ClassificationSubsetVersion") : "Index 1 in the array that splits the versionPath by '/' is not 'ClassificationSubsetVersion'"; //TODO: these checks could be removed later when i know it works
             String versionUID = splitBySlash[2];
             newVersions.add(Utils.getVersionLink(seriesUID, versionUID));
         }
