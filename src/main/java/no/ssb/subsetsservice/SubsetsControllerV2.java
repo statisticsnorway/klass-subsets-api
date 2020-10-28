@@ -52,7 +52,7 @@ public class SubsetsControllerV2 {
         ArrayNode subsetSeriesArray = subsetSeriesRE.getBody().deepCopy();
         String nowDate = Utils.getNowDate();
         for (int i = 0; i < subsetSeriesArray.size(); i++) {
-            subsetSeriesArray.set(i, addLinks(subsetSeriesArray.get(i))); //FIXME: performance wise it would be best not to do this
+            subsetSeriesArray.set(i, addLinksToSeries(subsetSeriesArray.get(i))); //FIXME: performance wise it would be best not to do this
         }
         if (!includeDrafts || !includeFuture || !includeExpired){
             for (int i = subsetSeriesArray.size() - 1; i >= 0; i--) {
@@ -135,7 +135,7 @@ public class SubsetsControllerV2 {
         ResponseEntity<JsonNode> subsetSeriesByIDRE = new LDSFacade().getSubsetSeries(id);
         HttpStatus status = subsetSeriesByIDRE.getStatusCode();
         if (status.equals(OK)) {
-            JsonNode series = addLinks(subsetSeriesByIDRE.getBody());
+            JsonNode series = addLinksToSeries(subsetSeriesByIDRE.getBody());
             return new ResponseEntity<>(series, OK);
         } else
             return resolveNonOKLDSResponse("GET subsetSeries w id '"+id+"'", subsetSeriesByIDRE);
@@ -394,7 +394,6 @@ public class SubsetsControllerV2 {
         editableVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
         editableVersion.put(Field.CREATED_DATE, Utils.getNowDate());
         editableVersion = Utils.addCodeVersionAndValidFromToAllCodesInVersion(editableVersion, LOG);
-        editableVersion.set(Field._LINKS, Utils.getSubsetVersionSelfLinkObject(editableVersion));
 
         boolean isStatusOpen = editableVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
 
@@ -455,6 +454,7 @@ public class SubsetsControllerV2 {
             String versionUID = splitVersionString[splitVersionString.length-1]; // should be "version_id"
             ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionUID);
             JsonNode versionBody = versionRE.getBody();
+            versionBody = Utils.addLinksToSubsetVersion(versionBody);
             versions.set(i, versionBody);
         }
 
@@ -500,10 +500,11 @@ public class SubsetsControllerV2 {
         }
         ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionID);
         HttpStatus status = versionRE.getStatusCode();
-        if (status.equals(OK) || status.equals(NOT_FOUND))
-            return versionRE;
-        else
+        if (!status.is2xxSuccessful())
             return resolveNonOKLDSResponse("GET version by id '"+versionID+"' ", versionRE);
+        JsonNode versionJsonNode = versionRE.getBody();
+        versionJsonNode = Utils.addLinksToSubsetVersion(versionJsonNode);
+        return new ResponseEntity<>(versionJsonNode, OK);
     }
 
     /**
@@ -739,7 +740,7 @@ public class SubsetsControllerV2 {
         return new ResponseEntity<>(OK);
     }
 
-    private static JsonNode addLinks(JsonNode subsetSeries){
+    private static JsonNode addLinksToSeries(JsonNode subsetSeries){
         // Replace "/ClassificationSubsetVersion/id" with "subsets/id/versions/nr"
         ObjectNode editableSeries = subsetSeries.deepCopy();
         ArrayNode versions = editableSeries.get(Field.VERSIONS).deepCopy();

@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -45,17 +44,23 @@ public class Utils {
         return str.matches(CLEAN_ID_REGEX);
     }
 
-    public static JsonNode getSubsetVersionSelfLinkObject(JsonNode subset){
-        String resourceUrn = getVersionLink(subset.get(Field.SERIES_ID).asText(), subset.get(Field.VERSION).asText());
-        return getLinkSelfObject(resourceUrn);
+    public static JsonNode getSubsetVersionLinkNode(JsonNode subset){
+        String selfURN = getVersionLink(subset.get(Field.SERIES_ID).asText(), subset.get(Field.VERSION).asText());
+        String seriesUrn = getSeriesLink(subset.get(Field.SERIES_ID).asText());
+        ObjectNode linksObject = getLinkSelfObject(selfURN);
+        linksObject.set("series", getHrefNode(seriesUrn));
+        return linksObject;
     }
 
-    public static JsonNode getLinkSelfObject(String resourceUrn){
-        ObjectMapper mapper = new ObjectMapper();
-        ObjectNode selfNode = mapper.createObjectNode();
-        selfNode.put("href", resourceUrn);
-        ObjectNode linksNode = mapper.createObjectNode();
-        linksNode.set("self", selfNode);
+    public static ObjectNode getHrefNode(String urn){
+        ObjectNode seriesNode = new ObjectMapper().createObjectNode();
+        seriesNode.put("href", urn);
+        return seriesNode;
+    }
+
+    public static ObjectNode getLinkSelfObject(String resourceUrn){
+        ObjectNode linksNode = new ObjectMapper().createObjectNode();
+        linksNode.set("self", getHrefNode(resourceUrn));
         return linksNode;
     }
 
@@ -262,5 +267,11 @@ public class Utils {
             }
         }
         return new ResponseEntity<>(OK);
+    }
+
+    public static ObjectNode addLinksToSubsetVersion(JsonNode versionJsonNode) {
+        ObjectNode editableVersion = versionJsonNode.deepCopy();
+        editableVersion.set(Field._LINKS, Utils.getSubsetVersionLinkNode(editableVersion));
+        return editableVersion;
     }
 }
