@@ -87,7 +87,10 @@ public class KlassURNResolver {
             String classification = classificationCodesEntry.getKey();
             String codesString = classificationCodesEntry.getValue();
             String getKlassCodesURL = makeKLASSCodesFromToURL(classification, fromDate, toDate, codesString);
-            ArrayNode codesFromClassification = (ArrayNode)(getFrom(getKlassCodesURL).getBody().get(Field.CODES));
+            JsonNode body = getFrom(getKlassCodesURL).getBody();
+            assert body != null : "Get codes Response Entity from KLASS did not return a body";
+            assert body.isArray() : "Get codes Response Entity from KLASS did not return an ArrayNode body";
+            ArrayNode codesFromClassification = body.get(Field.CODES).deepCopy();
             for (int i = 0; i < codesFromClassification.size(); i++) {
                 JsonNode codeNode = codesFromClassification.get(i);
                 String URN = Utils.generateURN(classification, codeNode.get(Field.CODE).asText());
@@ -114,11 +117,21 @@ public class KlassURNResolver {
     }
 
     static ResponseEntity<JsonNode> getFrom(String url){
-        LOG.info("Attempting to GET "+url);
+        LOG.info("KLASS Attempting to GET JsonNode from "+url);
         try {
-            return new RestTemplate().getForEntity(url, JsonNode.class);
+            ResponseEntity<JsonNode> re = new RestTemplate().getForEntity(url, JsonNode.class);
+            LOG.debug("KLASS returned a response entity.");
+            if (!re.getStatusCode().is2xxSuccessful())
+                LOG.debug("GET call to "+url+" did NOT return 2xx successful");
+            else
+                LOG.debug("GET to "+url+" was 2xx successful. Returning . . .");
+            return re;
         } catch (HttpClientErrorException | HttpServerErrorException e){
+            LOG.debug("KLASS Get threw a client or server error exception. Message: "+e.getMessage());
             return ErrorHandler.newHttpError("could not retrieve "+url+".", e.getStatusCode(), LOG);
+        } catch (Exception | Error e){
+            LOG.debug("KLASS Get threw an unexpected exception/error. Message: "+e.getMessage());
+            return ErrorHandler.newHttpError("Unexpected error GETing against KLASS", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
         }
     }
 

@@ -16,8 +16,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.HttpStatus.*;
 
 public class Utils {
 
@@ -198,9 +197,11 @@ public class Utils {
 
     public static ObjectNode addCodeVersionAndValidFromToAllCodesInVersion(JsonNode subsetVersion, Logger LOG){
         ObjectNode editableVersion = subsetVersion.deepCopy();
+        LOG.debug("Finding out what classification versions the codes in the subsetVersion are used in");
         if (editableVersion.has(Field.CODES)){
             ArrayNode codesArrayNode = (ArrayNode)editableVersion.get(Field.CODES);
             for (int i = 0; i < codesArrayNode.size(); i++) {
+                LOG.debug("Resolving code "+i+"/"+codesArrayNode.size());
                 JsonNode code = null;
                 code = Utils.addCodeVersionAndValidFrom(codesArrayNode.get(i));
                 codesArrayNode.set(i, code);
@@ -211,30 +212,28 @@ public class Utils {
     }
 
     public static JsonNode addCodeVersionAndValidFrom(JsonNode code) throws HttpClientErrorException {
-        String validFromInRequestedRange = code.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
-        String classificationID = code.get(Field.CLASSIFICATION_ID).asText();
+        ObjectNode editableCode = code.deepCopy();
+        code = null;
+        String validFromInRequestedRange = editableCode.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
+        String validUntilInRequestedRange = editableCode.has(Field.VALID_UNTIL_IN_REQUESTED_RANGE) ? editableCode.get(Field.VALID_UNTIL_IN_REQUESTED_RANGE).asText() : null;
+        String classificationID = editableCode.get(Field.CLASSIFICATION_ID).asText();
         ResponseEntity<JsonNode> classificationJsonNodeRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSClassificationURL(classificationID));
         if (!classificationJsonNodeRE.getStatusCode().is2xxSuccessful())
             throw new HttpClientErrorException(classificationJsonNodeRE.getStatusCode(), "Did not successfully retrieve classification "+classificationID+" from klass api");
         ArrayNode klassClassificationVersions = (ArrayNode)classificationJsonNodeRE.getBody().get(Field.VERSIONS);
+        ArrayNode classificationVersionLinksArrayNode = new ObjectMapper().createArrayNode();
         for (JsonNode classificationVersion : klassClassificationVersions) {
             String classificationVersionValidFrom = classificationVersion.get(Field.VALID_FROM).asText();
-            if (classificationVersionValidFrom.compareTo(validFromInRequestedRange) < 0){
-                if (!classificationVersion.has(Field.VALID_UNTIL) || classificationVersion.get(Field.VALID_UNTIL).asText().compareTo(validFromInRequestedRange) >= 0) {
+            if (classificationVersionValidFrom.compareTo(validFromInRequestedRange) >= 0){
+                if (validUntilInRequestedRange == null || classificationVersionValidFrom.compareTo(validUntilInRequestedRange) <= 0) {
                     String codeVersionURL = classificationVersion.get(Field._LINKS).get(Field.SELF).get("href").asText();
-                    ObjectNode editableCode = code.deepCopy();
-                    editableCode.put(Field.VERSION, codeVersionURL);
-                    editableCode.put(Field.VALID_FROM, classificationVersionValidFrom);
-                    if (classificationVersion.has(Field.VALID_UNTIL) && !classificationVersion.get(Field.VALID_UNTIL).isEmpty())
-                        editableCode.set(Field.VALID_UNTIL, classificationVersion.get(Field.VALID_UNTIL));
-                    editableCode.remove(Field.VALID_FROM_IN_REQUESTED_RANGE);
-                    if (editableCode.has(Field.VALID_UNTIL_IN_REQUESTED_RANGE))
-                        editableCode.remove(Field.VALID_UNTIL_IN_REQUESTED_RANGE);
-                    return editableCode;
+                    classificationVersionLinksArrayNode.add(codeVersionURL);
                 }
             }
         }
-        throw new HttpClientErrorException(BAD_REQUEST, "Could not find a version of the classification "+classificationID+" that encompassed the validFromInRequestedRange "+validFromInRequestedRange);
+        editableCode.set(Field.VERSIONS, classificationVersionLinksArrayNode);
+        return editableCode;
+        //throw new HttpClientErrorException(BAD_REQUEST, "Could not find a version of the classification "+classificationID+" that encompassed the validFromInRequestedRange "+validFromInRequestedRange);
     }
 
     public static String getNowDate() {
