@@ -47,13 +47,160 @@ This version of the API treats the information relation to the Classification Su
 - `GET /v1/subsets/{seriesID}/versions/{version}` to retrieve the version with the UID `version`, or the UID `seriesID_version` if it exists
 - Where it makes sense there are optional `includeDraft` and `includeFuture` boolean parameters. `includeDraft` includes versions of subsets that are not currently published. `includeFuture` includes versions of subsets that will only be valid from a future date.
 
-The schema for the Series: https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubsetSeries
-The schema fro the Versions: https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubsetVersion
+This is an example of the contents of a valid POST to `v2/subsets`:
+```
+{
+	"id":"UID_for_dette_uttrekket_1",
+	"description": [
+        {"languageCode":"nb", "languageText":"tekst på norsk bokmål"}, 
+        {"languageCode":"en", "languageText":"text in english"}
+    ],
+	"name": [
+        {"languageCode":"nb", "languageText":"fullt navn på norsk bokmål"}, 
+        {"languageCode":"en", "languageText":"full name in english"}
+    ],
+	"administrativeDetails": [
+        {"administrativeDetailType":"DEFAULTLANGUAGE", "values":["nb"]}
+    ],
+	"owningSection":"700 it"
+}
+```
 
+The field `id` needs to contain a unique identifier for the series. Legal characters are a-z, A-Z, 0-9, `_` and `-`.
+At least one description and one name must be given, in the default language.
 
+Once a subset series has been successfully created, you can add versions to it. This is an example of a valid POST to `v2/subsets/UID_for_dette_uttrekket_1/versions` *after* the POST request of the series above has been made:
 
-### Misc
-In addition, we support getting the subset schema at "/v1/subsets?schema"
+```
+{
+	"validFrom":"2020-10-19",
+	"validUntil":"2021-10-19",
+	"administrativeStatus":"DRAFT",
+	"codes":[
+		{
+	      "classificationId": "131",
+	      "code": "1144",
+	      "rank": "1",
+          "level": "1",
+          "name": "Kvitsøy",
+	      "validFromInRequestedRange": "2020-10-19",
+	      "validUntilInRequestedRange": "2021-10-19"
+	    }
+	],
+	"versionRationale": [
+        {"languageCode":"nb", "languageText":"versjon rasjonale på norsk bokmål"}, 
+        {"languageCode":"en", "languageText":"version rationale in english"}
+    ]
+}
+
+```
+When the administrative status is `DRAFT`, anything in the version is subject to change, and it is possible to have an empty `codes` array. If the status is `OPEN` on the other hand, the only change possible is this: If `validUntil` is not set to anyting, you are allowed to set it.
+
+The `validFromInRequestedRange` of a code indicates the earliest point in the subset version's validity period (starting at `validFrom`) where this code with this name and level is also valid. If the code with this name and level is valid from some point before the subset version's `validFrom` date, then the `validFromInRequestedRange` of the code will be equal to the `validFrom` of the subset version.
+
+The `validUntilInRequestedRange` of a code indicates the latest point in the subset version's validity period (ending with `validUntil`) where this code with this name and level is also valid. If the code with this name and level is valid from some point after the subset version's `validUntil` date, then the `validUntilInRequestedRange` of the code will be equal to the `validUntil` of the subset version.
+
+If we GET `v2/subsets/UID_for_dette_uttrekket_1` the response will look like this:
+```
+{
+    "classificationType": "Subset",
+    "createdDate": "2020-11-03",
+    "id": "UID_for_dette_uttrekket_1",
+    "lastModified": "2020-11-03T12:56:49Z",
+    "owningSection": "700 it",
+    "versions": [
+        "/v2/subsets/UID_for_dette_uttrekket_1/versions/UID_for_dette_uttrekket_1_1"
+    ],
+    "administrativeDetails": [
+        {
+            "administrativeDetailType": "DEFAULTLANGUAGE",
+            "values": [
+                "nb"
+            ]
+        }
+    ],
+    "description": [
+        {
+            "languageCode": "nb",
+            "languageText": "tekst p� norsk bokm�l"
+        },
+        {
+            "languageCode": "en",
+            "languageText": "text in english"
+        }
+    ],
+    "name": [
+        {
+            "languageCode": "nb",
+            "languageText": "fullt navn p� norsk bokm�l"
+        },
+        {
+            "languageCode": "en",
+            "languageText": "full name in english"
+        }
+    ],
+    "_links": {
+        "self": {
+            "href": "/v2/subsets/UID_for_dette_uttrekket_1"
+        }
+    }
+}
+```
+
+`versions` will be an array of links to subset versions that are members of this series. Date of creation and last time of modification have been automatically stamped by the server.
+
+If we GET the subset version that we just created (`/v2/subsets/UID_for_dette_uttrekket_1/versions/UID_for_dette_uttrekket_1_1` or `/v2/subsets/UID_for_dette_uttrekket_1/versions/1`) the response will look like this:
+
+```
+{
+        "administrativeStatus": "DRAFT",
+        "createdDate": "2020-11-03",
+        "lastModified": "2020-11-03T12:59:57Z",
+        "seriesId": "UID_for_dette_uttrekket_1",
+        "validFrom": "2020-10-19",
+        "validUntil": "2021-10-19",
+        "version": "1",
+        "codes": [
+            {
+                "classificationId": "131",
+                "code": "1144",
+                "level": "1",
+                "name": "Kvitsøy",
+                "rank": "1",
+                "validFromInRequestedRange": "2020-01-01",
+	            "validUntilInRequestedRange": "2021-10-19",
+                "versions": [
+                    "https://data.ssb.no/api/klass/v1/versions/1160"
+                ]
+            }
+        ],
+        "versionRationale": [
+            {
+                "languageCode": "nb",
+                "languageText": "versjon rasjonale på norsk bokmål"
+            },
+            {
+                "languageCode": "en",
+                "languageText": "version rationale in english"
+            }
+        ],
+        "_links": {
+            "self": {
+                "href": "/v2/subsets/UID_for_dette_uttrekket_1/versions/1"
+            },
+            "series": {
+                "href": "/v2/subsets/UID_for_dette_uttrekket_1"
+            }
+        }
+    }
+```
+
+The version has gotten an automatically generated version number, stored in the field `version`. Combining the `seriesId` and the `version` number will give us a version UID. If we want to GET the version entity, we can use the version number (GET `/v2/subsets/UID_for_dette_uttrekket_1/versions/1`) or the version UID (GET (`/v2/subsets/UID_for_dette_uttrekket_1/versions/UID_for_dette_uttrekket_1_1`).
+
+Observe that at this point the single code included in our version has a new field called `versions`. This field was generated when the version was POSTed. The `versions` array in each code contains a link to each classification version that was valid and had this exact name and level in the subset version's validity period at the time of creation. When a subset version has a validity period extending into the future, it might be that a new version of a classification comes out that also contains that code, or does not contain that code, or that makes edits to that code. Storing an array of versions that existed and contained the code in the validity period at the time of creation ensures our ability to detect and resolve possible conflicts and changes to the code, and to avoid including unintended versions of a code.
+
+The schema for the Series as stored in LDS: https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubsetSeries
+The schema for the Versions as stored in LDS: https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubsetVersion
 
 # Connecting to LDS and KLASS
 This service needs to be able to connect to the LDS instance's API, and the KLASS Classifications API.
