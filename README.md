@@ -12,7 +12,9 @@ This service replaced a Node.js prototype, which can be found at: https://github
 This API mimics the [KLASS Classifications API](https://data.ssb.no/api/klass/v1/api-guide.html) as closely as is reasonable.
 
 ## V1 API
-This version of the api uses one data structure for all information for a subset. This is about to be deprecated. See V2 API documentation further down.
+***This is about to be deprecated. See V2 API documentation further down.***
+
+This version of the api uses one data structure for all information for a subset. 
 
 ### Core functionality
 - GET and POST `/v1/subsets`. (GET gets all subsets, POST posts a single subset. The ID of the subset is found inside the JSON)
