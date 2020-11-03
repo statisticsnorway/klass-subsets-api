@@ -12,7 +12,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,7 +40,13 @@ public class KlassURNResolver {
         LOG.info("Resolving all code URNs in a subset");
 
         ArrayNode codes = (ArrayNode)subset.get(Field.CODES);
-        String from = subset.get(Field.VERSION_VALID_FROM).asText();
+        String from = null;
+        if (subset.has(Field.VALID_FROM))
+            from = subset.get(Field.VALID_FROM).asText();
+        else if (subset.has(Field.VERSION_VALID_FROM))
+            from = subset.get(Field.VERSION_VALID_FROM).asText();
+        else
+            throw new IllegalArgumentException("subset did not contain validFrom or versionValidFrom");
         String fromDate = from.split("T")[0];
         String toDate = to.split("T")[0];
 
@@ -53,25 +58,25 @@ public class KlassURNResolver {
             String URN = code.get(Field.URN).asText();
             String[] urnSplitColon = URN.split(":");
             String classificationID = "";
-            String codeString = "";
+            String codeID = "";
             for (int i1 = 0; i1 < urnSplitColon.length; i1++) {
                 String value = urnSplitColon[i1];
                 if (value.equals("code")){
                     if (urnSplitColon.length > i1+1)
-                        codeString = urnSplitColon[i1+1];
+                        codeID = urnSplitColon[i1+1];
                 } else if (value.equals("classifications")){
                     if (urnSplitColon.length > i1+1)
                         classificationID = urnSplitColon[i1+1];
                 }
             }
             code.put(Field.CLASSIFICATION_ID, classificationID);
-            code.put(Field.CODE, codeString);
-            String selfURL = makeURL(classificationID, fromDate, toDate, codeString);
+            code.put(Field.CODE, codeID);
+            String selfURL = makeKLASSCodesFromToURL(classificationID, fromDate, toDate, codeID);
             ObjectMapper om = new ObjectMapper();
             ObjectNode self = om.createObjectNode().put("href", selfURL);
             ObjectNode links = om.createObjectNode().set(Field.SELF, self);
             code.set(Field._LINKS, links);
-            classificationCodesMap.merge(classificationID, codeString, (c1, c2)-> c1+","+c2);
+            classificationCodesMap.merge(classificationID, codeID, (c1, c2)-> c1+","+c2);
             urnCodeMap.put(URN, code);
         }
 
@@ -81,8 +86,11 @@ public class KlassURNResolver {
         for (Map.Entry<String, String> classificationCodesEntry : classificationCodesMap.entrySet()) {
             String classification = classificationCodesEntry.getKey();
             String codesString = classificationCodesEntry.getValue();
-            String URL = makeURL(classification, fromDate, toDate, codesString);
-            ArrayNode codesFromClassification = (ArrayNode)(getFrom(URL).getBody().get(Field.CODES));
+            String getKlassCodesURL = makeKLASSCodesFromToURL(classification, fromDate, toDate, codesString);
+            JsonNode body = getFrom(getKlassCodesURL).getBody();
+            assert body != null : "Get codes Response Entity from KLASS did not return a body";
+            assert body.isArray() : "Get codes Response Entity from KLASS did not return an ArrayNode body";
+            ArrayNode codesFromClassification = body.get(Field.CODES).deepCopy();
             for (int i = 0; i < codesFromClassification.size(); i++) {
                 JsonNode codeNode = codesFromClassification.get(i);
                 String URN = Utils.generateURN(classification, codeNode.get(Field.CODE).asText());
@@ -98,18 +106,32 @@ public class KlassURNResolver {
         return allCodesArrayNode;
     }
 
-    private String makeURL(String classificationID, String from, String to, String codes){
+    private String makeKLASSCodesFromToURL(String classificationID, String from, String to, String codes){
         KLASS_BASE_URL = getURL();
         return String.format("%s%s/%s/codes.json?from=%s&to=%s&selectCodes=%s", KLASS_BASE_URL, CLASSIFICATIONS_API, classificationID, from, to, codes);
     }
 
-    private ResponseEntity<JsonNode> getFrom(String url)
-    {
-        LOG.info("Attempting to GET "+url);
+    static String makeKLASSClassificationURL(String classificationID){
+        KLASS_BASE_URL = getURL();
+        return String.format("%s%s/%s.json", KLASS_BASE_URL, CLASSIFICATIONS_API, classificationID);
+    }
+
+    static ResponseEntity<JsonNode> getFrom(String url){
+        LOG.info("KLASS Attempting to GET JsonNode from "+url);
         try {
-            return new RestTemplate().getForEntity(url, JsonNode.class);
+            ResponseEntity<JsonNode> re = new RestTemplate().getForEntity(url, JsonNode.class);
+            LOG.debug("KLASS returned a response entity.");
+            if (!re.getStatusCode().is2xxSuccessful())
+                LOG.debug("GET call to "+url+" did NOT return 2xx successful");
+            else
+                LOG.debug("GET to "+url+" was 2xx successful. Returning . . .");
+            return re;
         } catch (HttpClientErrorException | HttpServerErrorException e){
+            LOG.debug("KLASS Get threw a client or server error exception. Message: "+e.getMessage());
             return ErrorHandler.newHttpError("could not retrieve "+url+".", e.getStatusCode(), LOG);
+        } catch (Exception | Error e){
+            LOG.debug("KLASS Get threw an unexpected exception/error. Message: "+e.getMessage());
+            return ErrorHandler.newHttpError("Unexpected error GETing against KLASS", HttpStatus.INTERNAL_SERVER_ERROR, LOG);
         }
     }
 

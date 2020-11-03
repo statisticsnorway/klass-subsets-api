@@ -137,9 +137,9 @@ public class LDSFacade implements LDSInterface {
         Logger logger = LoggerFactory.getLogger(LDSFacade.class);
         String versionUID = seriesID+"_"+versionNr;
         logger.debug("Attempting to POST version with UID "+versionUID+" to LDS");
-        ResponseEntity<JsonNode> putVersionRE = new LDSConsumer(API_LDS).postTo(VERSIONS_API+"/"+versionUID, versionJsonNode);
-        if (!putVersionRE.getStatusCode().equals(HttpStatus.CREATED)) {
-            return ErrorHandler.newHttpError("Trying to PUT a subset version to LDS failed with status code "+putVersionRE.getStatusCode(), putVersionRE.getStatusCode(), logger);
+        ResponseEntity<JsonNode> postVersionRE = new LDSConsumer(API_LDS).postTo(VERSIONS_API+"/"+versionUID, versionJsonNode);
+        if (!postVersionRE.getStatusCode().equals(HttpStatus.CREATED)) {
+            return postVersionRE;
         }
         logger.debug("Attempting to PUT link from series with seriesID "+seriesID+" to version with UID "+versionUID+" to LDS");
         ResponseEntity<JsonNode> putLinkRE = new LDSConsumer(API_LDS).putTo(SERIES_API+"/"+seriesID+"/versions/ClassificationSubsetVersion/"+versionUID, new ObjectMapper().createObjectNode());
@@ -167,8 +167,28 @@ public class LDSFacade implements LDSInterface {
     }
 
     @Override
+    public ResponseEntity<JsonNode> getSubsetSeriesDefinition() {
+        ResponseEntity<JsonNode> versionSchemaRE = new LDSConsumer(API_LDS).getFrom(SERIES_API+"/?schema");
+        if (!versionSchemaRE.getStatusCode().is2xxSuccessful()){
+            return versionSchemaRE;
+        }
+        JsonNode definition = versionSchemaRE.getBody().get("definitions").get("ClassificationSubsetSeries");
+        return new ResponseEntity<>(definition, HttpStatus.OK);
+    }
+
+    @Override
     public ResponseEntity<JsonNode> getSubsetSeriesSchema() {
         return new LDSConsumer(API_LDS).getFrom(SERIES_API+"/?schema");
+    }
+
+    @Override
+    public ResponseEntity<JsonNode> getSubsetVersionsDefinition() {
+        ResponseEntity<JsonNode> versionSchemaRE = new LDSConsumer(API_LDS).getFrom(VERSIONS_API+"/?schema");
+        if (!versionSchemaRE.getStatusCode().is2xxSuccessful()){
+            return versionSchemaRE;
+        }
+        JsonNode definition = versionSchemaRE.getBody().get("definitions").get("ClassificationSubsetVersion");
+        return new ResponseEntity<>(definition, HttpStatus.OK);
     }
 
     @Override

@@ -6,11 +6,17 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+
+import static org.springframework.http.HttpStatus.*;
 
 public class Utils {
 
@@ -20,6 +26,10 @@ public class Utils {
     public static final String YEAR_MONTH_DAY_REGEX = "([12]\\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01]))";
     public static final String VERSION_STRING_REGEX = "(\\d(\\.\\d)?(\\.\\d)?)";
     public static final String URN_FORMAT = "urn:ssb:klass-api:classifications:%s:code:%s";
+    public static final String URN_FORMAT_ENCODED_NAME = "urn:ssb:klass-api:classifications:%s:code:%s:encodedName:%s";
+    public static final String URN_FORMAT_VALID_FROM_ENCODED_NAME = "urn:ssb:klass-api:classifications:%s:code:%s:validFrom:%s:name:%s";
+    public static final String SERIES_LINK_FORMAT = "/v2/subsets/%s";
+    public static final String VERSION_LINK_FORMAT = SERIES_LINK_FORMAT+"/versions/%s";
 
     public static boolean isYearMonthDay(String date){
         return date.matches(YEAR_MONTH_DAY_REGEX);
@@ -33,14 +43,32 @@ public class Utils {
         return str.matches(CLEAN_ID_REGEX);
     }
 
-    public static JsonNode getSelfLinkObject(ObjectMapper mapper, ServletUriComponentsBuilder servletUriComponentsBuilder, JsonNode subset){
-        ObjectNode hrefNode = mapper.createObjectNode();
-        String urlBase = servletUriComponentsBuilder.toUriString().split("subsets")[0];
-        String resourceUrn = urlBase+"subsets/"+subset.get("id")+"/versions/"+subset.get(Field.VERSION);
-        hrefNode.put("href", resourceUrn);
-        ObjectNode self = mapper.createObjectNode();
-        self.set("self", hrefNode);
-        return self;
+    public static JsonNode getSubsetVersionLinkNode(JsonNode subset){
+        String selfURN = getVersionLink(subset.get(Field.SERIES_ID).asText(), subset.get(Field.VERSION).asText());
+        String seriesUrn = getSeriesLink(subset.get(Field.SERIES_ID).asText());
+        ObjectNode linksObject = getLinkSelfObject(selfURN);
+        linksObject.set("series", getHrefNode(seriesUrn));
+        return linksObject;
+    }
+
+    public static ObjectNode getHrefNode(String urn){
+        ObjectNode seriesNode = new ObjectMapper().createObjectNode();
+        seriesNode.put("href", urn);
+        return seriesNode;
+    }
+
+    public static ObjectNode getLinkSelfObject(String resourceUrn){
+        ObjectNode linksNode = new ObjectMapper().createObjectNode();
+        linksNode.set("self", getHrefNode(resourceUrn));
+        return linksNode;
+    }
+
+    public static String getVersionLink(String seriesUID, String versionID){
+        return String.format(VERSION_LINK_FORMAT, seriesUID, versionID);
+    }
+
+    public static String getSeriesLink(String seriesUID){
+        return String.format(SERIES_LINK_FORMAT, seriesUID);
     }
 
     public static String getNowISO(){
@@ -135,10 +163,114 @@ public class Utils {
         return String.format(URN_FORMAT, classification, code);
     }
 
+    public static String generateURN(String classification, String code, String name) {
+        String encodedName = null;
+        try {
+            encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString());
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        return String.format(URN_FORMAT_ENCODED_NAME, classification, code, encodedName);
+    }
+
+    public static String generateURN(String classification, String code, String name, String validFrom) {
+        String encodedName = null;
+        try {
+            encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString());
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        return String.format(URN_FORMAT_VALID_FROM_ENCODED_NAME, classification, code, validFrom, encodedName);
+    }
+
+    public static String generateURN(JsonNode code, String versionValidFrom){
+        String name = code.get(Field.NAME).asText();
+        String classification = code.get(Field.CLASSIFICATION_ID).asText();
+        String encodedName = null;
+        try {
+            encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString());
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        return String.format(URN_FORMAT_VALID_FROM_ENCODED_NAME, classification, code, versionValidFrom, encodedName);
+    }
+
+    public static ObjectNode addCodeVersionAndValidFromToAllCodesInVersion(JsonNode subsetVersion, Logger LOG){
+        ObjectNode editableVersion = subsetVersion.deepCopy();
+        LOG.debug("Finding out what classification versions the codes in the subsetVersion are used in");
+        if (editableVersion.has(Field.CODES)){
+            ArrayNode codesArrayNode = (ArrayNode)editableVersion.get(Field.CODES);
+            for (int i = 0; i < codesArrayNode.size(); i++) {
+                LOG.debug("Resolving code "+i+"/"+codesArrayNode.size());
+                JsonNode code = null;
+                code = Utils.addCodeVersionAndValidFrom(codesArrayNode.get(i));
+                codesArrayNode.set(i, code);
+            }
+            editableVersion.set(Field.CODES, codesArrayNode);
+        }
+        return editableVersion;
+    }
+
+    public static JsonNode addCodeVersionAndValidFrom(JsonNode code) throws HttpClientErrorException {
+        ObjectNode editableCode = code.deepCopy();
+        code = null;
+        String validFromInRequestedRange = editableCode.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
+        String validUntilInRequestedRange = editableCode.has(Field.VALID_UNTIL_IN_REQUESTED_RANGE) ? editableCode.get(Field.VALID_UNTIL_IN_REQUESTED_RANGE).asText() : null;
+        String classificationID = editableCode.get(Field.CLASSIFICATION_ID).asText();
+        ResponseEntity<JsonNode> classificationJsonNodeRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSClassificationURL(classificationID));
+        if (!classificationJsonNodeRE.getStatusCode().is2xxSuccessful())
+            throw new HttpClientErrorException(classificationJsonNodeRE.getStatusCode(), "Did not successfully retrieve classification "+classificationID+" from klass api");
+        ArrayNode klassClassificationVersions = (ArrayNode)classificationJsonNodeRE.getBody().get(Field.VERSIONS);
+        ArrayNode classificationVersionLinksArrayNode = new ObjectMapper().createArrayNode();
+        for (JsonNode classificationVersion : klassClassificationVersions) {
+            String classificationVersionValidFrom = classificationVersion.get(Field.VALID_FROM).asText();
+            if (classificationVersionValidFrom.compareTo(validFromInRequestedRange) >= 0){
+                if (validUntilInRequestedRange == null || classificationVersionValidFrom.compareTo(validUntilInRequestedRange) <= 0) {
+                    String codeVersionURL = classificationVersion.get(Field._LINKS).get(Field.SELF).get("href").asText();
+                    classificationVersionLinksArrayNode.add(codeVersionURL);
+                }
+            }
+        }
+        editableCode.set(Field.VERSIONS, classificationVersionLinksArrayNode);
+        return editableCode;
+        //throw new HttpClientErrorException(BAD_REQUEST, "Could not find a version of the classification "+classificationID+" that encompassed the validFromInRequestedRange "+validFromInRequestedRange);
+    }
+
     public static String getNowDate() {
         TimeZone tz = TimeZone.getTimeZone("UTC");
         DateFormat df = new SimpleDateFormat(ISO_DATE_PATTERN);
         df.setTimeZone(tz);
         return df.format(new Date());
+    }
+
+    public static ResponseEntity<JsonNode> checkAgainstSchema(JsonNode definition, JsonNode instance, Logger LOG){
+        JsonNode properties = definition.get("properties");
+        Iterator<String> submittedFieldNamesIterator = instance.fieldNames();
+        while (submittedFieldNamesIterator.hasNext()){
+            String field = submittedFieldNamesIterator.next();
+            if (!properties.has(field)){
+                return ErrorHandler.newHttpError(
+                        "Submitted field "+field+" is not legal in ClassificationSubsetVersion",
+                        BAD_REQUEST,
+                        LOG);
+            }
+        }
+
+        ArrayNode required = (ArrayNode) definition.get("required");
+        for (JsonNode jsonNode : required) {
+            String requiredField = jsonNode.asText();
+            if (!instance.has(requiredField)){
+                return ErrorHandler.newHttpError("Submitted version did not contain required field "+requiredField,
+                        BAD_REQUEST,
+                        LOG);
+            }
+        }
+        return new ResponseEntity<>(OK);
+    }
+
+    public static ObjectNode addLinksToSubsetVersion(JsonNode versionJsonNode) {
+        ObjectNode editableVersion = versionJsonNode.deepCopy();
+        editableVersion.set(Field._LINKS, Utils.getSubsetVersionLinkNode(editableVersion));
+        return editableVersion;
     }
 }
