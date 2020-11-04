@@ -94,7 +94,7 @@ public class LDSConsumer {
             try {
                 response1 = httpclient.execute(httpGet);
             } catch (ConnectException e){
-                return ErrorHandler.newHttpError("Could not retrieve "+LDS_URL+additional+" because of an exception: "+e.toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+                return ErrorHandler.newHttpError("Could not retrieve "+LDS_URL+additional+" because of a ConnectException: "+e.toString(), HttpStatus.FAILED_DEPENDENCY, LOG);
             }
             System.out.println(response1.getStatusLine());
             System.out.println(response1.toString());

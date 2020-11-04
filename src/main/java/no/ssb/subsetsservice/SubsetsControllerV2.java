@@ -134,13 +134,12 @@ public class SubsetsControllerV2 {
 
         ResponseEntity<JsonNode> subsetSeriesByIDRE = new LDSFacade().getSubsetSeries(id);
         HttpStatus status = subsetSeriesByIDRE.getStatusCode();
+        LOG.debug("Call to LDSFacade to get a subset series with id "+id+" returned "+status.toString());
         if (status.equals(OK)) {
             JsonNode series = addLinksToSeries(subsetSeriesByIDRE.getBody());
             return new ResponseEntity<>(series, OK);
-        } else if (status.equals(NOT_FOUND)){
-            return ErrorHandler.newHttpError("Subset series with id "+id+" was not found", NOT_FOUND, LOG);
-        }
-        return resolveNonOKLDSResponse("GET subsetSeries w id '"+id+"'", subsetSeriesByIDRE);
+        } else
+            return subsetSeriesByIDRE;
     }
 
     /**
