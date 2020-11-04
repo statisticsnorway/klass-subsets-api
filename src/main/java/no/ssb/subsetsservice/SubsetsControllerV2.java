@@ -333,11 +333,13 @@ public class SubsetsControllerV2 {
                 return ErrorHandler.newHttpError("Published subset version must have a non-empty code list", BAD_REQUEST, LOG);
 
         if (versionsSize == 0) {
-            LOG.debug("Since there are no versions from before, we post new version to LDS without checking validity overlap");
+            LOG.debug("Since there are no versions from before, we post the new version to LDS without checking validity overlap");
+            LOG.debug("Attempting to POST version nr "+versionNr+" of subset series "+seriesId+" to LDS");
             ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionNr, editableVersion);
             if (!ldsPostRE.getStatusCode().is2xxSuccessful())
                 return ldsPostRE;
-            return ldsPostRE;
+            LOG.debug("Successfully POSTed version nr "+versionNr+" of subset series "+seriesId+" to LDS");
+            return new ResponseEntity<>(editableVersion, CREATED);
         }
 
         ResponseEntity<JsonNode> isOverlappingValidityRE = isOverlappingValidity(editableVersion);
