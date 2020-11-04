@@ -149,11 +149,11 @@ public class SubsetsControllerV2 {
      * To add a new version to the versions array you must instead use POST /v2/subsets/{id}/versions
      * To edit an existing version you must use PUT /v2/subsets/{id}/versions/{version_id}
      * @param seriesId
-     * @param newVersionOfSeries
+     * @param newEditionOfSeries
      * @return
      */
     @PutMapping(value = "/v2/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> putSubsetSeries(@PathVariable("id") String seriesId, @RequestBody JsonNode newVersionOfSeries) {
+    public ResponseEntity<JsonNode> putSubsetSeries(@PathVariable("id") String seriesId, @RequestBody JsonNode newEditionOfSeries) {
         metricsService.incrementPUTCounter();
         LOG.info("PUT subset series with id "+seriesId);
 
@@ -169,28 +169,28 @@ public class SubsetsControllerV2 {
                     LOG);
 
         if (!getSeriesRE.getStatusCode().equals(OK)) {
-            return resolveNonOKLDSResponse("GET subsetSeries w id '"+seriesId+"'", getSeriesRE);
+            return resolveNonOKLDSResponse("GET from LDS subsetSeries w id '"+seriesId+"'", getSeriesRE);
         }
 
         ObjectNode currentLatestEditionOfSeries = getSeriesRE.getBody().deepCopy();
         currentLatestEditionOfSeries.remove(Field._LINKS);
-        ObjectNode editableNewVersionOfSeries = newVersionOfSeries.deepCopy();
-        newVersionOfSeries = null;
-        editableNewVersionOfSeries.remove(Field._LINKS);
+        ObjectNode editableNewEditionOfSeries = newEditionOfSeries.deepCopy();
+        newEditionOfSeries = null;
+        editableNewEditionOfSeries.remove(Field._LINKS);
 
         ArrayNode oldVersionsArray = currentLatestEditionOfSeries.has(Field.VERSIONS) ? currentLatestEditionOfSeries.get(Field.VERSIONS).deepCopy() : new ObjectMapper().createArrayNode();
-        editableNewVersionOfSeries.set(Field.VERSIONS, oldVersionsArray);
+        editableNewEditionOfSeries.set(Field.VERSIONS, oldVersionsArray);
 
-        assert editableNewVersionOfSeries.has(Field.ID) : "Subset series did not have the field '"+Field.ID+"'.";
+        assert editableNewEditionOfSeries.has(Field.ID) : "Subset series did not have the field '"+Field.ID+"'.";
 
-        editableNewVersionOfSeries.put(Field.LAST_MODIFIED, Utils.getNowISO());
+        editableNewEditionOfSeries.put(Field.LAST_MODIFIED, Utils.getNowISO());
 
-        ResponseEntity<JsonNode> seriesSchemaValidationRE = validateSeries(editableNewVersionOfSeries);
+        ResponseEntity<JsonNode> seriesSchemaValidationRE = validateSeries(editableNewEditionOfSeries);
         if (!seriesSchemaValidationRE.getStatusCode().is2xxSuccessful())
             return seriesSchemaValidationRE;
 
         String oldID = currentLatestEditionOfSeries.get(Field.ID).asText();
-        String newID = editableNewVersionOfSeries.get(Field.ID).asText();
+        String newID = editableNewEditionOfSeries.get(Field.ID).asText();
 
         boolean sameID = oldID.equals(newID);
         boolean sameIDAsRequest = newID.equals(seriesId);
@@ -207,83 +207,9 @@ public class SubsetsControllerV2 {
                     LOG);
         }
 
-        boolean thisSeriesIsPublished = currentLatestEditionOfSeries.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
-
-        if (thisSeriesIsPublished) {
-            Iterator<String> prevPatchFieldNames = currentLatestEditionOfSeries.fieldNames();
-            Iterator<String> newPatchFieldNames = editableNewVersionOfSeries.fieldNames();
-
-            String[] changeableFieldsInPublishedSeries = {
-                    Field.VALID_FROM,
-                    Field.VALID_UNTIL,
-                    Field.LAST_MODIFIED_BY,
-                    Field.LAST_UPDATED_DATE,
-                    Field.VERSIONS};
-            ArrayList<String> changeableFieldsList = new ArrayList<>();
-            Collections.addAll(changeableFieldsList, changeableFieldsInPublishedSeries);
-            StringBuilder fieldErrorBuilder = new StringBuilder();
-            fieldErrorBuilder.append("Changeable fields: [ ");
-            changeableFieldsList.forEach(s -> fieldErrorBuilder.append(s).append(" "));
-            fieldErrorBuilder.append("]");
-
-            boolean allSameFields = true;
-            while (allSameFields && prevPatchFieldNames.hasNext()) {
-                String field = prevPatchFieldNames.next();
-                if (!editableNewVersionOfSeries.has(field) && !changeableFieldsList.contains(field)) {
-                    fieldErrorBuilder
-                            .append("- The new patch of version (")
-                            .append(editableNewVersionOfSeries.get(Field.VERSION).asText())
-                            .append(") of the subset with ID '")
-                            .append(currentLatestEditionOfSeries.get(Field.ID).asText())
-                            .append("' does not contain the field '")
-                            .append(field)
-                            .append("' that is present in the old patch of this version (")
-                            .append(currentLatestEditionOfSeries.get(Field.ID).asText())
-                            .append("), and is a field that is not allowed to change when a version is already published. ");
-                    allSameFields = false;
-                }
-            }
-
-            while (allSameFields && newPatchFieldNames.hasNext()) {
-                String field = newPatchFieldNames.next();
-                if (!currentLatestEditionOfSeries.has(field) && !changeableFieldsList.contains(field)) {
-                    fieldErrorBuilder
-                            .append("- The previous patch of version (")
-                            .append(currentLatestEditionOfSeries.get(Field.VERSION).asText())
-                            .append(") of the subset with ID '").append(currentLatestEditionOfSeries.get(Field.ID).asText())
-                            .append("' does not contain the field '")
-                            .append(field)
-                            .append("' that is present in the new patch of this version version (")
-                            .append(editableNewVersionOfSeries.get(Field.ID).asText())
-                            .append("), and is a field that is not allowed to change when a version is already published. ");
-                    allSameFields = false;
-                }
-            }
-
-            if (!allSameFields) {
-                return ErrorHandler.newHttpError(
-                        fieldErrorBuilder.toString(),
-                        BAD_REQUEST,
-                        LOG);
-            }
-
-            newPatchFieldNames = editableNewVersionOfSeries.fieldNames();
-            while (newPatchFieldNames.hasNext()) {
-                String field = newPatchFieldNames.next();
-                if (!changeableFieldsList.contains(field)) {
-                    if (!currentLatestEditionOfSeries.get(field).asText().equals(editableNewVersionOfSeries.get(field).asText())) {
-                        return ErrorHandler.newHttpError(
-                                "The version of the subset you are trying to change is published, which means you can only change validUntil and versionRationale.",
-                                BAD_REQUEST,
-                                LOG);
-                    }
-                }
-            }
-        }
-
-        ResponseEntity<JsonNode> responseEntity = new LDSFacade().editSeries(editableNewVersionOfSeries, seriesId);
+        ResponseEntity<JsonNode> responseEntity = new LDSFacade().editSeries(editableNewEditionOfSeries, seriesId);
         if (responseEntity.getStatusCode().equals(OK)){
-            responseEntity = new ResponseEntity<>(editableNewVersionOfSeries, OK);
+            responseEntity = new ResponseEntity<>(editableNewEditionOfSeries, OK);
         }
         return responseEntity;
     }
@@ -368,8 +294,10 @@ public class SubsetsControllerV2 {
 
     @PostMapping(value = "/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> postSubsetVersion(@PathVariable("seriesId") String seriesId, @RequestBody JsonNode version) {
+        LOG.info("POST request to create a version of series "+seriesId);
         if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
+        LOG.info("series id "+seriesId+" was legal");
 
         ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(seriesId);
         if (!getSeriesByIDRE.getStatusCode().equals(OK)) {
@@ -390,7 +318,7 @@ public class SubsetsControllerV2 {
 
         JsonNode series = getSeriesByIDRE.getBody();
         int versionsSize = series.has(Field.VERSIONS) ? series.get(Field.VERSIONS).size() : 0;
-        LOG.debug("series "+seriesId+" versions size: "+versionsSize);
+        LOG.debug("Amount of versions in series "+seriesId+" before potentially adding new version: "+versionsSize);
         String versionNr = Integer.toString(versionsSize+1);
         editableVersion.put(Field.VERSION, versionNr);
         editableVersion.put(Field.SERIES_ID, seriesId);
@@ -708,6 +636,10 @@ public class SubsetsControllerV2 {
     }
 
     ResponseEntity<JsonNode> validateVersion(JsonNode version){
+        String versionNr = version.has(Field.VERSION) ? version.get(Field.VERSION).asText() : "with no version nr";
+        String seriesID = version.has(Field.SERIES_ID) ? version.get(Field.SERIES_ID).asText() : "";
+        String versionUID = seriesID+"_"+versionNr;
+        LOG.debug("validating version "+versionUID+" ");
         ResponseEntity<JsonNode> versionSchemaRE = new LDSFacade().getSubsetVersionsDefinition();
         if (!versionSchemaRE.getStatusCode().is2xxSuccessful())
             return resolveNonOKLDSResponse("Request for subset versions definition ", versionSchemaRE);
@@ -718,12 +650,15 @@ public class SubsetsControllerV2 {
         return new ResponseEntity<>(OK);
     }
 
-    ResponseEntity<JsonNode> validateSeries(JsonNode version){
-        ResponseEntity<JsonNode> seriesSchemaRE = new LDSFacade().getSubsetSeriesDefinition();
-        if (!seriesSchemaRE.getStatusCode().is2xxSuccessful())
-            return resolveNonOKLDSResponse("Request for subset series definition ", seriesSchemaRE);
-        JsonNode seriesDefinition = seriesSchemaRE.getBody();
-        ResponseEntity<JsonNode> schemaCheckRE = Utils.checkAgainstSchema(seriesDefinition, version, LOG);
+    ResponseEntity<JsonNode> validateSeries(JsonNode series){
+        String id = series.has(Field.ID) ? series.get(Field.ID).asText() : " with no field 'id'";
+        LOG.debug("Validating series "+id+" . . .");
+        ResponseEntity<JsonNode> seriesDefinitionRE = new LDSFacade().getSubsetSeriesDefinition();
+        if (!seriesDefinitionRE.getStatusCode().is2xxSuccessful())
+            return resolveNonOKLDSResponse("Request for subset series definition ", seriesDefinitionRE);
+        JsonNode seriesDefinition = seriesDefinitionRE.getBody();
+        assert seriesDefinition != null : "series definition body was null";
+        ResponseEntity<JsonNode> schemaCheckRE = Utils.checkAgainstSchema(seriesDefinition, series, LOG);
         if (!schemaCheckRE.getStatusCode().is2xxSuccessful())
             return schemaCheckRE;
         return new ResponseEntity<>(OK);
@@ -771,12 +706,12 @@ public class SubsetsControllerV2 {
      * @return
      */
     private static ResponseEntity<JsonNode> resolveNonOKLDSResponse(String description, ResponseEntity<JsonNode> ldsRE){
-        String body = "";
+        String body = "NO BODY";
         if (ldsRE.hasBody())
             body = ldsRE.getBody().asText();
         body = body.replaceAll("\n", "\\n_");
         return ErrorHandler.newHttpError(
-                description+" returned non-200 status code "+ldsRE.getStatusCode().toString()+". Body: "+body,
+                description+" returned status code "+ldsRE.getStatusCode().toString()+". Body: "+body,
                 INTERNAL_SERVER_ERROR,
                 LOG);
     }
