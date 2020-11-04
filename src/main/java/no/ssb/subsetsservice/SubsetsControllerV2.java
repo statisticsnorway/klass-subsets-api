@@ -173,9 +173,11 @@ public class SubsetsControllerV2 {
             return resolveNonOKLDSResponse("GET subsetSeries w id '"+seriesId+"'", getSeriesRE);
         }
 
-        JsonNode currentLatestEditionOfSeries = getSeriesRE.getBody();
+        ObjectNode currentLatestEditionOfSeries = getSeriesRE.getBody().deepCopy();
+        currentLatestEditionOfSeries.remove(Field._LINKS);
         ObjectNode editableNewVersionOfSeries = newVersionOfSeries.deepCopy();
         newVersionOfSeries = null;
+        editableNewVersionOfSeries.remove(Field._LINKS);
 
         ArrayNode oldVersionsArray = currentLatestEditionOfSeries.has(Field.VERSIONS) ? currentLatestEditionOfSeries.get(Field.VERSIONS).deepCopy() : new ObjectMapper().createArrayNode();
         editableNewVersionOfSeries.set(Field.VERSIONS, oldVersionsArray);
