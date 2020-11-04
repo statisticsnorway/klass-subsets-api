@@ -125,7 +125,7 @@ public class SubsetsControllerV2 {
     }
 
     @GetMapping("/v2/subsets/{id}")
-    public ResponseEntity<JsonNode> getSubsetSeriesByID(@PathVariable("id") String id) {
+    public ResponseEntity<JsonNode> getSubsetSeriesByID(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeFullVersions) {
         metricsService.incrementGETCounter();
         LOG.info("GET subset series with id "+id);
 
@@ -136,7 +136,15 @@ public class SubsetsControllerV2 {
         HttpStatus status = subsetSeriesByIDRE.getStatusCode();
         LOG.debug("Call to LDSFacade to get a subset series with id "+id+" returned "+status.toString());
         if (status.equals(OK)) {
-            JsonNode series = addLinksToSeries(subsetSeriesByIDRE.getBody());
+            ObjectNode series = addLinksToSeries(subsetSeriesByIDRE.getBody());
+            if (includeFullVersions){
+                LOG.debug("Including full versions");
+                ResponseEntity<JsonNode> versionsRE = getVersions(id, true, true);
+                if (versionsRE.getStatusCode().is2xxSuccessful())
+                    series.set(Field.VERSIONS, versionsRE.getBody());
+                else
+                    return resolveNonOKLDSResponse("GET request to LDS for all versions of subset with id "+id+" ", versionsRE);
+            }
             return new ResponseEntity<>(series, OK);
         } else
             return subsetSeriesByIDRE;
@@ -299,7 +307,7 @@ public class SubsetsControllerV2 {
             return ErrorHandler.illegalID(LOG);
         LOG.info("series id "+seriesId+" was legal");
 
-        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(seriesId);
+        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(seriesId, false);
         if (!getSeriesByIDRE.getStatusCode().equals(OK)) {
             LOG.error("Attempt to get subset series by id '"+seriesId+"' returned a non-OK status code.");
             return getSeriesByIDRE;
@@ -371,7 +379,7 @@ public class SubsetsControllerV2 {
         if (!Utils.isClean(id))
             return ErrorHandler.illegalID(LOG);
 
-        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(id);
+        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(id, false);
         if (!getSeriesByIDRE.getStatusCode().equals(OK))
             return getSeriesByIDRE;
 
@@ -691,7 +699,7 @@ public class SubsetsControllerV2 {
         return new ResponseEntity<>(OK);
     }
 
-    private static JsonNode addLinksToSeries(JsonNode subsetSeries){
+    private static ObjectNode addLinksToSeries(JsonNode subsetSeries){
         // Replace "/ClassificationSubsetVersion/id" with "subsets/id/versions/nr"
         ObjectNode editableSeries = subsetSeries.deepCopy();
         ArrayNode versions = editableSeries.get(Field.VERSIONS).deepCopy();
