@@ -695,11 +695,12 @@ public class SubsetsControllerV2 {
         return new LDSFacade().getSubsetSeriesSchema();
     }
 
+    @DeleteMapping("/v2/subsets")
     void deleteAllSeries(){
         new LDSFacade().deleteAllSubsetSeries();
     }
-
-    void deleteSeriesById(String id){
+    @DeleteMapping("/v2/subsets/{id}")
+    void deleteSeriesById(@PathVariable("id") String id){
         new LDSFacade().deleteSubsetSeries(id);
     }
 
