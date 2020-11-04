@@ -154,7 +154,7 @@ public class SubsetsControllerV2 {
      * @return
      */
     @PutMapping(value = "/v2/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> putSubset(@PathVariable("id") String seriesId, @RequestBody JsonNode newVersionOfSeries) {
+    public ResponseEntity<JsonNode> putSubsetSeries(@PathVariable("id") String seriesId, @RequestBody JsonNode newVersionOfSeries) {
         metricsService.incrementPUTCounter();
         LOG.info("PUT subset series with id "+seriesId);
 
@@ -368,7 +368,7 @@ public class SubsetsControllerV2 {
     }
 
     @PostMapping(value = "/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("seriesId") String seriesId, @RequestBody JsonNode version) {
+    public ResponseEntity<JsonNode> postSubsetVersion(@PathVariable("seriesId") String seriesId, @RequestBody JsonNode version) {
         if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
 
