@@ -637,6 +637,16 @@ public class SubsetsControllerV2 {
         new LDSFacade().deleteSubsetSeries(id);
     }
 
+    @DeleteMapping("/v2/subsets/{id}/versions/{versionId}")
+    void deleteSeriesById(@PathVariable("id") String id, @PathVariable("versionId") String versionId){
+        //Delete version from LDS
+        String[] versionIdSplitUnderscore = versionId.split("_");
+        if (versionIdSplitUnderscore.length > 1)
+            new LDSFacade().deleteSubsetVersion(id, versionId);
+        else
+            new LDSFacade().deleteSubsetVersion(id, id+"_"+versionId);
+    }
+
     ResponseEntity<JsonNode> validateVersion(JsonNode version){
         String versionNr = version.has(Field.VERSION) ? version.get(Field.VERSION).asText() : "with no version nr";
         String seriesID = version.has(Field.SERIES_ID) ? version.get(Field.SERIES_ID).asText() : "";
