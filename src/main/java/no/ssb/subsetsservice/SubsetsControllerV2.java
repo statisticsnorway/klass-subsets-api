@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -331,6 +332,58 @@ public class SubsetsControllerV2 {
         if (isStatusOpen)
             if (!editableVersion.has(Field.CODES) || editableVersion.get(Field.CODES).size() == 0)
                 return ErrorHandler.newHttpError("Published subset version must have a non-empty code list", BAD_REQUEST, LOG);
+
+        ArrayNode codes = (ArrayNode)editableVersion.get(Field.CODES);
+        Map<String, Boolean> classificationMap = new HashMap<>();
+        codes.forEach(c -> classificationMap.put(c.get(Field.CLASSIFICATION_ID).asText(), true));
+        LOG.debug("printing "+classificationMap.keySet().size()+" classifications:");
+        classificationMap.forEach((k,v)-> LOG.debug("classification "+k));
+        LOG.debug("done printing classifications");
+        AtomicReference<String> errorMessage = new AtomicReference<>("");
+        LOG.debug("Getting statistical units for each individual classification used");
+        Map<String, Boolean> statisticalUnitMap = new HashMap<>();
+        classificationMap.keySet().forEach( k -> {
+            ResponseEntity<JsonNode> getClassificationRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSClassificationURL(k));
+            if (getClassificationRE.getStatusCode().is2xxSuccessful()){
+                JsonNode classification = getClassificationRE.getBody();
+                if (!classification.has(Field.STATISTICAL_UNITS))
+                    LOG.error("Classification "+k+" did not contain a "+Field.STATISTICAL_UNITS+" field!");
+                else {
+                    ArrayNode classificationStatisticalUnits = (ArrayNode)classification.get(Field.STATISTICAL_UNITS);
+                    classificationStatisticalUnits.forEach(su -> statisticalUnitMap.put(su.asText(), true));
+                }
+            } else {
+                errorMessage.accumulateAndGet("GET Classification " + k + " did not return 2xx successful. Instead returned " + getClassificationRE.getStatusCode()+". ", (x,y)-> x+y);
+            }
+        });
+        if (!errorMessage.get().isEmpty())
+            return ErrorHandler.newHttpError(errorMessage.get(), INTERNAL_SERVER_ERROR, LOG);
+        else
+            LOG.debug("There were no errors while finding out which "+statisticalUnitMap.size()+" statistical units are used by the "+classificationMap.size()+" classifications used in the new version of series "+seriesId);
+
+        ArrayNode versionStatisticalUnitsArrayNode = new ObjectMapper().createArrayNode();
+        statisticalUnitMap.forEach((k,v) -> versionStatisticalUnitsArrayNode.add(k));
+        editableVersion.set(Field.STATISTICAL_UNITS, versionStatisticalUnitsArrayNode);
+        System.out.println("statistical units array node of the new version of subset series "+seriesId+": "+versionStatisticalUnitsArrayNode.toString());
+
+        // If status open, also edit the statisticalUnits of the series.
+        if (series.has(Field.STATISTICAL_UNITS)){
+            ArrayNode seriesStatisticalUnits = (ArrayNode) series.get(Field.STATISTICAL_UNITS);
+            seriesStatisticalUnits.forEach(su -> statisticalUnitMap.put(su.asText(), true));
+        }
+
+        ArrayNode newSeriesStatisticalUnitsArrayNode = new ObjectMapper().createArrayNode();
+        statisticalUnitMap.forEach((k,v) -> newSeriesStatisticalUnitsArrayNode.add(k));
+        System.out.println("statistical units array node of the subset series "+seriesId+" after the new version is added: "+newSeriesStatisticalUnitsArrayNode.toString());
+        ObjectNode editableSeries = series.deepCopy();
+        series = null;
+        editableSeries.set(Field.STATISTICAL_UNITS, newSeriesStatisticalUnitsArrayNode);
+        ResponseEntity<JsonNode> putSeriesRE = putSubsetSeries(seriesId, editableSeries);
+        if (!putSeriesRE.getStatusCode().is2xxSuccessful()){
+            LOG.error("PUT series "+seriesId+" to update the statistical units array did not succeed. Status code "+putSeriesRE.getStatusCode());
+        } else {
+            LOG.debug("The series "+seriesId+" was successfully updated with a new statistical units array.");
+        }
 
         if (versionsSize == 0) {
             LOG.debug("Since there are no versions from before, we post the new version to LDS without checking validity overlap");
