@@ -137,8 +137,10 @@ public class SubsetsControllerV2 {
         if (status.equals(OK)) {
             JsonNode series = addLinksToSeries(subsetSeriesByIDRE.getBody());
             return new ResponseEntity<>(series, OK);
-        } else
-            return resolveNonOKLDSResponse("GET subsetSeries w id '"+id+"'", subsetSeriesByIDRE);
+        } else if (status.equals(NOT_FOUND)){
+            return ErrorHandler.newHttpError("Subset series with id "+id+" was not found", NOT_FOUND, LOG);
+        }
+        return resolveNonOKLDSResponse("GET subsetSeries w id '"+id+"'", subsetSeriesByIDRE);
     }
 
     /**
