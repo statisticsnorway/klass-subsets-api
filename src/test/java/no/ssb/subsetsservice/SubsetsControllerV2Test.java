@@ -21,8 +21,10 @@ class SubsetsControllerV2Test {
 
     private static final Logger LOG = LoggerFactory.getLogger(SubsetsServiceApplicationTests.class);
     File series_1_0 = new File("src/test/resources/series_examples/series_1_0.json");
+    File series_1_1 = new File("src/test/resources/series_examples/series_1_1.json"); // A legal edit of series_1_0
 
     File version_1_0_1 = new File("src/test/resources/version_examples/version_1_0_1.json");
+    File version_1_0_1_1 = new File("src/test/resources/version_examples/version_1_0_1_1.json"); // A legal edit of version_1_0_1
 
     public JsonNode readJsonFile(File file){
         assert file.exists() : "File "+file.getAbsolutePath()+" did not exist";
@@ -87,7 +89,18 @@ class SubsetsControllerV2Test {
 
     @Test
     void putSubsetSeries() {
-        //TODO: Implement
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+        instance.deleteAllSeries();
+        JsonNode series = readJsonFile(series_1_0);
+        JsonNode series1_1 = readJsonFile(series_1_1);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        ResponseEntity<JsonNode> putSeriesRE = instance.putSubsetSeries(seriesId, series1_1);
+        assertEquals(HttpStatus.OK, putSeriesRE.getStatusCode());
+
+        //TODO: Make sure versions list was not overwritten, and createdDate automatically carried over.
     }
 
     @Test
@@ -123,7 +136,7 @@ class SubsetsControllerV2Test {
         ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
         try {
-            Thread.sleep(10);
+            Thread.sleep(10); //To make sure the resource is available from LDS before we GET it
         } catch (InterruptedException e) {
             fail("Sleep failed");
         }
@@ -161,16 +174,26 @@ class SubsetsControllerV2Test {
         assertEquals(HttpStatus.OK, getVersionFullUuidRE.getStatusCode());
         JsonNode body2 = getVersionFullUuidRE.getBody();
         assertNotNull(body2);
-
-
     }
-
-    /*
 
     @Test
     void putSubsetVersion() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+        instance.deleteAllSeries();
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+
+        JsonNode version1_0_1_1 = readJsonFile(version_1_0_1_1);
     }
 
+    /*
 
     @Test
     void getSubsetCodesInDateRange() {

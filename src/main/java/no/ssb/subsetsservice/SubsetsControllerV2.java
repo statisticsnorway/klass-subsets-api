@@ -217,7 +217,7 @@ public class SubsetsControllerV2 {
         }
 
         ResponseEntity<JsonNode> responseEntity = new LDSFacade().editSeries(editableNewEditionOfSeries, seriesId);
-        if (responseEntity.getStatusCode().equals(OK)){
+        if (responseEntity.getStatusCode().is2xxSuccessful()){
             responseEntity = new ResponseEntity<>(editableNewEditionOfSeries, OK);
         }
         return responseEntity;
