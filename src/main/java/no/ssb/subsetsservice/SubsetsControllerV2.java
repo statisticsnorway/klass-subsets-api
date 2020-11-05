@@ -233,6 +233,7 @@ public class SubsetsControllerV2 {
      */
     @PutMapping(value = "/v2/subsets/{seriesId}/versions/{versionUID}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("seriesId") String seriesId, @PathVariable("versionUID") String versionUID, @RequestBody JsonNode putVersion) {
+        LOG.info("PUT subset version of series "+seriesId+" with version id "+versionUID);
         if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
         if (!Utils.isClean(versionUID))
@@ -298,7 +299,7 @@ public class SubsetsControllerV2 {
             if (!compareFieldsRE.getStatusCode().is2xxSuccessful())
                 return compareFieldsRE;
         }
-        return new ResponseEntity<>(editablePutVersion, OK);
+        return new LDSFacade().editVersion(editablePutVersion);
     }
 
     @PostMapping(value = "/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)

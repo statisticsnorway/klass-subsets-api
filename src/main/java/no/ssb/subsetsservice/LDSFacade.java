@@ -209,7 +209,7 @@ public class LDSFacade implements LDSInterface {
     public ResponseEntity<JsonNode> deleteSubsetSeries(String id) {
         ResponseEntity<JsonNode> getSeriesRE = getSubsetSeries(id);
         ArrayNode versionsArrayNode = (ArrayNode)getSeriesRE.getBody().get(Field.VERSIONS);
-        for(JsonNode versionLink : versionsArrayNode){
+        for (JsonNode versionLink : versionsArrayNode){
             String[] splitSlash = versionLink.asText().split("/");
             String versionUID = splitSlash[splitSlash.length-1];
             new LDSConsumer(API_LDS).delete(VERSIONS_API+"/"+versionUID);
@@ -238,5 +238,13 @@ public class LDSFacade implements LDSInterface {
             }
         }
         new LDSConsumer(API_LDS).delete(VERSIONS_API + "/" + versionUidToDelete);
+    }
+
+    @Override
+    public ResponseEntity<JsonNode> editVersion(ObjectNode editablePutVersion) {
+        String seriesUid = editablePutVersion.get(Field.SERIES_ID).asText();
+        String versionNr = editablePutVersion.get(Field.VERSION).asText();
+        String versionUid = seriesUid+"_"+versionNr;
+        return new LDSConsumer(API_LDS).putTo(VERSIONS_API+"/" + versionUid, editablePutVersion);
     }
 }

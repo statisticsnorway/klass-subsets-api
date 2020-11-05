@@ -101,6 +101,8 @@ class SubsetsControllerV2Test {
         assertEquals(HttpStatus.OK, putSeriesRE.getStatusCode());
 
         //TODO: Make sure versions list was not overwritten, and createdDate automatically carried over.
+
+        //TODO: Check with a GET that the changes actually happened
     }
 
     @Test
@@ -191,6 +193,10 @@ class SubsetsControllerV2Test {
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
         JsonNode version1_0_1_1 = readJsonFile(version_1_0_1_1);
+        ResponseEntity<JsonNode> putVersionRE = instance.putSubsetVersion(seriesId, "1", version1_0_1_1);
+        assertEquals(HttpStatus.OK, putVersionRE.getStatusCode());
+
+        //TODO: Check with a GET that the changes actually happened
     }
 
     /*
