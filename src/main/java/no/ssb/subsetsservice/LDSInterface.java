@@ -91,4 +91,5 @@ public interface LDSInterface {
     ResponseEntity<JsonNode> deleteAllSubsetSeries();
 
     ResponseEntity<JsonNode> deleteSubsetSeries(String id);
+    void deleteSubsetVersion(String id, String versionUid);
 }

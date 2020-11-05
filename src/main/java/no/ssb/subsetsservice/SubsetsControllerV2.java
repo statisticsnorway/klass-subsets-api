@@ -126,7 +126,7 @@ public class SubsetsControllerV2 {
     }
 
     @GetMapping("/v2/subsets/{id}")
-    public ResponseEntity<JsonNode> getSubsetSeriesByID(@PathVariable("id") String id) {
+    public ResponseEntity<JsonNode> getSubsetSeriesByID(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeFullVersions) {
         metricsService.incrementGETCounter();
         LOG.info("GET subset series with id "+id);
 
@@ -137,7 +137,15 @@ public class SubsetsControllerV2 {
         HttpStatus status = subsetSeriesByIDRE.getStatusCode();
         LOG.debug("Call to LDSFacade to get a subset series with id "+id+" returned "+status.toString());
         if (status.equals(OK)) {
-            JsonNode series = addLinksToSeries(subsetSeriesByIDRE.getBody());
+            ObjectNode series = addLinksToSeries(subsetSeriesByIDRE.getBody());
+            if (includeFullVersions){
+                LOG.debug("Including full versions");
+                ResponseEntity<JsonNode> versionsRE = getVersions(id, true, true);
+                if (versionsRE.getStatusCode().is2xxSuccessful())
+                    series.set(Field.VERSIONS, versionsRE.getBody());
+                else
+                    return resolveNonOKLDSResponse("GET request to LDS for all versions of subset with id "+id+" ", versionsRE);
+            }
             return new ResponseEntity<>(series, OK);
         } else
             return subsetSeriesByIDRE;
@@ -300,7 +308,7 @@ public class SubsetsControllerV2 {
             return ErrorHandler.illegalID(LOG);
         LOG.info("series id "+seriesId+" was legal");
 
-        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(seriesId);
+        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(seriesId, false);
         if (!getSeriesByIDRE.getStatusCode().equals(OK)) {
             LOG.error("Attempt to get subset series by id '"+seriesId+"' returned a non-OK status code.");
             return getSeriesByIDRE;
@@ -421,11 +429,10 @@ public class SubsetsControllerV2 {
         metricsService.incrementGETCounter();
         LOG.info("GET all versions of subset with id: "+id+" includeFuture: "+includeFuture+" includeDrafts: "+includeDrafts);
 
-        if (!Utils.isClean(id)){
+        if (!Utils.isClean(id))
             return ErrorHandler.illegalID(LOG);
-        }
 
-        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(id);
+        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(id, false);
         if (!getSeriesByIDRE.getStatusCode().equals(OK))
             return getSeriesByIDRE;
 
@@ -486,8 +493,10 @@ public class SubsetsControllerV2 {
         }
         ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionID);
         HttpStatus status = versionRE.getStatusCode();
+        if (status.equals(NOT_FOUND))
+            return versionRE;
         if (!status.is2xxSuccessful())
-            return resolveNonOKLDSResponse("GET version by id '"+versionID+"' ", versionRE);
+            return resolveNonOKLDSResponse("GET version of series '"+seriesID+"' from LDS by versionId '"+versionID+"' ", versionRE);
         JsonNode versionJsonNode = versionRE.getBody();
         versionJsonNode = Utils.addLinksToSubsetVersion(versionJsonNode);
         return new ResponseEntity<>(versionJsonNode, OK);
@@ -533,16 +542,13 @@ public class SubsetsControllerV2 {
         LOG.info("GET codes of subset with id "+id);
         metricsService.incrementGETCounter();
 
-        if (!Utils.isClean(id)) {
+        if (!Utils.isClean(id))
             return ErrorHandler.illegalID(LOG);
-        }
 
-        boolean isFromDate = from != null;
         boolean isToDate = to != null;
-
-        if ((isFromDate && ! Utils.isYearMonthDay(from)) || (isToDate && ! Utils.isYearMonthDay(to))){
-            return ErrorHandler.newHttpError("'from' and 'to' need to be dates on the form 'yyyy-MM-dd'", BAD_REQUEST, LOG);
-        }
+        boolean isFromDate = from != null;
+        if ((isFromDate && !Utils.isYearMonthDay(from)) || (isToDate && !Utils.isYearMonthDay(to)))
+            return ErrorHandler.newHttpError("'from' and 'to' must be on format 'YYYY-MM-DD'", BAD_REQUEST, LOG);
 
         if (!isFromDate && !isToDate) {
             LOG.debug("getting all codes of the latest/current version of subset "+id);
@@ -550,15 +556,17 @@ public class SubsetsControllerV2 {
             JsonNode responseBodyJSON = versionsByIDRE.getBody();
             if (!versionsByIDRE.getStatusCode().equals(OK))
                 return resolveNonOKLDSResponse("get versions of series with id "+id+" ", versionsByIDRE);
-            else if (responseBodyJSON != null){
+            else {
+                if (responseBodyJSON == null) {
+                    return ErrorHandler.newHttpError("response body of getSubset with id " + id + " was null, so could not get codes.", INTERNAL_SERVER_ERROR, LOG);
+                }
                 String date = Utils.getNowDate();
                 ResponseEntity<JsonNode> codesAtRE = getSubsetCodesAt(id, date, includeFuture, includeDrafts);
                 if (!codesAtRE.getStatusCode().equals(OK))
-                    return resolveNonOKLDSResponse("get codesAt "+date+" in series with id "+id+" ", codesAtRE);
+                    return resolveNonOKLDSResponse("GET codesAt "+date+" in series with id "+id+" ", codesAtRE);
                 ArrayNode codes = (ArrayNode) codesAtRE.getBody();
                 return new ResponseEntity<>(codes, OK);
             }
-            return ErrorHandler.newHttpError("response body of getSubset with id "+id+" was null, so could not get codes.", INTERNAL_SERVER_ERROR, LOG);
         }
 
         // If a date interval is specified using 'from' and 'to' query parameters
@@ -569,56 +577,55 @@ public class SubsetsControllerV2 {
         LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
         ObjectMapper mapper = new ObjectMapper();
         Map<String, Integer> codeMap = new HashMap<>();
-        int nrOfVersions;
-        if (versionsResponseBodyJson == null) {
+
+        if (versionsResponseBodyJson == null)
             return ErrorHandler.newHttpError("Response body was null", INTERNAL_SERVER_ERROR, LOG);
+        if (!versionsResponseBodyJson.isArray())
+            return ErrorHandler.newHttpError("Response body was null", INTERNAL_SERVER_ERROR, LOG);
+
+        ArrayNode versionsValidInDateRange = (ArrayNode) versionsResponseBodyJson;
+        int nrOfVersions = versionsValidInDateRange.size();
+        LOG.debug("Nr of versions: " + nrOfVersions);
+
+        for (int i = versionsValidInDateRange.size() - 1; i >= 0; i--) {
+            JsonNode version = versionsValidInDateRange.get(i);
+            if (!includeDrafts && !version.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)) {
+                versionsValidInDateRange.remove(i);
+            }
+            if (isToDate && version.get(Field.VALID_FROM).asText().compareTo(to) > 0) {
+                versionsValidInDateRange.remove(i);
+            }
+            if (isFromDate && version.has(Field.VALID_UNTIL) && version.get(Field.VALID_UNTIL).asText().compareTo(from) < 0) {
+                versionsValidInDateRange.remove(i);
+            }
         }
-        if (versionsResponseBodyJson.isArray()) {
-            ArrayNode versionsValidInDateRange = (ArrayNode) versionsResponseBodyJson;
-            nrOfVersions = versionsValidInDateRange.size();
-            LOG.debug("Nr of versions: " + nrOfVersions);
 
-            for (int i = versionsValidInDateRange.size() - 1; i >= 0; i--) {
-                JsonNode version = versionsValidInDateRange.get(i);
-                if (!includeDrafts && !version.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)) {
-                    versionsValidInDateRange.remove(i);
-                }
-                if (isToDate && version.get(Field.VALID_FROM).asText().compareTo(to) > 0) {
-                    versionsValidInDateRange.remove(i);
-                }
-                if (isFromDate && version.has(Field.VALID_UNTIL) && version.get(Field.VALID_UNTIL).asText().compareTo(from) < 0) {
-                    versionsValidInDateRange.remove(i);
-                }
+        // Check if first version includes fromDate, and last version includes toDate. If not, then return an empty list.
+
+        for (JsonNode subsetVersion : versionsValidInDateRange) {
+            LOG.debug("Version " + subsetVersion.get(Field.VERSION) + " is valid in the interval, so codes will be added to map");
+            // . . . using each code in this version as key, increment corresponding integer value in map
+            JsonNode codes = subsetVersion.get(Field.CODES);
+            ArrayNode codesArrayNode = (ArrayNode) codes;
+            LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
+            for (JsonNode jsonNode : codesArrayNode) {
+                String codeURN = jsonNode.get(Field.URN).asText();
+                codeMap.merge(codeURN, 1, Integer::sum);
             }
-
-            // Check if first version includes fromDate, and last version includes toDate. If not, then return an empty list.
-
-            for (JsonNode subsetVersion : versionsValidInDateRange) {
-                LOG.debug("Version " + subsetVersion.get(Field.VERSION) + " is valid in the interval, so codes will be added to map");
-                // . . . using each code in this version as key, increment corresponding integer value in map
-                JsonNode codes = subsetVersion.get(Field.CODES);
-                ArrayNode codesArrayNode = (ArrayNode) codes;
-                LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
-                for (JsonNode jsonNode : codesArrayNode) {
-                    String codeURN = jsonNode.get(Field.URN).asText();
-                    codeMap.merge(codeURN, 1, Integer::sum);
-                }
-            }
-
-            ArrayNode intersectionValidCodesInIntervalArrayNode = mapper.createArrayNode();
-
-            // Only return codes that were in every version in the interval, (=> they were always valid)
-            for (String key : codeMap.keySet()) {
-                int value = codeMap.get(key);
-                LOG.trace("key:" + key + " value:" + value);
-                if (value == nrOfVersions)
-                    intersectionValidCodesInIntervalArrayNode.add(key);
-            }
-
-            LOG.debug("nr of valid codes: " + intersectionValidCodesInIntervalArrayNode.size());
-            return new ResponseEntity<>(intersectionValidCodesInIntervalArrayNode, OK);
         }
-        return ErrorHandler.newHttpError("Response body was null", INTERNAL_SERVER_ERROR, LOG);
+
+        ArrayNode intersectionValidCodesInIntervalArrayNode = mapper.createArrayNode();
+
+        // Only return codes that were in every version in the interval, (=> they were always valid)
+        for (String key : codeMap.keySet()) {
+            int value = codeMap.get(key);
+            LOG.trace("key:" + key + " value:" + value);
+            if (value == nrOfVersions)
+                intersectionValidCodesInIntervalArrayNode.add(key);
+        }
+
+        LOG.debug("nr of valid codes: " + intersectionValidCodesInIntervalArrayNode.size());
+        return new ResponseEntity<>(intersectionValidCodesInIntervalArrayNode, OK);
     }
 
     /**
@@ -634,44 +641,45 @@ public class SubsetsControllerV2 {
                                                      @RequestParam(defaultValue = "false") boolean includeFuture,
                                                      @RequestParam(defaultValue = "false") boolean includeDrafts) {
         metricsService.incrementGETCounter();
-        LOG.info("GET codes valid at date "+date+" for subset with id "+id);
+        LOG.info("GET codesAt (valid at date) "+date+" for subset with id "+id);
 
-        if (date != null && Utils.isClean(id) && (Utils.isYearMonthDay(date))){
-            ResponseEntity<JsonNode> versionsRE = getVersions(id, includeFuture, includeDrafts);
-            if (!versionsRE.getStatusCode().equals(OK)){
-                return resolveNonOKLDSResponse("Call for versions of subset with id "+id+" ", versionsRE);
+        if (date == null || !Utils.isClean(id) || (!Utils.isYearMonthDay(date))) {
+            StringBuilder stringBuilder = new StringBuilder();
+            if (date == null) {
+                stringBuilder.append("date == null. ");
+            } else if (!Utils.isYearMonthDay(date)) {
+                stringBuilder.append("date ").append(date).append(" was wrong format");
             }
-            JsonNode versionsResponseBodyJSON = versionsRE.getBody();
-            if (versionsResponseBodyJSON != null){
-                if (versionsResponseBodyJSON.isArray()) {
-                    ArrayNode versionsArrayNode = (ArrayNode) versionsResponseBodyJSON;
-                    for (JsonNode versionJsonNode : versionsArrayNode) {
-                        String entryValidFrom = versionJsonNode.get(Field.VALID_FROM).textValue();
-                        String entryValidUntil = versionJsonNode.has(Field.VALID_UNTIL) ? versionJsonNode.get(Field.VALID_UNTIL).textValue() : null;
-                        if (entryValidFrom.compareTo(date) <= 0 && (entryValidUntil == null || entryValidUntil.compareTo(date) >= 0) ){
-                            JsonNode codes = versionJsonNode.get(Field.CODES);
-                            return new ResponseEntity<>(codes, OK);
-                        }
-                    }
-                    return new ResponseEntity<>(new ObjectMapper().createArrayNode(), OK);
-                }
-                return ErrorHandler.newHttpError("versions response body was not array", INTERNAL_SERVER_ERROR, LOG);
+            if (!Utils.isClean(id)) {
+                stringBuilder.append("id ").append(id).append(" was not clean");
             }
+            return ErrorHandler.newHttpError(
+                    stringBuilder.toString(),
+                    BAD_REQUEST,
+                    LOG);
+        }
+
+        ResponseEntity<JsonNode> versionsRE = getVersions(id, includeFuture, includeDrafts);
+        if (versionsRE.getStatusCode().equals(NOT_FOUND))
+            return versionsRE;
+        else if (!versionsRE.getStatusCode().equals(OK))
+            return resolveNonOKLDSResponse("GET versions of subset with id " + id + " ", versionsRE);
+        JsonNode versionsResponseBodyJSON = versionsRE.getBody();
+        if (versionsResponseBodyJSON == null)
             return ErrorHandler.newHttpError("versions response body was null", INTERNAL_SERVER_ERROR, LOG);
+        if (!versionsResponseBodyJSON.isArray())
+            return ErrorHandler.newHttpError("versions response body was not array", INTERNAL_SERVER_ERROR, LOG);
+
+        ArrayNode versionsArrayNode = (ArrayNode) versionsResponseBodyJSON;
+        for (JsonNode versionJsonNode : versionsArrayNode) {
+            String entryValidFrom = versionJsonNode.get(Field.VALID_FROM).textValue();
+            String entryValidUntil = versionJsonNode.has(Field.VALID_UNTIL) ? versionJsonNode.get(Field.VALID_UNTIL).textValue() : null;
+            if (entryValidFrom.compareTo(date) <= 0 && (entryValidUntil == null || entryValidUntil.compareTo(date) >= 0)) {
+                JsonNode codes = versionJsonNode.get(Field.CODES);
+                return new ResponseEntity<>(codes, OK);
+            }
         }
-        StringBuilder stringBuilder = new StringBuilder();
-        if (date == null){
-            stringBuilder.append("date == null. ");
-        } else if (!Utils.isYearMonthDay(date)){
-            stringBuilder.append("date ").append(date).append(" was wrong format");
-        }
-        if (!Utils.isClean(id)){
-            stringBuilder.append("id ").append(id).append(" was not clean");
-        }
-        return ErrorHandler.newHttpError(
-                stringBuilder.toString(),
-                BAD_REQUEST,
-                LOG);
+        return new ResponseEntity<>(new ObjectMapper().createArrayNode(), OK);
     }
 
     @GetMapping("/v2/subsets/schema")
@@ -688,6 +696,16 @@ public class SubsetsControllerV2 {
     @DeleteMapping("/v2/subsets/{id}")
     void deleteSeriesById(@PathVariable("id") String id){
         new LDSFacade().deleteSubsetSeries(id);
+    }
+
+    @DeleteMapping("/v2/subsets/{id}/versions/{versionId}")
+    void deleteSeriesById(@PathVariable("id") String id, @PathVariable("versionId") String versionId){
+        //Delete version from LDS
+        String[] versionIdSplitUnderscore = versionId.split("_");
+        if (versionIdSplitUnderscore.length > 1)
+            new LDSFacade().deleteSubsetVersion(id, versionId);
+        else
+            new LDSFacade().deleteSubsetVersion(id, id+"_"+versionId);
     }
 
     ResponseEntity<JsonNode> validateVersion(JsonNode version){
@@ -734,7 +752,7 @@ public class SubsetsControllerV2 {
         return new ResponseEntity<>(OK);
     }
 
-    private static JsonNode addLinksToSeries(JsonNode subsetSeries){
+    private static ObjectNode addLinksToSeries(JsonNode subsetSeries){
         // Replace "/ClassificationSubsetVersion/id" with "subsets/id/versions/nr"
         ObjectNode editableSeries = subsetSeries.deepCopy();
         ArrayNode versions = editableSeries.get(Field.VERSIONS).deepCopy();

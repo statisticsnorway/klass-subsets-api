@@ -3,6 +3,7 @@ package no.ssb.subsetsservice;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -216,5 +217,26 @@ public class LDSFacade implements LDSInterface {
         String url = SERIES_API+"/"+id;
         new LDSConsumer(API_LDS).delete(url);
         return new ResponseEntity<>(OK);
+    }
+
+    @Override
+    public void deleteSubsetVersion(String id, String versionUidToDelete) {
+        ResponseEntity<JsonNode> getSeriesRE = getSubsetSeries(id);
+        if (getSeriesRE.getStatusCode().is2xxSuccessful()) {
+            ObjectNode series = getSeriesRE.getBody().deepCopy();
+            ArrayNode versions = series.get(Field.VERSIONS).deepCopy();
+            for (int i = 0; i < versions.size(); i++) {
+                String versionLink = versions.get(i).asText();
+                String[] versionLinkSplitSlash = versionLink.split("/");
+                String versionUID = versionLinkSplitSlash[versionLinkSplitSlash.length-1];
+                if (versionUID.equals(versionUidToDelete)) {
+                    versions.remove(i);
+                    series.set(Field.VERSIONS, versions);
+                    new LDSFacade().editSeries(series, id);
+                    break;
+                }
+            }
+        }
+        new LDSConsumer(API_LDS).delete(VERSIONS_API + "/" + versionUidToDelete);
     }
 }
