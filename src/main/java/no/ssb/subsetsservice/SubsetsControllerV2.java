@@ -77,7 +77,7 @@ public class SubsetsControllerV2 {
      * @return
      */
     @PostMapping("/v2/subsets")
-    public ResponseEntity<JsonNode> postSubset(@RequestBody JsonNode subsetSeriesJson) {
+    public ResponseEntity<JsonNode> postSubsetSeries(@RequestBody JsonNode subsetSeriesJson) {
         metricsService.incrementPOSTCounter();
         LOG.info("POST subset series received. Checking body . . .");
 
@@ -188,6 +188,7 @@ public class SubsetsControllerV2 {
 
         ArrayNode oldVersionsArray = currentLatestEditionOfSeries.has(Field.VERSIONS) ? currentLatestEditionOfSeries.get(Field.VERSIONS).deepCopy() : new ObjectMapper().createArrayNode();
         editableNewEditionOfSeries.set(Field.VERSIONS, oldVersionsArray);
+        editableNewEditionOfSeries.set(Field.CREATED_DATE, currentLatestEditionOfSeries.get(Field.CREATED_DATE));
 
         assert editableNewEditionOfSeries.has(Field.ID) : "Subset series did not have the field '"+Field.ID+"'.";
 
@@ -646,7 +647,7 @@ public class SubsetsControllerV2 {
     }
 
     @DeleteMapping("/v2/subsets/{id}/versions/{versionId}")
-    void deleteSeriesById(@PathVariable("id") String id, @PathVariable("versionId") String versionId){
+    void deleteVersionById(@PathVariable("id") String id, @PathVariable("versionId") String versionId){
         //Delete version from LDS
         String[] versionIdSplitUnderscore = versionId.split("_");
         if (versionIdSplitUnderscore.length > 1)

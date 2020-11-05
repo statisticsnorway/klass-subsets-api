@@ -1,0 +1,16 @@
+{
+  "id":"UID_for_dette_uttrekket_1",
+  "description": [
+    {"languageCode":"nb", "languageText":"v1.1 tekst på norsk bokmål"},
+    {"languageCode":"en", "languageText":"v1.1 text in english"}
+  ],
+  "name": [
+    {"languageCode":"nb", "languageText":"v1.1 fullt navn på norsk bokmål"},
+    {"languageCode":"en", "languageText":"v1.1 full name in english"}
+  ],
+  "administrativeDetails": [
+    {"administrativeDetailType":"DEFAULTLANGUAGE", "values":["en"]}
+  ],
+  "owningSection":"724 dapla",
+  "classificationFamily":"Some New Family"
+}
