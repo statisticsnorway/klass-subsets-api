@@ -335,6 +335,36 @@ class SubsetsControllerV2Test {
         assertEquals(HttpStatus.NOT_FOUND, getVersionByIdShouldNotExistRE.getStatusCode());
     }
 
+
+    @Test
+    void postDeletePostGetVersionsCheckLength(){
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+        instance.deleteAllSeries();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+
+        instance.deleteVersionById(seriesId, "1");
+
+        JsonNode version2 = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersion2RE = instance.postSubsetVersion(seriesId, version2);
+        assertTrue(postVersion2RE.getStatusCode().is2xxSuccessful());
+        assertEquals(HttpStatus.CREATED, postVersion2RE.getStatusCode());
+
+        ResponseEntity<JsonNode> getVersionByIdShouldNotExistRE = instance.getVersion(seriesId, "1");
+        assertEquals(HttpStatus.NOT_FOUND, getVersionByIdShouldNotExistRE.getStatusCode());
+
+        ResponseEntity<JsonNode> getVersion2ByIdShouldExistRE = instance.getVersion(seriesId, "2");
+        assertEquals(HttpStatus.OK, getVersion2ByIdShouldExistRE.getStatusCode());
+    }
+
     /*
     @Test
     void getSubsetCodesInDateRange() {
@@ -370,22 +400,6 @@ class SubsetsControllerV2Test {
     void postDraftNoCodes(){
     }
 
-    @Test
-    void postDeletePostGetVersionsCheckLength(){
-        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
-        instance.deleteAllSeries();
-
-        JsonNode subsetJsonNode = getSubset(fCS1);
-        ResponseEntity<JsonNode> postRE = instance.postSubsetSeries(subsetJsonNode);
-        assertEquals(HttpStatus.CREATED, postRE.getStatusCode());
-        ResponseEntity<JsonNode> getVersionsRE = instance.getVersions(
-                subsetJsonNode.get(Field.ID).asText(),
-                true,
-                true,
-                true);
-        ArrayNode versionsBody = (ArrayNode)getVersionsRE.getBody();
-        assertEquals( 1, versionsBody.size());
-    }
 
     @Test
     void postSubsetAndCheckIDOfResponse(){
