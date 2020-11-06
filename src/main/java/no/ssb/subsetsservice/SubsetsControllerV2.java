@@ -40,7 +40,7 @@ public class SubsetsControllerV2 {
     }
 
     @GetMapping("/v2/subsets")
-    public ResponseEntity<JsonNode> getSubsets(
+    public ResponseEntity<JsonNode> getSubsetSeries(
             @RequestParam(defaultValue = "true") boolean includeDrafts,
             @RequestParam(defaultValue = "true") boolean includeFuture,
             @RequestParam(defaultValue = "true") boolean includeExpired) {

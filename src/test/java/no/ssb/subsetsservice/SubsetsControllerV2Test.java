@@ -24,6 +24,8 @@ class SubsetsControllerV2Test {
     File series_1_1 = new File("src/test/resources/series_examples/series_1_1.json"); // A legal edit of series_1_0
 
     File version_1_0_1 = new File("src/test/resources/version_examples/version_1_0_1.json");
+    File version_1_0_1_nocodes_draft = new File("src/test/resources/version_examples/version_1_0_1_nocodes_draft.json");
+    File version_1_0_1_nocodes_open = new File("src/test/resources/version_examples/version_1_0_1_nocodes_open.json");
     File version_1_0_1_1 = new File("src/test/resources/version_examples/version_1_0_1_1.json"); // A legal edit of version_1_0_1
 
     public JsonNode readJsonFile(File file){
@@ -61,7 +63,7 @@ class SubsetsControllerV2Test {
         ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
-        ResponseEntity<JsonNode> getSeriesRE = instance.getSubsets( true, true, true);
+        ResponseEntity<JsonNode> getSeriesRE = instance.getSubsetSeries( true, true, true);
         assertEquals(HttpStatus.OK, getSeriesRE.getStatusCode());
         JsonNode body = getSeriesRE.getBody();
         assertNotNull(body);
@@ -193,7 +195,6 @@ class SubsetsControllerV2Test {
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
         JsonNode version1_0_1_1 = readJsonFile(version_1_0_1_1);
-        String versionUID = seriesId+"_1";
         ResponseEntity<JsonNode> putVersionRE = instance.putSubsetVersion(seriesId, "1", version1_0_1_1);
         assertEquals(HttpStatus.OK, putVersionRE.getStatusCode());
 
@@ -206,12 +207,140 @@ class SubsetsControllerV2Test {
         assertEquals(2, codesArray.size());
     }
 
+    @Test
+    void postDraftNoCodesThenPutOpenNoCodes() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+        instance.deleteAllSeries();
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode versionNoCodesDraft = readJsonFile(version_1_0_1_nocodes_draft);
+        ResponseEntity<JsonNode> postResponseEntity = instance.postSubsetVersion(seriesId, versionNoCodesDraft);
+        assertEquals(HttpStatus.CREATED, postResponseEntity.getStatusCode());
+
+        JsonNode versionNoCodesOpen = readJsonFile(version_1_0_1_nocodes_open);
+        ResponseEntity<JsonNode> putResponseEntity = instance.putSubsetVersion(seriesId, "1", versionNoCodesOpen);
+        assertEquals(HttpStatus.BAD_REQUEST, putResponseEntity.getStatusCode()); // 0 codes is not allowed in published subset
+    }
 
     @Test
-    void getSubsetCodesInDateRange() {
+    void postOpenNoCodes(){
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+        instance.deleteAllSeries();
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode versionNoCodesDraft = readJsonFile(version_1_0_1_nocodes_open);
+        ResponseEntity<JsonNode> postResponseEntity = instance.postSubsetVersion(seriesId, versionNoCodesDraft);
+        assertEquals(HttpStatus.BAD_REQUEST, postResponseEntity.getStatusCode());
+        System.out.println(postResponseEntity.getBody().toPrettyString());
+    }
+
+    @Test
+    void deleteAllSeriesThenCheckThatEmpty() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+        instance.deleteAllSeries();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+
+        ResponseEntity<JsonNode> getVersionByIdRE = instance.getVersion(seriesId, "1");
+        assertEquals(HttpStatus.OK, getVersionByIdRE.getStatusCode());
+
+        ResponseEntity<JsonNode> getSubset = instance.getSubsetSeriesByID(seriesId, false);
+        assertEquals(HttpStatus.OK, getSubset.getStatusCode());
+        JsonNode body = getSubset.getBody();
+        assertNotNull(body);
+        assertFalse(body.isEmpty());
+
+        ResponseEntity<JsonNode> getAllSubsetSeries = instance.getSubsetSeries(true, true, true);
+        assertEquals(HttpStatus.OK, getAllSubsetSeries.getStatusCode());
+        JsonNode body1 = getAllSubsetSeries.getBody();
+        assertNotNull(body1);
+        assertTrue(body1.isArray());
+        assertFalse(body1.isEmpty());
+
+        instance.deleteAllSeries();
+
+        ResponseEntity<JsonNode> getSubsetWhenItShouldNotExistRE = instance.getSubsetSeriesByID(seriesId, false);
+        assertEquals(HttpStatus.NOT_FOUND, getSubsetWhenItShouldNotExistRE.getStatusCode());
+
+        ResponseEntity<JsonNode> getAllSubsetSeriesShouldBeEmptyRE = instance.getSubsetSeries(true, true, true);
+        assertEquals(HttpStatus.OK, getAllSubsetSeriesShouldBeEmptyRE.getStatusCode());
+        JsonNode shouldBeEmptyArray = getAllSubsetSeriesShouldBeEmptyRE.getBody();
+        assertNotNull(shouldBeEmptyArray);
+        assertTrue(shouldBeEmptyArray.isArray());
+        assertTrue(shouldBeEmptyArray.isEmpty());
+
+        ResponseEntity<JsonNode> getVersionByIdShouldNotExistRE = instance.getVersion(seriesId, "1");
+        assertEquals(HttpStatus.NOT_FOUND, getVersionByIdShouldNotExistRE.getStatusCode());
+
+    }
+
+    @Test
+    void deleteSeriesByIdThenCheckThatEmpty() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+        instance.deleteAllSeries();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+
+        ResponseEntity<JsonNode> getVersionByIdRE = instance.getVersion(seriesId, "1");
+        assertEquals(HttpStatus.OK, getVersionByIdRE.getStatusCode());
+
+        ResponseEntity<JsonNode> getSubset = instance.getSubsetSeriesByID(seriesId, false);
+        assertEquals(HttpStatus.OK, getSubset.getStatusCode());
+        JsonNode body = getSubset.getBody();
+        assertNotNull(body);
+        assertFalse(body.isEmpty());
+
+        ResponseEntity<JsonNode> getAllSubsetSeries = instance.getSubsetSeries(true, true, true);
+        assertEquals(HttpStatus.OK, getAllSubsetSeries.getStatusCode());
+        JsonNode body1 = getAllSubsetSeries.getBody();
+        assertNotNull(body1);
+        assertTrue(body1.isArray());
+        assertFalse(body1.isEmpty());
+
+        instance.deleteSeriesById(seriesId);
+
+        ResponseEntity<JsonNode> getSubsetWhenItShouldNotExistRE = instance.getSubsetSeriesByID(seriesId, false);
+        assertEquals(HttpStatus.NOT_FOUND, getSubsetWhenItShouldNotExistRE.getStatusCode());
+
+        ResponseEntity<JsonNode> getAllSubsetSeriesShouldBeEmptyRE = instance.getSubsetSeries(true, true, true);
+        assertEquals(HttpStatus.OK, getAllSubsetSeriesShouldBeEmptyRE.getStatusCode());
+        JsonNode shouldBeEmptyArray = getAllSubsetSeriesShouldBeEmptyRE.getBody();
+        assertNotNull(shouldBeEmptyArray);
+        assertTrue(shouldBeEmptyArray.isArray());
+        assertTrue(shouldBeEmptyArray.isEmpty());
+
+        ResponseEntity<JsonNode> getVersionByIdShouldNotExistRE = instance.getVersion(seriesId, "1");
+        assertEquals(HttpStatus.NOT_FOUND, getVersionByIdShouldNotExistRE.getStatusCode());
     }
 
     /*
+    @Test
+    void getSubsetCodesInDateRange() {
+
+    }
+
     @Test
     void getSubsetCodesAtDate() {
     }
@@ -239,45 +368,6 @@ class SubsetsControllerV2Test {
 
     @Test
     void postDraftNoCodes(){
-    }
-
-    @Test
-    void postDraftNoCodesThenPutOpenNoCodes(){
-        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
-        instance.deleteAllSeries();
-        JsonNode subset = getSubset(fv4_0);
-        String id = subset.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postResponseEntity = instance.postSubsetSeries(subset);
-        assertEquals(HttpStatus.CREATED, postResponseEntity.getStatusCode());
-        ResponseEntity<JsonNode> putResponseEntity = instance.putSubset(id, getSubset(fv4_1));
-        assertEquals(HttpStatus.BAD_REQUEST, putResponseEntity.getStatusCode()); // 0 codes is not allowed in published subset
-    }
-
-    @Test
-    void postOpenNoCodes(){
-        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
-        instance.deleteAllSeries();
-        JsonNode subset = getSubset(fv4_1);
-        ResponseEntity<JsonNode> postResponseEntity = instance.postSubsetSeries(subset);
-        assertEquals(HttpStatus.BAD_REQUEST, postResponseEntity.getStatusCode()); // 0 codes is not allowed in published subset
-    }
-
-    @Test
-    void deleteAllSeriesThenCheckThatEmpty() {
-        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
-        // Delete all subsets
-        instance.deleteAllSeries();
-
-        // Test if database is empty
-        ResponseEntity<JsonNode> allSubsets = instance.getSubsets(
-                true,
-                true,
-                true);
-        assertEquals(HttpStatus.OK, allSubsets.getStatusCode());
-        JsonNode body = allSubsets.getBody();
-        assertNotNull(body);
-        assertTrue(body.isArray());
-        assertTrue(body.isEmpty());
     }
 
     @Test

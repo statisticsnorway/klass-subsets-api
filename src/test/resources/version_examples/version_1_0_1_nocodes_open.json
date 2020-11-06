@@ -1,0 +1,10 @@
+{
+  "validFrom":"2020-10-19",
+  "validUntil":"2021-10-19",
+  "administrativeStatus":"OPEN",
+  "codes":[],
+  "versionRationale": [
+    {"languageCode":"nb", "languageText":"versjon rasjonale på norsk bokmål"},
+    {"languageCode":"en", "languageText":"version rationale in english"}
+  ]
+}
