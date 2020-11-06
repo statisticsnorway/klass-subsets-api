@@ -250,9 +250,10 @@ public class SubsetsControllerV2 {
         ObjectNode editablePutVersion = putVersion.deepCopy();
 
         editablePutVersion.set(Field.VERSION, previousEditionOfVersion.get(Field.VERSION));
-        editablePutVersion.set(Field.CREATED_DATE, previousEditionOfVersion.get(Field.CREATED_DATE));
         editablePutVersion.set(Field.SERIES_ID, previousEditionOfVersion.get(Field.SERIES_ID));
         editablePutVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
+        editablePutVersion.set(Field.CREATED_DATE, previousEditionOfVersion.get(Field.CREATED_DATE));
+        editablePutVersion = Utils.addCodeVersionAndValidFromToAllCodesInVersion(editablePutVersion, LOG);
 
         ResponseEntity<JsonNode> versionSchemaValidationRE = validateVersion(editablePutVersion);
         if (!versionSchemaValidationRE.getStatusCode().is2xxSuccessful())
@@ -299,7 +300,10 @@ public class SubsetsControllerV2 {
             if (!compareFieldsRE.getStatusCode().is2xxSuccessful())
                 return compareFieldsRE;
         }
-        return new LDSFacade().editVersion(editablePutVersion);
+        ResponseEntity<JsonNode> editVersionRE = new LDSFacade().editVersion(editablePutVersion);
+        if (editVersionRE.getStatusCode().is2xxSuccessful())
+            return new ResponseEntity<>(OK);
+        return editVersionRE;
     }
 
     @PostMapping(value = "/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)

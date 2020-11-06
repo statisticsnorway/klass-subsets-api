@@ -193,18 +193,25 @@ class SubsetsControllerV2Test {
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
         JsonNode version1_0_1_1 = readJsonFile(version_1_0_1_1);
+        String versionUID = seriesId+"_1";
         ResponseEntity<JsonNode> putVersionRE = instance.putSubsetVersion(seriesId, "1", version1_0_1_1);
         assertEquals(HttpStatus.OK, putVersionRE.getStatusCode());
 
-        //TODO: Check with a GET that the changes actually happened
+        ResponseEntity<JsonNode> getVersionRE = instance.getVersion(seriesId, "1");
+        JsonNode body = getVersionRE.getBody();
+        assertNotNull(body);
+        assertTrue(body.has(Field.CODES));
+        assertTrue(body.get(Field.CODES).isArray());
+        ArrayNode codesArray = (ArrayNode) body.get(Field.CODES);
+        assertEquals(2, codesArray.size());
     }
 
-    /*
 
     @Test
     void getSubsetCodesInDateRange() {
     }
 
+    /*
     @Test
     void getSubsetCodesAtDate() {
     }
