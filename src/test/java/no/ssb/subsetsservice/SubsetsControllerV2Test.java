@@ -378,7 +378,7 @@ class SubsetsControllerV2Test {
         instance.deleteVersionById(seriesId, "1");
 
         try {
-            Thread.sleep(100);
+            Thread.sleep(300);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -657,7 +657,6 @@ class SubsetsControllerV2Test {
 
         ResponseEntity<JsonNode> getVersionRE = instance.getVersion(seriesId, "1");
 
-
         System.out.println("STATUS CODE: ");
         System.out.println(getVersionRE.getStatusCodeValue());
         assertEquals(HttpStatus.NOT_FOUND, getVersionRE.getStatusCode());
@@ -669,7 +668,6 @@ class SubsetsControllerV2Test {
     @Test
     void putNewVersionWithVersionValidFromInValidityPeriodOfLastVersion(){
         //We should be able to save a draft that overlaps validity period of last published subset with open ended validity period.
-        fail("NOT IMPLEMENTED");
     }
 
     @Test
@@ -678,14 +676,6 @@ class SubsetsControllerV2Test {
 
     @Test
     void getSubsetCodesAtDate() {
-    }
-
-    @Test
-    void deleteAllSubsetSeriesAndTheirVersions() {
-    }
-
-    @Test
-    void deleteSubsetSeriesByIdAndItsVersions() {
     }
 
     @Test
@@ -698,11 +688,6 @@ class SubsetsControllerV2Test {
 
     @Test
     void validateSeries() {
-    }
-
-
-    @Test
-    void postDraftNoCodes(){
     }
 
     @Test

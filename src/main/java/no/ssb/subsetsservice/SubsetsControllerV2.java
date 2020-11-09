@@ -399,6 +399,12 @@ public class SubsetsControllerV2 {
             String[] splitVersionString = versions.get(i).asText().split("/");
             String versionUID = splitVersionString[splitVersionString.length-1]; // should be "version_id"
             ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionUID);
+            if (!versionRE.getStatusCode().is2xxSuccessful()) {
+                return ErrorHandler.newHttpError(
+                        "A version pointed to in the 'versions' array of the series, with the UID "+versionUID+", could not be retrieved from LDS. The call returned status code "+versionRE.getStatusCode().toString()+". This might be because the version was just POSTED and the operation to store this version in LDS has not completed yet. Try again shortly.",
+                        INTERNAL_SERVER_ERROR,
+                        LOG);
+            }
             JsonNode versionBody = versionRE.getBody();
             versionBody = Utils.addLinksToSubsetVersion(versionBody);
             versions.set(i, versionBody);
@@ -653,12 +659,16 @@ public class SubsetsControllerV2 {
 
     @DeleteMapping("/v2/subsets/{id}/versions/{versionId}")
     void deleteVersionById(@PathVariable("id") String id, @PathVariable("versionId") String versionId){
+        LOG.info("Deleting version "+versionId+" from series "+id);
         //Delete version from LDS
         String[] versionIdSplitUnderscore = versionId.split("_");
+        String versionUID = "";
         if (versionIdSplitUnderscore.length > 1)
-            new LDSFacade().deleteSubsetVersion(id, versionId);
+            versionUID = versionId;
         else
-            new LDSFacade().deleteSubsetVersion(id, id+"_"+versionId);
+            versionUID = id+"_"+versionId;
+        LOG.debug("Version UID used in delete requests to LDS: "+versionUID);
+        new LDSFacade().deleteSubsetVersionFromSeriesAndFromLDS(id, versionUID);
     }
 
     ResponseEntity<JsonNode> validateVersion(JsonNode version){
