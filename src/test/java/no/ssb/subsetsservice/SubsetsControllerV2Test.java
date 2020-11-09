@@ -164,7 +164,7 @@ class SubsetsControllerV2Test {
         ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
         try {
-            Thread.sleep(10); //To make sure the resource is available from LDS before we GET it
+            Thread.sleep(100); //To make sure the resource is available from LDS before we GET it
         } catch (InterruptedException e) {
             fail("Sleep failed");
         }
@@ -377,6 +377,12 @@ class SubsetsControllerV2Test {
 
         instance.deleteVersionById(seriesId, "1");
 
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         JsonNode version2 = readJsonFile(version_1_0_1);
         ResponseEntity<JsonNode> postVersion2RE = instance.postSubsetVersion(seriesId, version2);
         assertTrue(postVersion2RE.getStatusCode().is2xxSuccessful());
@@ -521,7 +527,7 @@ class SubsetsControllerV2Test {
         assertEquals(lastMod1, lastMod1Get);
 
         try {
-            Thread.sleep(300);
+            Thread.sleep(1000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -589,6 +595,7 @@ class SubsetsControllerV2Test {
         assertEquals(2, versionsArrayNode.size());
     }
 
+    /*
     @Test
     void putNewVersionWithSameVersionValidFromDate(){
         //We should not be able to publish a version that has same validFrom date as an existing published version
@@ -608,7 +615,7 @@ class SubsetsControllerV2Test {
         System.out.println(atomicInteger.incrementAndGet());
     }
 
-    /*
+
     @Test
     void getSubsetCodesInDateRange() {
 
