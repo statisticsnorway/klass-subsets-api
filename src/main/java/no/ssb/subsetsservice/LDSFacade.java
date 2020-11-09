@@ -3,6 +3,7 @@ package no.ssb.subsetsservice;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,8 @@ import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.springframework.http.HttpStatus.OK;
 
 public class LDSFacade implements LDSInterface {
 
@@ -29,7 +32,7 @@ public class LDSFacade implements LDSInterface {
 
         ResponseEntity<JsonNode> allSubsetsRE = getLastUpdatedVersionOfAllSubsets();
 
-        if (allSubsetsRE.getStatusCode().equals(HttpStatus.OK)) {
+        if (allSubsetsRE.getStatusCode().equals(OK)) {
             JsonNode ldsREBody = allSubsetsRE.getBody();
             if (ldsREBody != null) {
                 if (ldsREBody.isArray()) {
@@ -56,7 +59,7 @@ public class LDSFacade implements LDSInterface {
             String versionID = version.get("_links").get("self").get("href").asText();
         }
         */
-        return new ResponseEntity<>(versionArrayNode, HttpStatus.OK);
+        return new ResponseEntity<>(versionArrayNode, OK);
     }
 
     /**
@@ -85,11 +88,11 @@ public class LDSFacade implements LDSInterface {
     }
 
     public boolean existsSubsetWithID(String id){
-        return new LDSConsumer(API_LDS).getFrom(SUBSETS_API+"/"+id).getStatusCode().equals(HttpStatus.OK);
+        return new LDSConsumer(API_LDS).getFrom(SUBSETS_API+"/"+id).getStatusCode().equals(OK);
     }
 
     public boolean existsSubsetSeriesWithID(String id){
-        return new LDSConsumer(API_LDS).getFrom(SERIES_API+"/"+id).getStatusCode().equals(HttpStatus.OK);
+        return new LDSConsumer(API_LDS).getFrom(SERIES_API+"/"+id).getStatusCode().equals(OK);
     }
 
     public ResponseEntity<JsonNode> getClassificationSubsetSchema(){
@@ -100,7 +103,7 @@ public class LDSFacade implements LDSInterface {
         ResponseEntity<JsonNode> postRE = new LDSConsumer(API_LDS).postTo(SUBSETS_API+"/" + id, subset);
         HttpStatus status = postRE.getStatusCode();
         if (status.is2xxSuccessful())
-            status = HttpStatus.OK;
+            status = OK;
         if (postRE.hasBody())
             return new ResponseEntity<>(postRE.getBody(), postRE.getHeaders(), status);
         return new ResponseEntity<>(postRE.getHeaders(), status);
@@ -115,12 +118,12 @@ public class LDSFacade implements LDSInterface {
     }
 
     public boolean healthReady() {
-        return new LDSConsumer(API_LDS).getFrom("/health/ready").getStatusCode().equals(HttpStatus.OK);
+        return new LDSConsumer(API_LDS).getFrom("/health/ready").getStatusCode().equals(OK);
     }
 
     public void deleteSubset(String id) {
         String url = SUBSETS_API+"/"+id;
-       new LDSConsumer(API_LDS).delete(url);
+        new LDSConsumer(API_LDS).delete(url);
     }
 
     public ResponseEntity<JsonNode> editSeries(JsonNode series, String id) {
@@ -143,7 +146,7 @@ public class LDSFacade implements LDSInterface {
         }
         logger.debug("Attempting to PUT link from series with seriesID "+seriesID+" to version with UID "+versionUID+" to LDS");
         ResponseEntity<JsonNode> putLinkRE = new LDSConsumer(API_LDS).putTo(SERIES_API+"/"+seriesID+"/versions/ClassificationSubsetVersion/"+versionUID, new ObjectMapper().createObjectNode());
-        if (!putLinkRE.getStatusCode().equals(HttpStatus.OK)) {
+        if (!putLinkRE.getStatusCode().equals(OK)) {
             return ErrorHandler.newHttpError("Trying to PUT a link between the subset Series "+seriesID+" and subset Version "+versionUID+" in LDS failed, with status code "+putLinkRE.getStatusCode(), putLinkRE.getStatusCode(), logger);
         }
         logger.debug("Successfully posted and linked version with UID "+versionUID+" to subset series with id "+seriesID);
@@ -173,7 +176,7 @@ public class LDSFacade implements LDSInterface {
             return versionSchemaRE;
         }
         JsonNode definition = versionSchemaRE.getBody().get("definitions").get("ClassificationSubsetSeries");
-        return new ResponseEntity<>(definition, HttpStatus.OK);
+        return new ResponseEntity<>(definition, OK);
     }
 
     @Override
@@ -188,16 +191,52 @@ public class LDSFacade implements LDSInterface {
             return versionSchemaRE;
         }
         JsonNode definition = versionSchemaRE.getBody().get("definitions").get("ClassificationSubsetVersion");
-        return new ResponseEntity<>(definition, HttpStatus.OK);
+        return new ResponseEntity<>(definition, OK);
     }
 
     @Override
-    public void deleteAllSubsetSeries() {
-        //TODO: implement
+    public ResponseEntity<JsonNode> deleteAllSubsetSeries() {
+        ResponseEntity<JsonNode> getAllRE = getAllSubsetSeries();
+        ArrayNode allSeriesArrayNode = (ArrayNode) getAllRE.getBody();
+        for (JsonNode series : allSeriesArrayNode){
+            String id = series.get(Field.ID).asText();
+            deleteSubsetSeries(id);
+        }
+        return new ResponseEntity<>(OK);
     }
 
     @Override
-    public void deleteSubsetSeries(String id) {
-        //TODO: implement
+    public ResponseEntity<JsonNode> deleteSubsetSeries(String id) {
+        ResponseEntity<JsonNode> getSeriesRE = getSubsetSeries(id);
+        ArrayNode versionsArrayNode = (ArrayNode)getSeriesRE.getBody().get(Field.VERSIONS);
+        for(JsonNode versionLink : versionsArrayNode){
+            String[] splitSlash = versionLink.asText().split("/");
+            String versionUID = splitSlash[splitSlash.length-1];
+            new LDSConsumer(API_LDS).delete(VERSIONS_API+"/"+versionUID);
+        }
+        String url = SERIES_API+"/"+id;
+        new LDSConsumer(API_LDS).delete(url);
+        return new ResponseEntity<>(OK);
+    }
+
+    @Override
+    public void deleteSubsetVersion(String id, String versionUidToDelete) {
+        ResponseEntity<JsonNode> getSeriesRE = getSubsetSeries(id);
+        if (getSeriesRE.getStatusCode().is2xxSuccessful()) {
+            ObjectNode series = getSeriesRE.getBody().deepCopy();
+            ArrayNode versions = series.get(Field.VERSIONS).deepCopy();
+            for (int i = 0; i < versions.size(); i++) {
+                String versionLink = versions.get(i).asText();
+                String[] versionLinkSplitSlash = versionLink.split("/");
+                String versionUID = versionLinkSplitSlash[versionLinkSplitSlash.length-1];
+                if (versionUID.equals(versionUidToDelete)) {
+                    versions.remove(i);
+                    series.set(Field.VERSIONS, versions);
+                    new LDSFacade().editSeries(series, id);
+                    break;
+                }
+            }
+        }
+        new LDSConsumer(API_LDS).delete(VERSIONS_API + "/" + versionUidToDelete);
     }
 }

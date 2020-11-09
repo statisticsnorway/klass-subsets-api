@@ -248,23 +248,29 @@ public class Utils {
         Iterator<String> submittedFieldNamesIterator = instance.fieldNames();
         while (submittedFieldNamesIterator.hasNext()){
             String field = submittedFieldNamesIterator.next();
+            LOG.debug("Checking the field '"+field+"' from the instance against the definition . . .");
             if (!properties.has(field)){
+                LOG.error("the definition had no such property as '"+field+"'");
                 return ErrorHandler.newHttpError(
                         "Submitted field "+field+" is not legal in ClassificationSubsetVersion",
                         BAD_REQUEST,
                         LOG);
             }
         }
-
+        LOG.debug("All the fields in the instance were present in the definition");
         ArrayNode required = (ArrayNode) definition.get("required");
+        LOG.debug("There are "+required.size()+" required fields in the definition. Checking that they are all present");
         for (JsonNode jsonNode : required) {
             String requiredField = jsonNode.asText();
+            LOG.debug("Checking that the required field "+requiredField+" is present in the instance");
             if (!instance.has(requiredField)){
+                LOG.error("The instance did not have the required field '"+requiredField+"'");
                 return ErrorHandler.newHttpError("Submitted version did not contain required field "+requiredField,
                         BAD_REQUEST,
                         LOG);
             }
         }
+        LOG.debug("The instance had all required fields, and all the present fields were defined in the schema.");
         return new ResponseEntity<>(OK);
     }
 

@@ -87,14 +87,16 @@ public class LDSConsumer {
         // Because Spring RestTemplate fails when the response is too long, I use Apache Commons Http Client instead,
         // and pack the response into a ResponseEntity, so it feels like Spring to the user.
         // I could not get Spring WebClient to work, which would have been my first choice.
+        String urlString = LDS_URL + additional;
+        LOG.debug("GET from "+urlString);
         CloseableHttpClient httpclient = HttpClients.createDefault();
-        HttpGet httpGet = new HttpGet(LDS_URL + additional);
+        HttpGet httpGet = new HttpGet(urlString);
         CloseableHttpResponse response1 = null;
         try {
             try {
                 response1 = httpclient.execute(httpGet);
             } catch (ConnectException e){
-                return ErrorHandler.newHttpError("Could not retrieve "+LDS_URL+additional+" because of an exception: "+e.toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+                return ErrorHandler.newHttpError("Could not retrieve "+urlString+" because of a ConnectException: "+e.toString(), HttpStatus.FAILED_DEPENDENCY, LOG);
             }
             System.out.println(response1.getStatusLine());
             System.out.println(response1.toString());
@@ -107,7 +109,7 @@ public class LDSConsumer {
             return responseEntity;
         } catch (Exception e) {
             e.printStackTrace();
-            return ErrorHandler.newHttpError("Could not retrieve "+LDS_URL+additional+" because of an exception: "+e.toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+            return ErrorHandler.newHttpError("Could not retrieve "+urlString+" because of an exception: "+e.toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
         } finally {
             try {
                 if (response1 != null)
@@ -120,12 +122,11 @@ public class LDSConsumer {
 
     ResponseEntity<JsonNode> postTo(String additional, JsonNode json){
         String fullURLString = LDS_URL+additional;
-        LOG.debug("Building request for POSTing to "+fullURLString);
+        LOG.debug("POST to "+fullURLString);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         org.springframework.http.HttpEntity<JsonNode> request = new org.springframework.http.HttpEntity<>(json, headers);
-        LOG.debug("POSTing to "+fullURLString);
         ResponseEntity<JsonNode> response = null;
         try {
             response = new RestTemplate().postForEntity(fullURLString, request, JsonNode.class);
@@ -146,8 +147,10 @@ public class LDSConsumer {
      * @return
      */
     ResponseEntity<JsonNode> putTo(String additional, JsonNode json){
+        String urlString = LDS_URL+additional;
+        LOG.debug("PUT to "+urlString);
         CloseableHttpClient httpclient = HttpClients.createDefault();
-        HttpPut httpPut = new HttpPut(LDS_URL+additional);
+        HttpPut httpPut = new HttpPut(urlString);
         httpPut.setHeader("Accept", "application/json");
         httpPut.setHeader("Content-type", "application/json");
         StringEntity stringEntity = null;
@@ -166,7 +169,7 @@ public class LDSConsumer {
             HttpEntity entity = response.getEntity();
             int status = response.getStatusLine().getStatusCode();
             HttpStatus httpStatus = HttpStatus.resolve(status);
-            LOG.debug("PUT to "+LDS_URL+additional+" - Status: "+httpStatus.toString());
+            LOG.debug("PUT to "+urlString+" - Status: "+httpStatus.toString());
             if (!httpStatus.equals(HttpStatus.CREATED) && !httpStatus.equals(HttpStatus.OK)){
                 String responseBodyString = EntityUtils.toString(entity);
                 return ErrorHandler.newHttpError(
