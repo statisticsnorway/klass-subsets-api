@@ -302,7 +302,7 @@ public class SubsetsControllerV2 {
         }
         ResponseEntity<JsonNode> editVersionRE = new LDSFacade().editVersion(editablePutVersion);
         if (editVersionRE.getStatusCode().is2xxSuccessful())
-            return new ResponseEntity<>(OK);
+            return new ResponseEntity<>(editablePutVersion, OK);
         return editVersionRE;
     }
 
