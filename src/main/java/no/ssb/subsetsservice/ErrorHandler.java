@@ -18,7 +18,7 @@ public class ErrorHandler {
         body.put("error", status.toString());
         body.put("message", message);
         body.put("timestamp", Utils.getNowISO());
-        logger.error(body.asText());
+        logger.error("A Http error status was returned: "+body.toPrettyString().replaceAll("\n", "").replaceAll("\r", "").replaceAll("\"", "'"));
         return new ResponseEntity<>(body, status);
     }
 
