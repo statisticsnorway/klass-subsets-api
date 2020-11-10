@@ -1,0 +1,29 @@
+{
+  "validFrom":"2007-01-01",
+  "validUntil":"2020-01-01",
+  "administrativeStatus":"OPEN",
+  "codes":[
+    {
+      "classificationId": "131",
+      "code": "1870",
+      "level": "1",
+      "name": "Sortland - Suortá",
+      "rank": "1",
+      "validFromInRequestedRange": "2018-01-01",
+      "validToInRequestedRange": null
+    },
+    {
+      "classificationId": "131",
+      "code": "1870",
+      "level": "1",
+      "name": "Sortland",
+      "rank": "1",
+      "validFromInRequestedRange": "2007-01-01",
+      "validToInRequestedRange": "2018-01-01"
+    }
+  ],
+  "versionRationale": [
+    {"languageCode":"nb", "languageText":"versjon rasjonale 2 på norsk bokmål"},
+    {"languageCode":"en", "languageText":"version rationale 2 in english"}
+  ]
+}

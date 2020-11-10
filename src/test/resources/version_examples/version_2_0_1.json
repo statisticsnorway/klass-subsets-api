@@ -1,16 +1,16 @@
 {
-  "validFrom":"2020-10-19",
-  "validUntil":"2021-10-19",
-  "administrativeStatus":"DRAFT",
+  "validFrom":"2003-01-01",
+  "validUntil":"2007-01-01",
+  "administrativeStatus":"OPEN",
   "codes":[
     {
       "classificationId": "131",
-      "code": "1144",
-      "rank": "1",
+      "code": "1870",
       "level": "1",
-      "name": "Kvitsøy",
-      "validFromInRequestedRange": "2020-10-19",
-      "validToInRequestedRange": null
+      "name": "Sortland",
+      "rank": "1",
+      "validFromInRequestedRange": "2003-01-01",
+      "validToInRequestedRange": "2007-01-01"
     }
   ],
   "versionRationale": [

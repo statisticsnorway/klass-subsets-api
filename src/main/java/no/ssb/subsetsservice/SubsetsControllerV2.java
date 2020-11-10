@@ -332,8 +332,8 @@ public class SubsetsControllerV2 {
 
         JsonNode series = getSeriesByIDRE.getBody();
         int versionsSize = series.has(Field.VERSIONS) ? series.get(Field.VERSIONS).size() : 0;
-        LOG.debug("Amount of versions in series "+seriesId+" before potentially adding new version: "+versionsSize);
-        String versionNr = Integer.toString(versionsSize+1);
+        LOG.debug("Amount of found versions in series "+seriesId+" before potentially adding new version: "+versionsSize);
+        String versionNr = UUID.randomUUID().toString();
         editableVersion.put(Field.VERSION, versionNr);
         editableVersion.put(Field.SERIES_ID, seriesId);
         editableVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
@@ -443,12 +443,7 @@ public class SubsetsControllerV2 {
         String[] splitUnderscore = versionID.split("_");
         if (splitUnderscore.length < 2) {
             String versionNr = splitUnderscore[0];
-            try {
-                int versionNrInt = Integer.parseInt(versionNr);
-                versionID = String.format("%s_%d", seriesID, versionNrInt);
-            } catch (NumberFormatException e){
-                return ErrorHandler.newHttpError("version id must be given either as an integer indicating the version nr, or as a full versionUID on the form '{seriesUID}_{versionNr}'", BAD_REQUEST, LOG);
-            }
+            versionID = String.format("%s_%s", seriesID, versionNr);
         }
         ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionID);
         HttpStatus status = versionRE.getStatusCode();
@@ -660,7 +655,6 @@ public class SubsetsControllerV2 {
     @DeleteMapping("/v2/subsets/{id}/versions/{versionId}")
     void deleteVersionById(@PathVariable("id") String id, @PathVariable("versionId") String versionId){
         LOG.info("Deleting version "+versionId+" from series "+id);
-        //Delete version from LDS
         String[] versionIdSplitUnderscore = versionId.split("_");
         String versionUID = "";
         if (versionIdSplitUnderscore.length > 1)
@@ -755,8 +749,13 @@ public class SubsetsControllerV2 {
     private ResponseEntity<JsonNode> isOverlappingValidity(JsonNode editableVersion) {
         String validFrom = editableVersion.get(Field.VALID_FROM).asText();
         String validUntil = editableVersion.has(Field.VALID_UNTIL) ? editableVersion.get(Field.VALID_UNTIL).asText() : null;
+        String seriesID = editableVersion.get(Field.SERIES_ID).asText();
+        ResponseEntity<JsonNode> getVersionsRE = getVersions(seriesID, true, false);
+        if (!getVersionsRE.getStatusCode().is2xxSuccessful()) {
+            return getVersionsRE; //TODO FIXME
+        }
 
-        ArrayNode subsetVersionsArray = getVersions(editableVersion.get(Field.SERIES_ID).asText(), true, false).getBody().deepCopy();
+        ArrayNode subsetVersionsArray = getVersionsRE.getBody().deepCopy();
         if (!subsetVersionsArray.isEmpty()){
             String firstValidFrom = null;
             String lastValidFrom = null;
