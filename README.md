@@ -79,15 +79,15 @@ Once a subset series has been successfully created, you can add versions to it. 
 	"validUntil":"2021-10-19",
 	"administrativeStatus":"DRAFT",
 	"codes":[
-		{
+	{
 	      "classificationId": "131",
 	      "code": "1144",
 	      "rank": "1",
-          "level": "1",
-          "name": "Kvitsøy",
+	      "level": "1",
+	      "name": "Kvitsøy",
 	      "validFromInRequestedRange": "2020-10-19",
 	      "validUntilInRequestedRange": "2021-10-19"
-	    }
+	}
 	],
 	"versionRationale": [
         {"languageCode":"nb", "languageText":"versjon rasjonale på norsk bokmål"}, 
@@ -105,99 +105,104 @@ The `validUntilInRequestedRange` of a code indicates the latest point in the sub
 If we GET `v2/subsets/UID_for_dette_uttrekket_1` the response will look like this:
 ```
 {
-    "classificationType": "Subset",
-    "createdDate": "2020-11-03",
-    "id": "UID_for_dette_uttrekket_1",
-    "lastModified": "2020-11-03T12:56:49Z",
-    "owningSection": "700 it",
-    "versions": [
-        "/v2/subsets/UID_for_dette_uttrekket_1/versions/UID_for_dette_uttrekket_1_1"
-    ],
-    "administrativeDetails": [
-        {
-            "administrativeDetailType": "DEFAULTLANGUAGE",
-            "values": [
-                "nb"
-            ]
-        }
-    ],
-    "description": [
-        {
-            "languageCode": "nb",
-            "languageText": "tekst p� norsk bokm�l"
-        },
-        {
-            "languageCode": "en",
-            "languageText": "text in english"
-        }
-    ],
-    "name": [
-        {
-            "languageCode": "nb",
-            "languageText": "fullt navn p� norsk bokm�l"
-        },
-        {
-            "languageCode": "en",
-            "languageText": "full name in english"
-        }
-    ],
-    "_links": {
-        "self": {
-            "href": "/v2/subsets/UID_for_dette_uttrekket_1"
-        }
+  "classificationFamily": "Some Family",
+  "classificationType": "Subset",
+  "createdDate": "2020-11-10",
+  "id": "UID_for_dette_uttrekket_1",
+  "lastModified": "2020-11-10T15:23:42Z",
+  "owningSection": "700 it",
+  "statisticalUnits": [
+    "Region"
+  ],
+  "versions": [
+    "/v2/subsets/UID_for_dette_uttrekket_1/versions/UID_for_dette_uttrekket_1_e815e953-90dc-4103-b592-0f3b231dfeb3"
+  ],
+  "administrativeDetails": [
+    {
+      "administrativeDetailType": "DEFAULTLANGUAGE",
+      "values": [
+        "nb"
+      ]
     }
+  ],
+  "description": [
+    {
+      "languageCode": "nb",
+      "languageText": "tekst p? norsk bokm?l"
+    },
+    {
+      "languageCode": "en",
+      "languageText": "text in english"
+    }
+  ],
+  "name": [
+    {
+      "languageCode": "nb",
+      "languageText": "fullt navn p? norsk bokm?l"
+    },
+    {
+      "languageCode": "en",
+      "languageText": "full name in english"
+    }
+  ],
+  "_links": {
+    "self": {
+      "href": "/v2/subsets/UID_for_dette_uttrekket_1"
+    }
+  }
 }
 ```
 
 `versions` will be an array of links to subset versions that are members of this series. Date of creation and last time of modification have been automatically stamped by the server.
 
-If we GET the subset version that we just created (`/v2/subsets/UID_for_dette_uttrekket_1/versions/UID_for_dette_uttrekket_1_1` or `/v2/subsets/UID_for_dette_uttrekket_1/versions/1`) the response will look like this:
+If we GET the subset version that we just created (`/v2/subsets/UID_for_dette_uttrekket_1/versions/UID_for_dette_uttrekket_1_e815e953-90dc-4103-b592-0f3b231dfeb3`) the response will look like this:
 
 ```
 {
-        "administrativeStatus": "DRAFT",
-        "createdDate": "2020-11-03",
-        "lastModified": "2020-11-03T12:59:57Z",
-        "seriesId": "UID_for_dette_uttrekket_1",
-        "validFrom": "2020-10-19",
-        "validUntil": "2021-10-19",
-        "version": "1",
-        "codes": [
-            {
-                "classificationId": "131",
-                "code": "1144",
-                "level": "1",
-                "name": "Kvitsøy",
-                "rank": "1",
-                "validFromInRequestedRange": "2020-01-01",
-	            "validUntilInRequestedRange": "2021-10-19",
-                "versions": [
-                    "https://data.ssb.no/api/klass/v1/versions/1160"
-                ]
-            }
-        ],
-        "versionRationale": [
-            {
-                "languageCode": "nb",
-                "languageText": "versjon rasjonale på norsk bokmål"
-            },
-            {
-                "languageCode": "en",
-                "languageText": "version rationale in english"
-            }
-        ],
-        "_links": {
-            "self": {
-                "href": "/v2/subsets/UID_for_dette_uttrekket_1/versions/1"
-            },
-            "series": {
-                "href": "/v2/subsets/UID_for_dette_uttrekket_1"
-            }
-        }
+  "administrativeStatus": "DRAFT",
+  "createdDate": "2020-11-10",
+  "lastModified": "2020-11-10T15:23:41Z",
+  "seriesId": "UID_for_dette_uttrekket_1",
+  "validFrom": "2020-10-19",
+  "validUntil": "2021-10-19",
+  "version": "e815e953-90dc-4103-b592-0f3b231dfeb3",
+  "statisticalUnits": [
+    "Region"
+  ],
+  "codes": [
+    {
+      "classificationId": "131",
+      "code": "1144",
+      "level": "1",
+      "name": "Kvitsøy",
+      "rank": "1",
+      "validFromInRequestedRange": "2020-10-19",
+      "validUntilInRequestedRange": "2021-10-19",
+      "versions": []
     }
+  ],
+  "versionRationale": [
+    {
+      "languageCode": "nb",
+      "languageText": "versjon rasjonale på norsk bokmål"
+    },
+    {
+      "languageCode": "en",
+      "languageText": "version rationale in english"
+    }
+  ],
+  "_links": {
+    "self": {
+      "href": "/v2/subsets/UID_for_dette_uttrekket_1/versions/e815e953-90dc-4103-b592-0f3b231dfeb3"
+    },
+    "series": {
+      "href": "/v2/subsets/UID_for_dette_uttrekket_1"
+    }
+  }
+}
 ```
 
-The version has gotten an automatically generated version number, stored in the field `version`. Combining the `seriesId` and the `version` number will give us a version UID. If we want to GET the version entity, we can use the version number (GET `/v2/subsets/UID_for_dette_uttrekket_1/versions/1`) or the version UID (GET (`/v2/subsets/UID_for_dette_uttrekket_1/versions/UID_for_dette_uttrekket_1_1`).
+The version has gotten an automatically generated v4 UUID version id, stored in the field `version`. Combining the `seriesId` and the `version` number will give us a version UID. If we want to GET the version entity.
 
 Observe that at this point the single code included in our version has a new field called `versions`. This field was generated when the version was POSTed. The `versions` array in each code contains a link to each classification version that was valid and had this exact name and level in the subset version's validity period at the time of creation. When a subset version has a validity period extending into the future, it might be that a new version of a classification comes out that also contains that code, or does not contain that code, or that makes edits to that code. Storing an array of versions that existed and contained the code in the validity period at the time of creation ensures our ability to detect and resolve possible conflicts and changes to the code, and to avoid including unintended versions of a code.
 
