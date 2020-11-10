@@ -750,9 +750,34 @@ class SubsetsControllerV2Test {
         assertEquals(HttpStatus.CREATED, postVersion3RE.getStatusCode());
     }
 
+    @Test
+    void overlappingVersionsTest2(){
+        // POST series 2 0
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_2_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+
+        // POST version 2 0 3, should return BAD REQUEST because overlaps validity with 2 0 2
+        JsonNode version203_overlap = readJsonFile(version_2_0_3_overlapping_date);
+        ResponseEntity<JsonNode> postVersion3RE = instance.postSubsetVersion(seriesId, version203_overlap);
+        assertEquals(HttpStatus.CREATED, postVersion3RE.getStatusCode());
+
+        // PUT version 2 0 2 with a validUntil, should return OK
+        JsonNode version202validUntil = readJsonFile(version_2_0_2_validUntil);
+        ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, version202validUntil);
+        assertEquals(HttpStatus.BAD_REQUEST, postVersion2validUntilRE.getStatusCode());
+
+        // POST version 2 0 1
+        JsonNode version201 = readJsonFile(version_2_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version201);
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+    }
+
     /*
-
-
     @Test
     void putNewVersionWithVersionValidFromInValidityPeriodOfLastVersion(){
         //We should be able to save a draft that overlaps validity period of last published subset with open ended validity period.
