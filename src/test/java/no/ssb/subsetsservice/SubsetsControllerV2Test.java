@@ -729,7 +729,6 @@ class SubsetsControllerV2Test {
 
     @Test
     void postNewVersionCollidingWithEndOfExistingVersion(){
-        // POST series 2 0
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
 
         JsonNode series = readJsonFile(series_2_0);
@@ -737,18 +736,15 @@ class SubsetsControllerV2Test {
         ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
-        // POST version 2 0 1
         JsonNode version201 = readJsonFile(version_2_0_1);
         ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version201);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
-        // POST version 2 0 2
         JsonNode version202 = readJsonFile(version_2_0_2);
         ResponseEntity<JsonNode> postVersion2RE = instance.postSubsetVersion(seriesId, version202);
         assertEquals(HttpStatus.CREATED, postVersion2RE.getStatusCode());
         String version2ID = postVersion2RE.getBody().get(Field.VERSION).asText();
 
-        // PUT version 2 0 2 with a validUntil, should return OK
         JsonNode version202validUntil = readJsonFile(version_2_0_2_validUntil);
         ResponseEntity<JsonNode> putVersion2validUntilRE = instance.putSubsetVersion(seriesId, version2ID, version202validUntil);
         if (!putVersion2validUntilRE.getStatusCode().is2xxSuccessful()) {
@@ -757,12 +753,10 @@ class SubsetsControllerV2Test {
         }
         assertEquals(HttpStatus.OK, putVersion2validUntilRE.getStatusCode());
 
-        // POST version 2 0 3, should return BAD REQUEST because overlaps validity with 2 0 2
         JsonNode version203_overlap = readJsonFile(version_2_0_3_overlapping_date);
         ResponseEntity<JsonNode> postVersion3RE = instance.postSubsetVersion(seriesId, version203_overlap);
         assertEquals(HttpStatus.BAD_REQUEST, postVersion3RE.getStatusCode());
 
-        // POST version 2 0 3, should return OK now that 2 0 2's validUntil is set
         JsonNode version203_no_overlap = readJsonFile(version_2_0_3);
         postVersion3RE = instance.postSubsetVersion(seriesId, version203_no_overlap);
         assertEquals(HttpStatus.CREATED, postVersion3RE.getStatusCode());
