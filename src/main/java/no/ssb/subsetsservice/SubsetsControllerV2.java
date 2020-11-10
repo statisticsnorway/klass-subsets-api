@@ -296,7 +296,7 @@ public class SubsetsControllerV2 {
             if (!oldValidFrom.equals(newValidFrom)){
                 return ErrorHandler.newHttpError("Changes in validFrom not allowed to published subset", BAD_REQUEST, LOG);
             }
-            String[] changeableFields = new String[]{Field.LAST_MODIFIED, Field.LAST_UPDATED_BY, Field.VALID_UNTIL, Field._LINKS};
+            String[] changeableFields = new String[]{Field.LAST_MODIFIED, Field.LAST_UPDATED_BY, Field.VALID_UNTIL, Field._LINKS, Field.STATISTICAL_UNITS};
             ResponseEntity<JsonNode> compareFieldsRE = compareFields(previousEditionOfVersion, editablePutVersion, changeableFields);
             if (!compareFieldsRE.getStatusCode().is2xxSuccessful())
                 return compareFieldsRE;
