@@ -212,7 +212,7 @@ class SubsetsControllerV2Test {
     }
 
     @Test
-    void putSubsetVersion() {
+    void putSubsetVersionDraftChangingAllFieldsExceptValidFrom() {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
@@ -239,7 +239,7 @@ class SubsetsControllerV2Test {
     }
 
     @Test
-    void postDraftNoCodesThenPutOpenNoCodes() {
+    void postDraftNoCodesThenPutOpenNoCodesExpectingBadRequestResponse() {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
@@ -257,7 +257,7 @@ class SubsetsControllerV2Test {
     }
 
     @Test
-    void postOpenNoCodes(){
+    void postOpenNoCodesExpectingBadRequestResponse(){
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
@@ -367,7 +367,7 @@ class SubsetsControllerV2Test {
 
 
     @Test
-    void postDeletePostGetVersionsCheckLength(){
+    void deleteVersionByIdPostAnotherOneThenGetByIdToMakeSureTheIdIsDistinct(){
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
 
         JsonNode series = readJsonFile(series_1_0);
@@ -380,7 +380,6 @@ class SubsetsControllerV2Test {
         assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
         String versionUID1 = postVersionRE.getBody().get(Field.VERSION).asText();
-        System.out.println("Version UID 1: "+versionUID1);
 
         try {
             Thread.sleep(50); // To make sure creation is completed before deletion is attempted
@@ -710,6 +709,25 @@ class SubsetsControllerV2Test {
     }
 
     @Test
+    void putToAddValidUntilToOpenVersion(){
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_2_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version202 = readJsonFile(version_2_0_2);
+        ResponseEntity<JsonNode> postVersion2RE = instance.postSubsetVersion(seriesId, version202);
+        assertEquals(HttpStatus.CREATED, postVersion2RE.getStatusCode());
+        String version2ID = postVersion2RE.getBody().get(Field.VERSION).asText();
+
+        JsonNode version202validUntil = readJsonFile(version_2_0_2_validUntil);
+        ResponseEntity<JsonNode> putVersion2validUntilRE = instance.putSubsetVersion(seriesId, version2ID, version202validUntil);
+        assertEquals(HttpStatus.OK, putVersion2validUntilRE.getStatusCode());
+    }
+
+    @Test
     void postNewVersionCollidingWithEndOfExistingVersion(){
         // POST series 2 0
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
@@ -759,19 +777,23 @@ class SubsetsControllerV2Test {
         ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
-
         JsonNode version203_overlap = readJsonFile(version_2_0_3_overlapping_date);
         ResponseEntity<JsonNode> postVersion3RE = instance.postSubsetVersion(seriesId, version203_overlap);
         assertEquals(HttpStatus.CREATED, postVersion3RE.getStatusCode());
 
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         JsonNode version202validUntil = readJsonFile(version_2_0_2_validUntil);
         ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, version202validUntil);
         assertEquals(HttpStatus.BAD_REQUEST, postVersion2validUntilRE.getStatusCode());
-
     }
 
     @Test
-    void postNewVersionCreatingIllegalGapThenFillGapToMakeThatVersionLegal(){
+    void postNewVersionCreatingIllegalGapThenFillGapToMakeThatVersionLegal() {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
 
         JsonNode series = readJsonFile(series_2_0);
@@ -783,6 +805,12 @@ class SubsetsControllerV2Test {
         ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version201);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         JsonNode version203 = readJsonFile(version_2_0_3);
         ResponseEntity<JsonNode> postVersion3RE = instance.postSubsetVersion(seriesId, version203);
         assertEquals(HttpStatus.BAD_REQUEST, postVersion3RE.getStatusCode());
@@ -791,16 +819,89 @@ class SubsetsControllerV2Test {
         ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, version202validUntil);
         assertEquals(HttpStatus.CREATED, postVersion2validUntilRE.getStatusCode());
 
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         postVersion3RE = instance.postSubsetVersion(seriesId, version203);
         assertEquals(HttpStatus.CREATED, postVersion3RE.getStatusCode());
     }
 
-    /*
+
     @Test
-    void putNewVersionWithVersionValidFromInValidityPeriodOfLastVersion(){
-        //We should be able to save a draft that overlaps validity period of last published subset with open ended validity period.
+    void testIncludeDraftsParameter() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode versionDraft = readJsonFile(version_1_0_1_nocodes_draft);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, versionDraft);
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        JsonNode versionOpen = readJsonFile(version_1_0_1_open);
+        ResponseEntity<JsonNode> postVersionOpenRE = instance.postSubsetVersion(seriesId, versionOpen);
+        assertEquals(HttpStatus.CREATED, postVersionOpenRE.getStatusCode());
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ResponseEntity<JsonNode> getVersionWithDraftsRE = instance.getVersions(seriesId, true, true);
+        assertEquals(HttpStatus.OK, getVersionWithDraftsRE.getStatusCode());
+        assertTrue(getVersionWithDraftsRE.hasBody());
+        JsonNode body = getVersionWithDraftsRE.getBody();
+        assertTrue(body.isArray());
+        ArrayNode arrayNode = body.deepCopy();
+        assertEquals(2, arrayNode.size());
+
+        getVersionWithDraftsRE = instance.getVersions(seriesId, true, false);
+        assertEquals(HttpStatus.OK, getVersionWithDraftsRE.getStatusCode());
+        assertTrue(getVersionWithDraftsRE.hasBody());
+        body = getVersionWithDraftsRE.getBody();
+        assertTrue(body.isArray());
+        arrayNode = body.deepCopy();
+        assertEquals(1, arrayNode.size());
     }
 
+
+    @Test
+    void putNewVersionDraftWhenAnotherDraftAlreadyExists(){
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode versionDraft = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, versionDraft);
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        JsonNode versionDraft2 = readJsonFile(version_1_0_1_1);
+        ResponseEntity<JsonNode> postVersionRE2 = instance.postSubsetVersion(seriesId, versionDraft2);
+        assertEquals(HttpStatus.CREATED, postVersionRE2.getStatusCode());
+    }
+
+    /*
     @Test
     void getSubsetCodesInDateRange() {
     }
@@ -810,103 +911,11 @@ class SubsetsControllerV2Test {
     }
 
     @Test
-    void deleteSubsetVersionById() {
-    }
-
-    @Test
     void validateVersion() {
     }
 
     @Test
     void validateSeries() {
-    }
-
-    @Test
-    void testIncludeDraftsParameter(){
-        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
-        instance.deleteAllSeries();
-
-        JsonNode draft = getSubset(fv0_9);
-        String id = draft.get(Field.ID).asText();
-        instance.postSubsetSeries(draft);
-
-        ResponseEntity<JsonNode> getSubsetsNoDraftRE = instance.getSubset(
-                id,
-                false,
-                false,
-                true);
-        assertEquals(HttpStatus.NOT_FOUND, getSubsetsNoDraftRE.getStatusCode());
-        ResponseEntity<JsonNode> getSubsetsWithDraftsRE = instance.getSubset(
-                id,
-                true,
-                true,
-                true);
-        assertEquals(HttpStatus.OK, getSubsetsWithDraftsRE.getStatusCode());
-
-        JsonNode open = getSubset(fv1_0);
-        instance.putSubset(id, open);
-        getSubsetsNoDraftRE = instance.getSubset(
-                id,
-                false,
-                false,
-                true);
-        assertEquals(HttpStatus.OK, getSubsetsNoDraftRE.getStatusCode());
-    }
-
-    @Test
-    void putNewVersionDraftWhenAnotherDraftAlreadyExists(){
-        JsonNode subsetv1 = getSubset(fv1_0);
-        JsonNode subsetv2 = getSubset(fv2_0);
-        JsonNode subsetv3 = getSubset(fv3_0);
-
-        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
-        instance.deleteAllSeries();
-
-        instance.postSubsetSeries(subsetv1);
-        ResponseEntity<JsonNode> putRE2 = instance.putSubset(subsetv3.get(Field.ID).asText(), subsetv2);
-        ResponseEntity<JsonNode> putRE3 = instance.putSubset(subsetv3.get(Field.ID).asText(), subsetv3);
-
-        assertEquals(HttpStatus.OK, putRE2.getStatusCode());
-        assertEquals(HttpStatus.OK, putRE3.getStatusCode());
-    }
-
-    @Test
-    void putPatchWithChangesToDRAFT(){
-        JsonNode subsetv1 = getSubset(fv0_9);
-        JsonNode subsetv2 = getSubset(fv0_91);
-
-        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
-        instance.deleteAllSeries();
-
-        instance.postSubsetSeries(subsetv1);
-        ResponseEntity<JsonNode> putRE = instance.putSubset(subsetv2.get(Field.ID).asText(), subsetv2);
-        assertEquals(HttpStatus.OK, putRE.getStatusCode());
-    }
-
-    @Test
-    void putPatchWithChangesToOPEN(){
-        JsonNode subsetv1 = getSubset(fv1_0);
-        JsonNode subsetv2 = getSubset(fv1_4);
-
-        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
-        instance.deleteAllSeries();
-
-        instance.postSubsetSeries(subsetv1);
-        ResponseEntity<JsonNode> putRE = instance.putSubset(subsetv2.get(Field.ID).asText(), subsetv2);
-        assertEquals(HttpStatus.OK, putRE.getStatusCode());
-    }
-
-    @Test
-    void putNewOpenVersionWithChanges(){
-        JsonNode subsetv1 = getSubset(fv1_0);
-        JsonNode subsetv2 = getSubset(fv2_1);
-
-        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
-        instance.deleteAllSeries();
-
-        instance.postSubsetSeries(subsetv1);
-        ResponseEntity<JsonNode> putRE = instance.putSubset(subsetv2.get(Field.ID).asText(), subsetv2);
-        assertEquals(HttpStatus.OK, putRE.getStatusCode());
     }
     */
 }
