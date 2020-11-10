@@ -295,7 +295,7 @@ public class SubsetsControllerV2 {
             if (!oldValidFrom.equals(newValidFrom)){
                 return ErrorHandler.newHttpError("Changes in validFrom not allowed to published subset", BAD_REQUEST, LOG);
             }
-            String[] changeableFields = new String[]{Field.LAST_MODIFIED, Field.LAST_UPDATED_BY, Field.VALID_UNTIL};
+            String[] changeableFields = new String[]{Field.LAST_MODIFIED, Field.LAST_UPDATED_BY, Field.VALID_UNTIL, Field._LINKS};
             ResponseEntity<JsonNode> compareFieldsRE = compareFields(previousEditionOfVersion, editablePutVersion, changeableFields);
             if (!compareFieldsRE.getStatusCode().is2xxSuccessful())
                 return compareFieldsRE;
@@ -703,7 +703,7 @@ public class SubsetsControllerV2 {
             if (!newVersion.has(fieldName) && !changeableFields.contains(fieldName))
                 return ErrorHandler.newHttpError("Field '"+fieldName+"' was missing, and is not a changeable field.", BAD_REQUEST, LOG);
             JsonNode fieldValue = stringJsonNodeEntry.getValue();
-            if (newVersion.has(fieldName) && !fieldValue.asText().equals(newVersion.get(fieldName).asText()))
+            if (newVersion.has(fieldName) && !changeableFields.contains(fieldName) && !fieldValue.asText().equals(newVersion.get(fieldName).asText()))
                 return ErrorHandler.newHttpError("Field '"+fieldName+"' was changed, and is not a changeable field.", BAD_REQUEST, LOG);
         }
         return new ResponseEntity<>(OK);
@@ -767,12 +767,39 @@ public class SubsetsControllerV2 {
                         firstValidFrom = versionValidFrom;
                     if (lastValidFrom == null || versionValidFrom.compareTo(lastValidFrom) > 0)
                         lastValidFrom = versionValidFrom;
+
                     if (validFrom.compareTo(versionValidFrom) == 0)
                         return ErrorHandler.newHttpError(
                                 "validFrom of a subsetVersion can not be the same as an existing published subset version's validFrom. Colliding version nr: "+versionJsonNode.get(Field.VERSION).asText(),
                                 BAD_REQUEST,
                                 LOG);
+
                     String versionValidUntil = versionJsonNode.has(Field.VALID_UNTIL) ? versionJsonNode.get(Field.VALID_UNTIL).asText() : null;
+
+                    if (validUntil != null) {
+                        // Check if validUntil of the new version is within the validity range of this old version
+                        if ((validUntil.compareTo(versionValidFrom) >= 0 && (versionValidUntil == null || validUntil.compareTo(versionValidUntil) <= 0)) ||
+                                (validFrom.compareTo(versionValidFrom) >= 0 && (versionValidUntil == null || validFrom.compareTo(versionValidUntil) <= 0))){
+                            return ErrorHandler.newHttpError(
+                                    "The new version's validUntil is within the validity range of an existing subset version. Colliding version nr: "+versionJsonNode.get(Field.VERSION).asText(),
+                                    BAD_REQUEST,
+                                    LOG);
+                        }
+                    } else {
+                        if (versionValidFrom.compareTo(validFrom) >= 0)
+                            return ErrorHandler.newHttpError(
+                                    "If a validUntil is not set for a posted version, it must be the new latest subset series version ",
+                                    BAD_REQUEST,
+                                    LOG);
+                        if (versionValidUntil!= null && versionValidUntil.compareTo(validFrom) >= 0)
+                            return ErrorHandler.newHttpError(
+                                    "The new latest version's validFrom must be after the previous versions validUntil",
+                                    BAD_REQUEST,
+                                    LOG);
+
+                    }
+
+                    //TODO: I think this is superfluous?
                     if (versionValidUntil != null && validUntil != null) {
                         if (validUntil.compareTo(versionValidUntil) <= 0 && validUntil.compareTo(versionValidFrom) >= 0)
                             return ErrorHandler.newHttpError(
@@ -793,8 +820,10 @@ public class SubsetsControllerV2 {
                 }
             }
             LOG.debug("Done iterating over all existing versions of the subset to check validity period overlaps");
+
             if (firstValidFrom != null && validFrom.compareTo(firstValidFrom) >= 0 && lastValidFrom != null && validFrom.compareTo(lastValidFrom) <= 0)
                 return ErrorHandler.newHttpError("The validity period of a new subset must be before or after all existing versions", BAD_REQUEST, LOG);
+
             boolean isNewLatestVersion = lastValidFrom == null || validFrom.compareTo(lastValidFrom) > 0;
             boolean isNewFirstVersion = firstValidFrom == null || validFrom.compareTo(firstValidFrom) < 0;
 

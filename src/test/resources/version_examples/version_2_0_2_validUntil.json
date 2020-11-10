@@ -1,5 +1,5 @@
 {
-  "validFrom":"2007-01-01",
+  "validFrom":"2007-01-02",
   "validUntil":"2020-01-01",
   "administrativeStatus":"OPEN",
   "codes":[
@@ -10,7 +10,7 @@
       "name": "Sortland - Suortá",
       "rank": "1",
       "validFromInRequestedRange": "2018-01-01",
-      "validToInRequestedRange": null
+      "validToInRequestedRange": "2020-01-01"
     },
     {
       "classificationId": "131",
