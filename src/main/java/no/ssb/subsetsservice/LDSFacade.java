@@ -209,7 +209,7 @@ public class LDSFacade implements LDSInterface {
     public ResponseEntity<JsonNode> deleteSubsetSeries(String id) {
         ResponseEntity<JsonNode> getSeriesRE = getSubsetSeries(id);
         ArrayNode versionsArrayNode = (ArrayNode)getSeriesRE.getBody().get(Field.VERSIONS);
-        for(JsonNode versionLink : versionsArrayNode){
+        for (JsonNode versionLink : versionsArrayNode){
             String[] splitSlash = versionLink.asText().split("/");
             String versionUID = splitSlash[splitSlash.length-1];
             new LDSConsumer(API_LDS).delete(VERSIONS_API+"/"+versionUID);
@@ -220,23 +220,16 @@ public class LDSFacade implements LDSInterface {
     }
 
     @Override
-    public void deleteSubsetVersion(String id, String versionUidToDelete) {
-        ResponseEntity<JsonNode> getSeriesRE = getSubsetSeries(id);
-        if (getSeriesRE.getStatusCode().is2xxSuccessful()) {
-            ObjectNode series = getSeriesRE.getBody().deepCopy();
-            ArrayNode versions = series.get(Field.VERSIONS).deepCopy();
-            for (int i = 0; i < versions.size(); i++) {
-                String versionLink = versions.get(i).asText();
-                String[] versionLinkSplitSlash = versionLink.split("/");
-                String versionUID = versionLinkSplitSlash[versionLinkSplitSlash.length-1];
-                if (versionUID.equals(versionUidToDelete)) {
-                    versions.remove(i);
-                    series.set(Field.VERSIONS, versions);
-                    new LDSFacade().editSeries(series, id);
-                    break;
-                }
-            }
-        }
+    public void deleteSubsetVersionFromSeriesAndFromLDS(String seriesId, String versionUidToDelete) {
+        new LDSConsumer(API_LDS).delete(SERIES_API + "/" + seriesId + "/versions/ClassificationSubsetVersion/"+versionUidToDelete);
         new LDSConsumer(API_LDS).delete(VERSIONS_API + "/" + versionUidToDelete);
+    }
+
+    @Override
+    public ResponseEntity<JsonNode> editVersion(ObjectNode editablePutVersion) {
+        String seriesUid = editablePutVersion.get(Field.SERIES_ID).asText();
+        String versionNr = editablePutVersion.get(Field.VERSION).asText();
+        String versionUid = seriesUid+"_"+versionNr;
+        return new LDSConsumer(API_LDS).putTo(VERSIONS_API+"/" + versionUid, editablePutVersion);
     }
 }

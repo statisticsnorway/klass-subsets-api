@@ -1,0 +1,16 @@
+{
+  "id":"UID_for_dette_uttrekket_1",
+  "description": [
+    {"languageCode":"nb", "languageText":"tekst på norsk bokmål"},
+    {"languageCode":"en", "languageText":"text in english"}
+  ],
+  "name": [
+    {"languageCode":"nb", "languageText":"fullt navn på norsk bokmål"},
+    {"languageCode":"en", "languageText":"full name in english"}
+  ],
+  "administrativeDetails": [
+    {"administrativeDetailType":"DEFAULTLANGUAGE", "values":["nb"]}
+  ],
+  "owningSection":"700 it",
+  "classificationFamily":"Some Family"
+}

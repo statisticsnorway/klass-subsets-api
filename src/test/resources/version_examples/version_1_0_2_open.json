@@ -1,0 +1,19 @@
+{
+  "validFrom":"2020-10-19",
+  "validUntil":"2021-10-19",
+  "administrativeStatus":"OPEN",
+  "codes":[
+    {
+      "classificationId": "131",
+      "code": "1144",
+      "rank": "1",
+      "level": "1",
+      "name": "Kvitsøy",
+      "validFromInRequestedRange": "2020-10-19"
+    }
+  ],
+  "versionRationale": [
+    {"languageCode":"nb", "languageText":"versjon rasjonale på norsk bokmål"},
+    {"languageCode":"en", "languageText":"version rationale in english"}
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "validFrom":"2020-10-19",
+  "administrativeStatus":"DRAFT",
+  "codes":[
+    {
+      "classificationId": "131",
+      "code": "0301",
+      "rank": "1",
+      "level": "1",
+      "name": "Oslo",
+      "validFromInRequestedRange": "2020-10-19"
+    },
+    {
+      "classificationId": "131",
+      "code": "1144",
+      "rank": "2",
+      "level": "1",
+      "name": "Kvitsøy",
+      "validFromInRequestedRange": "2020-10-19"
+    }
+  ],
+  "versionRationale": [
+    {"languageCode":"nb", "languageText":"v1.1 versjon rasjonale på norsk bokmål"},
+    {"languageCode":"en", "languageText":"v1.1 version rationale in english"}
+  ]
+}

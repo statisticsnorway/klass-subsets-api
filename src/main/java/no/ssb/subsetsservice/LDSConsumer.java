@@ -7,7 +7,6 @@ import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPut;
-import org.apache.http.conn.HttpHostConnectException;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -148,7 +147,7 @@ public class LDSConsumer {
      */
     ResponseEntity<JsonNode> putTo(String additional, JsonNode json){
         String urlString = LDS_URL+additional;
-        LOG.debug("PUT to "+urlString);
+        LOG.debug("PUT attempt to "+urlString);
         CloseableHttpClient httpclient = HttpClients.createDefault();
         HttpPut httpPut = new HttpPut(urlString);
         httpPut.setHeader("Accept", "application/json");
@@ -170,8 +169,12 @@ public class LDSConsumer {
             int status = response.getStatusLine().getStatusCode();
             HttpStatus httpStatus = HttpStatus.resolve(status);
             LOG.debug("PUT to "+urlString+" - Status: "+httpStatus.toString());
-            if (!httpStatus.equals(HttpStatus.CREATED) && !httpStatus.equals(HttpStatus.OK)){
-                String responseBodyString = EntityUtils.toString(entity);
+            if (!httpStatus.is2xxSuccessful()){
+                System.out.println("json node: ");
+                System.out.println(json.toPrettyString());
+                String responseBodyString = "";
+                if (entity != null)
+                    responseBodyString = EntityUtils.toString(entity);
                 return ErrorHandler.newHttpError(
                         "LDS returned code "+httpStatus+" and body "+responseBodyString,
                         HttpStatus.INTERNAL_SERVER_ERROR,
