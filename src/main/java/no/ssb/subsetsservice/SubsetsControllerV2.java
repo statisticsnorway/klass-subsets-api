@@ -796,10 +796,9 @@ public class SubsetsControllerV2 {
                                     "The new latest version's validFrom must be after the previous versions validUntil",
                                     BAD_REQUEST,
                                     LOG);
-
                     }
 
-                    //TODO: I think this is superfluous?
+                    //TODO: I think this whole block is now superfluous and already covered by the one above. But this one does not cover all the bases of the one above.
                     if (versionValidUntil != null && validUntil != null) {
                         if (validUntil.compareTo(versionValidUntil) <= 0 && validUntil.compareTo(versionValidFrom) >= 0)
                             return ErrorHandler.newHttpError(
