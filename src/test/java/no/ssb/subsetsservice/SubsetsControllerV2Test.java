@@ -949,6 +949,12 @@ class SubsetsControllerV2Test {
         ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, version202validUntil);
         assertEquals(HttpStatus.CREATED, postVersion2validUntilRE.getStatusCode());
 
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         ResponseEntity<JsonNode> getCodesFromToRE = instance.getSubsetCodes(seriesId, "2004-01-01", "2009-01-01", true, true);
         System.out.println();
         System.out.println(getCodesFromToRE.getBody().toPrettyString());
@@ -966,6 +972,12 @@ class SubsetsControllerV2Test {
         JsonNode version201validUntil = readJsonFile(version_1_0_1);
         ResponseEntity<JsonNode> postVersion1validUntilRE = instance.postSubsetVersion(seriesId, version201validUntil);
         assertEquals(HttpStatus.CREATED, postVersion1validUntilRE.getStatusCode());
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         ResponseEntity<JsonNode> getCodesFromToRE = instance.getSubsetCodes(seriesId, "2020-01-01", "2022-01-01", true, true);
         System.out.println();
