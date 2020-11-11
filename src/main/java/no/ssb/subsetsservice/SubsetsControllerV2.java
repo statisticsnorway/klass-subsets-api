@@ -254,7 +254,7 @@ public class SubsetsControllerV2 {
         editablePutVersion.set(Field.SERIES_ID, previousEditionOfVersion.get(Field.SERIES_ID));
         editablePutVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
         editablePutVersion.set(Field.CREATED_DATE, previousEditionOfVersion.get(Field.CREATED_DATE));
-        editablePutVersion = Utils.addCodeVersionAndValidFromToAllCodesInVersion(editablePutVersion, LOG);
+        editablePutVersion = Utils.addCodeVersionsToAllCodesInVersion(editablePutVersion, LOG);
 
         ResponseEntity<JsonNode> versionSchemaValidationRE = validateVersion(editablePutVersion);
         if (!versionSchemaValidationRE.getStatusCode().is2xxSuccessful())
@@ -339,7 +339,7 @@ public class SubsetsControllerV2 {
         editableVersion.put(Field.SERIES_ID, seriesId);
         editableVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
         editableVersion.put(Field.CREATED_DATE, Utils.getNowDate());
-        editableVersion = Utils.addCodeVersionAndValidFromToAllCodesInVersion(editableVersion, LOG);
+        editableVersion = Utils.addCodeVersionsToAllCodesInVersion(editableVersion, LOG);
 
         boolean isStatusOpen = editableVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
 
@@ -583,7 +583,7 @@ public class SubsetsControllerV2 {
         JsonNode versionsResponseBodyJson = versionsResponseEntity.getBody();
         LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
         ObjectMapper mapper = new ObjectMapper();
-        Map<String, Integer> codeMap = new HashMap<>();
+        Map<String, ArrayNode> codeMap = new HashMap<>();
 
         if (versionsResponseBodyJson == null)
             return ErrorHandler.newHttpError("Response body was null", INTERNAL_SERVER_ERROR, LOG);
@@ -616,23 +616,38 @@ public class SubsetsControllerV2 {
             ArrayNode codesArrayNode = (ArrayNode) codes;
             LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
             for (JsonNode jsonNode : codesArrayNode) {
-                String codeURN = jsonNode.get(Field.URN).asText();
-                codeMap.merge(codeURN, 1, Integer::sum);
+                String classificationId = jsonNode.get(Field.CLASSIFICATION_ID).asText();
+                String code = jsonNode.get(Field.CODE).asText();
+                String name = jsonNode.get(Field.NAME).asText();
+                String level = jsonNode.get(Field.LEVEL).asText();
+                String codeURN = classificationId+"_"+code+"_"+name+"_"+level;
+                ArrayNode versionsArray = jsonNode.get(Field.VERSIONS).deepCopy();
+                if (codeMap.containsKey(codeURN)) {
+                    versionsArray.addAll(codeMap.get(codeURN));
+                }
+                codeMap.put(codeURN, versionsArray);
             }
         }
 
-        ArrayNode intersectionValidCodesInIntervalArrayNode = mapper.createArrayNode();
+        ArrayNode codesInRangeArrayNode = new ObjectMapper().createArrayNode();
 
-        // Only return codes that were in every version in the interval, (=> they were always valid)
-        for (String key : codeMap.keySet()) {
-            int value = codeMap.get(key);
-            LOG.trace("key:" + key + " value:" + value);
-            if (value == nrOfVersions)
-                intersectionValidCodesInIntervalArrayNode.add(key);
+        for (String s : codeMap.keySet()) {
+            ArrayNode codeVersionsList = codeMap.get(s);
+            ObjectNode editableCode = new ObjectMapper().createObjectNode();
+            String[] splitUnderscore = s.split("_");
+            String classificationId = splitUnderscore[0];
+            String code = splitUnderscore[1];
+            String name = splitUnderscore[2];
+            String level = splitUnderscore[3];
+            editableCode.put(Field.CLASSIFICATION_ID, classificationId);
+            editableCode.put(Field.CODE, code);
+            editableCode.put(Field.NAME, name);
+            editableCode.put(Field.LEVEL, level);
+            editableCode.set(Field.VERSIONS, codeVersionsList);
+            codesInRangeArrayNode.add(editableCode);
         }
-
-        LOG.debug("nr of valid codes: " + intersectionValidCodesInIntervalArrayNode.size());
-        return new ResponseEntity<>(intersectionValidCodesInIntervalArrayNode, OK);
+        //TODO: return all (variations of) codes that are valid at all the the interval [from, to]
+        return new ResponseEntity<>(codesInRangeArrayNode, OK);
     }
 
     /**
@@ -671,22 +686,28 @@ public class SubsetsControllerV2 {
             return versionsRE;
         else if (!versionsRE.getStatusCode().equals(OK))
             return resolveNonOKLDSResponse("GET versions of subset with id " + id + " ", versionsRE);
+
         JsonNode versionsResponseBodyJSON = versionsRE.getBody();
         if (versionsResponseBodyJSON == null)
             return ErrorHandler.newHttpError("versions response body was null", INTERNAL_SERVER_ERROR, LOG);
         if (!versionsResponseBodyJSON.isArray())
             return ErrorHandler.newHttpError("versions response body was not array", INTERNAL_SERVER_ERROR, LOG);
-
+        LOG.debug("codesAt: We found "+versionsResponseBodyJSON.size()+" subset versions. Now we are going to find if one of them is valid at the date given.");
         ArrayNode versionsArrayNode = (ArrayNode) versionsResponseBodyJSON;
         for (JsonNode versionJsonNode : versionsArrayNode) {
             String entryValidFrom = versionJsonNode.get(Field.VALID_FROM).textValue();
             String entryValidUntil = versionJsonNode.has(Field.VALID_UNTIL) ? versionJsonNode.get(Field.VALID_UNTIL).textValue() : null;
+            String versionId = versionJsonNode.get(Field.VERSION).asText();
+            LOG.debug("version "+versionId+" has validFrom "+entryValidFrom+" and validUntil "+(entryValidFrom != null ? entryValidUntil : "does not exist"));
             if (entryValidFrom.compareTo(date) <= 0 && (entryValidUntil == null || entryValidUntil.compareTo(date) >= 0)) {
+                LOG.debug("The date "+date+" was within the range!");
                 JsonNode codes = versionJsonNode.get(Field.CODES);
                 return new ResponseEntity<>(codes, OK);
+            } else {
+                LOG.debug("The date "+date+" was not within the range.");
             }
         }
-        return new ResponseEntity<>(new ObjectMapper().createArrayNode(), OK);
+        return new ResponseEntity<>(new ObjectMapper().createArrayNode(), OK); //TODO Maybe this should be "not found"?
     }
 
     @GetMapping("/v2/subsets/schema")

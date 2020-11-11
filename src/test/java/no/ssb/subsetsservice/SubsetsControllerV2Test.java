@@ -857,15 +857,135 @@ class SubsetsControllerV2Test {
         assertEquals(HttpStatus.CREATED, postVersionRE2.getStatusCode());
     }
 
-    /*
-    @Test
-    void getSubsetCodesInDateRange() {
-    }
-
     @Test
     void getSubsetCodesAtDate() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode versionDraft = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, versionDraft);
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ResponseEntity<JsonNode> getCodesAtRE = instance.getSubsetCodesAt(seriesId, "2020-11-11", true, true);
+        assertEquals(HttpStatus.OK, getCodesAtRE.getStatusCode());
+        ArrayNode codesArray = getCodesAtRE.getBody().deepCopy();
+        assertEquals(1, codesArray.size());
     }
 
+    @Test
+    void getSubsetCodesAtDateBeforeValidityPeriod() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode versionDraft = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, versionDraft);
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ResponseEntity<JsonNode> getCodesAtRE = instance.getSubsetCodesAt(seriesId, "2007-11-11", true, true);
+        assertEquals(HttpStatus.OK, getCodesAtRE.getStatusCode());
+        ArrayNode codesArray = getCodesAtRE.getBody().deepCopy();
+        assertEquals(0, codesArray.size());
+    }
+
+    @Test
+    void getSubsetCodesAtDateAfterValidityPeriod() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode versionDraft = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, versionDraft);
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ResponseEntity<JsonNode> getCodesAtRE = instance.getSubsetCodesAt(seriesId, "2022-11-11", true, true);
+        assertEquals(HttpStatus.OK, getCodesAtRE.getStatusCode());
+        ArrayNode codesArray = getCodesAtRE.getBody().deepCopy();
+        assertEquals(0, codesArray.size());
+    }
+
+    @Test
+    void getSubsetCodesInDateRange() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_2_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version201validUntil = readJsonFile(version_2_0_1);
+        ResponseEntity<JsonNode> postVersion1validUntilRE = instance.postSubsetVersion(seriesId, version201validUntil);
+        assertEquals(HttpStatus.CREATED, postVersion1validUntilRE.getStatusCode());
+
+        JsonNode version202validUntil = readJsonFile(version_2_0_2_validUntil);
+        ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, version202validUntil);
+        assertEquals(HttpStatus.CREATED, postVersion2validUntilRE.getStatusCode());
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ResponseEntity<JsonNode> getCodesFromToRE = instance.getSubsetCodes(seriesId, "2004-01-01", "2009-01-01", true, true);
+        System.out.println();
+        System.out.println(getCodesFromToRE.getBody().toPrettyString());
+    }
+
+    @Test
+    void getSubsetCodesInDateRange2() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version201validUntil = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersion1validUntilRE = instance.postSubsetVersion(seriesId, version201validUntil);
+        assertEquals(HttpStatus.CREATED, postVersion1validUntilRE.getStatusCode());
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ResponseEntity<JsonNode> getCodesFromToRE = instance.getSubsetCodes(seriesId, "2020-01-01", "2022-01-01", true, true);
+        System.out.println();
+        System.out.println(getCodesFromToRE.getBody().toPrettyString());
+        assertEquals(1, getCodesFromToRE.getBody().get(0).get(Field.VERSIONS).size());
+    }
+
+    /*
     @Test
     void validateVersion() {
     }
