@@ -43,7 +43,7 @@ public class Utils {
         return str.matches(CLEAN_ID_REGEX);
     }
 
-    public static JsonNode getSubsetVersionLinkNode(JsonNode subset){
+    public static JsonNode getSubsetVersionLinkNode(JsonNode subset) {
         String selfURN = getVersionLink(subset.get(Field.SERIES_ID).asText(), subset.get(Field.VERSION).asText());
         String seriesUrn = getSeriesLink(subset.get(Field.SERIES_ID).asText());
         ObjectNode linksObject = getLinkSelfObject(selfURN);
@@ -51,19 +51,19 @@ public class Utils {
         return linksObject;
     }
 
-    public static ObjectNode getHrefNode(String urn){
+    public static ObjectNode getHrefNode(String urn) {
         ObjectNode seriesNode = new ObjectMapper().createObjectNode();
         seriesNode.put("href", urn);
         return seriesNode;
     }
 
-    public static ObjectNode getLinkSelfObject(String resourceUrn){
+    public static ObjectNode getLinkSelfObject(String resourceUrn) {
         ObjectNode linksNode = new ObjectMapper().createObjectNode();
         linksNode.set("self", getHrefNode(resourceUrn));
         return linksNode;
     }
 
-    public static String getVersionLink(String seriesUID, String versionID){
+    public static String getVersionLink(String seriesUID, String versionID) {
         return String.format(VERSION_LINK_FORMAT, seriesUID, versionID);
     }
 
@@ -78,7 +78,7 @@ public class Utils {
         return df.format(new Date());
     }
 
-    public static JsonNode cleanSubsetVersion(JsonNode subset){
+    public static JsonNode cleanSubsetVersion(JsonNode subset) {
         if (subset.isArray()){
             ArrayNode arrayNode = (ArrayNode) subset;
             return cleanSubsetVersionsArray(arrayNode);
@@ -94,7 +94,7 @@ public class Utils {
         return clone;
     }
 
-    private static ArrayNode cleanSubsetVersionsArray(ArrayNode subsetArray){
+    private static ArrayNode cleanSubsetVersionsArray(ArrayNode subsetArray) {
         ArrayNode clone = subsetArray.deepCopy();
         for (int i = 0; i < subsetArray.size(); i++) {
             clone.set(i, cleanSubsetVersion(clone.get(i)));
@@ -102,31 +102,12 @@ public class Utils {
         return clone;
     }
 
-    public static JsonNode getLatestMajorVersion(ArrayNode majorVersionsArrayNode, boolean published){
-        JsonNode latestVersionNode = null;
-        String latestVersionValidFrom = "0";
-        for (JsonNode versionNode : majorVersionsArrayNode) {
-            String thisVersionValidFrom = versionNode.get(Field.VERSION_VALID_FROM).asText();
-            boolean isOpen = versionNode.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
-            int compareThisToLatest = thisVersionValidFrom.compareTo(latestVersionValidFrom);
-            if (compareThisToLatest == 0){
-                Logger logger = LoggerFactory.getLogger(Utils.class);
-                logger.error("Two major versions of a subset have the same 'versionValidFrom' values. The versions are '"+versionNode.get(Field.VERSION)+"' and '"+latestVersionNode.get(Field.VERSION)+"'");
-            }
-            if ((!published || isOpen) && compareThisToLatest > 0 ){
-                latestVersionNode = versionNode;
-                latestVersionValidFrom = thisVersionValidFrom;
-            }
-        }
-        return latestVersionNode;
-    }
-
     /**
      * Sort an ArrayNode of versions according to their versionValidFrom fields
      * @param subsetArrayNode
      * @return
      */
-    public static ArrayNode sortByVersionValidFrom(ArrayNode subsetArrayNode){
+    public static ArrayNode sortByVersionValidFrom(ArrayNode subsetArrayNode) {
         List<JsonNode> subsetList = new ArrayList<>(subsetArrayNode.size());
         subsetArrayNode.forEach(subsetList::add);
         subsetList.sort(Utils::versionComparator);
@@ -135,7 +116,7 @@ public class Utils {
         return newArrayNode;
     }
 
-    public static boolean isNumeric(String string){
+    public static boolean isNumeric(String string) {
         if (string == null)
             return false;
 
@@ -147,7 +128,7 @@ public class Utils {
         }
     }
 
-    public static boolean isInteger(String string){
+    public static boolean isInteger(String string) {
         if (isNumeric(string)){
             double d = Double.parseDouble(string);
             return (d % 1) == 0 && !Double.isInfinite(d);
@@ -155,7 +136,7 @@ public class Utils {
         return false;
     }
 
-    public static int versionComparator(JsonNode s1, JsonNode s2){
+    public static int versionComparator(JsonNode s1, JsonNode s2) {
         return s2.get(Field.VERSION_VALID_FROM).asText().compareTo(s1.get(Field.VERSION_VALID_FROM).asText());
     }
 
@@ -163,55 +144,25 @@ public class Utils {
         return String.format(URN_FORMAT, classification, code);
     }
 
-    public static String generateURN(String classification, String code, String name) {
-        String encodedName = null;
-        try {
-            encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString());
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
-        return String.format(URN_FORMAT_ENCODED_NAME, classification, code, encodedName);
-    }
-
-    public static String generateURN(String classification, String code, String name, String validFrom) {
-        String encodedName = null;
-        try {
-            encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString());
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
-        return String.format(URN_FORMAT_VALID_FROM_ENCODED_NAME, classification, code, validFrom, encodedName);
-    }
-
-    public static String generateURN(JsonNode code, String versionValidFrom){
-        String name = code.get(Field.NAME).asText();
-        String classification = code.get(Field.CLASSIFICATION_ID).asText();
-        String encodedName = null;
-        try {
-            encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString());
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
-        return String.format(URN_FORMAT_VALID_FROM_ENCODED_NAME, classification, code, versionValidFrom, encodedName);
-    }
-
-    public static ObjectNode addCodeVersionAndValidFromToAllCodesInVersion(JsonNode subsetVersion, Logger LOG){
+    public static ObjectNode addCodeVersionsToAllCodesInVersion(JsonNode subsetVersion, Logger LOG) {
         ObjectNode editableVersion = subsetVersion.deepCopy();
         LOG.debug("Finding out what classification versions the codes in the subsetVersion are used in");
         if (editableVersion.has(Field.CODES)){
             ArrayNode codesArrayNode = (ArrayNode)editableVersion.get(Field.CODES);
             for (int i = 0; i < codesArrayNode.size(); i++) {
                 LOG.debug("Resolving code "+i+"/"+codesArrayNode.size());
-                JsonNode code = null;
-                code = Utils.addCodeVersionAndValidFrom(codesArrayNode.get(i));
+                JsonNode code = Utils.addCodeVersions(codesArrayNode.get(i), LOG);
+                if (code.get(Field.VERSIONS).size() < 1)
+                    LOG.error("Code "+code.get(Field.CODE)+" "+code.get(Field.NAME)+" failed to resolve any versions in validity range "+code.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText()+" - "+(code.has(Field.VALID_UNTIL_IN_REQUESTED_RANGE) ? code.get(Field.VALID_UNTIL_IN_REQUESTED_RANGE).asText() : "null"));
                 codesArrayNode.set(i, code);
             }
+            LOG.debug("codesArrayNode size "+codesArrayNode.size());
             editableVersion.set(Field.CODES, codesArrayNode);
         }
         return editableVersion;
     }
 
-    public static JsonNode addCodeVersionAndValidFrom(JsonNode code) throws HttpClientErrorException {
+    public static JsonNode addCodeVersions(JsonNode code, Logger LOG) throws HttpClientErrorException {
         ObjectNode editableCode = code.deepCopy();
         code = null;
         String validFromInRequestedRange = editableCode.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
@@ -224,8 +175,12 @@ public class Utils {
         ArrayNode classificationVersionLinksArrayNode = new ObjectMapper().createArrayNode();
         for (JsonNode classificationVersion : klassClassificationVersions) {
             String classificationVersionValidFrom = classificationVersion.get(Field.VALID_FROM).asText();
-            if (classificationVersionValidFrom.compareTo(validFromInRequestedRange) >= 0){
-                if (validUntilInRequestedRange == null || classificationVersionValidFrom.compareTo(validUntilInRequestedRange) <= 0) {
+            String classificationVersionValidUntil = classificationVersion.has("validTo") ? classificationVersion.get("validTo").asText() : null;
+            LOG.debug("Classification version '"+classificationVersion.get(Field.NAME).asText()+" has validFrom "+classificationVersionValidFrom+" and validTo "+(classificationVersionValidUntil != null ? classificationVersionValidUntil : "null"));
+            if (validUntilInRequestedRange == null || classificationVersionValidFrom.compareTo(validUntilInRequestedRange) <= 0) {
+                LOG.debug("Classification version '"+classificationVersion.get(Field.NAME).asText()+" had validFrom before the validUntilInRequestedRange of the code");
+                if (classificationVersionValidUntil == null || classificationVersionValidUntil.compareTo(validFromInRequestedRange) >= 0) {
+                    LOG.debug("Classification version '"+classificationVersion.get(Field.NAME).asText()+" had a classificationVersionValidUntil == null || classificationVersionValidUntil.compareTo(validFromInRequestedRange) >= 0 ");
                     String codeVersionURL = classificationVersion.get(Field._LINKS).get(Field.SELF).get("href").asText();
                     classificationVersionLinksArrayNode.add(codeVersionURL);
                 }
@@ -233,7 +188,6 @@ public class Utils {
         }
         editableCode.set(Field.VERSIONS, classificationVersionLinksArrayNode);
         return editableCode;
-        //throw new HttpClientErrorException(BAD_REQUEST, "Could not find a version of the classification "+classificationID+" that encompassed the validFromInRequestedRange "+validFromInRequestedRange);
     }
 
     public static String getNowDate() {
@@ -243,7 +197,12 @@ public class Utils {
         return df.format(new Date());
     }
 
-    public static ResponseEntity<JsonNode> checkAgainstSchema(JsonNode definition, JsonNode instance, Logger LOG){
+    public static int dateStringToInt(String dateString) {
+        String dateStringClean = dateString.replaceAll("-","");
+        return Integer.parseInt(dateStringClean);
+    }
+
+    public static ResponseEntity<JsonNode> checkAgainstSchema(JsonNode definition, JsonNode instance, Logger LOG) {
         JsonNode properties = definition.get("properties");
         Iterator<String> submittedFieldNamesIterator = instance.fieldNames();
         while (submittedFieldNamesIterator.hasNext()){

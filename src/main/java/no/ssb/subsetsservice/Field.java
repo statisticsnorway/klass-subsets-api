@@ -34,4 +34,5 @@ public class Field {
     public static final String VALID_FROM_IN_REQUESTED_RANGE = "validFromInRequestedRange";
     public static final String VALID_UNTIL_IN_REQUESTED_RANGE = "validUntilInRequestedRange";
     public static final String STATISTICAL_UNITS = "statisticalUnits";
+    public static final String LEVEL = "level";
 }

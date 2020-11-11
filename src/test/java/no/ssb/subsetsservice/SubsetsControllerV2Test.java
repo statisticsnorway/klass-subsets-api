@@ -932,13 +932,48 @@ class SubsetsControllerV2Test {
         assertEquals(0, codesArray.size());
     }
 
-
-
-    /*
     @Test
     void getSubsetCodesInDateRange() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_2_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version201validUntil = readJsonFile(version_2_0_1);
+        ResponseEntity<JsonNode> postVersion1validUntilRE = instance.postSubsetVersion(seriesId, version201validUntil);
+        assertEquals(HttpStatus.CREATED, postVersion1validUntilRE.getStatusCode());
+
+        JsonNode version202validUntil = readJsonFile(version_2_0_2_validUntil);
+        ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, version202validUntil);
+        assertEquals(HttpStatus.CREATED, postVersion2validUntilRE.getStatusCode());
+
+        ResponseEntity<JsonNode> getCodesFromToRE = instance.getSubsetCodes(seriesId, "2004-01-01", "2009-01-01", true, true);
+        System.out.println();
+        System.out.println(getCodesFromToRE.getBody().toPrettyString());
     }
 
+    @Test
+    void getSubsetCodesInDateRange2() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version201validUntil = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersion1validUntilRE = instance.postSubsetVersion(seriesId, version201validUntil);
+        assertEquals(HttpStatus.CREATED, postVersion1validUntilRE.getStatusCode());
+
+        ResponseEntity<JsonNode> getCodesFromToRE = instance.getSubsetCodes(seriesId, "2020-01-01", "2022-01-01", true, true);
+        System.out.println();
+        System.out.println(getCodesFromToRE.getBody().toPrettyString());
+        assertEquals(1, getCodesFromToRE.getBody().get(0).get(Field.VERSIONS).size());
+    }
+
+    /*
     @Test
     void validateVersion() {
     }
