@@ -671,22 +671,28 @@ public class SubsetsControllerV2 {
             return versionsRE;
         else if (!versionsRE.getStatusCode().equals(OK))
             return resolveNonOKLDSResponse("GET versions of subset with id " + id + " ", versionsRE);
+
         JsonNode versionsResponseBodyJSON = versionsRE.getBody();
         if (versionsResponseBodyJSON == null)
             return ErrorHandler.newHttpError("versions response body was null", INTERNAL_SERVER_ERROR, LOG);
         if (!versionsResponseBodyJSON.isArray())
             return ErrorHandler.newHttpError("versions response body was not array", INTERNAL_SERVER_ERROR, LOG);
-
+        LOG.debug("codesAt: We found "+versionsResponseBodyJSON.size()+" subset versions. Now we are going to find if one of them is valid at the date given.");
         ArrayNode versionsArrayNode = (ArrayNode) versionsResponseBodyJSON;
         for (JsonNode versionJsonNode : versionsArrayNode) {
             String entryValidFrom = versionJsonNode.get(Field.VALID_FROM).textValue();
             String entryValidUntil = versionJsonNode.has(Field.VALID_UNTIL) ? versionJsonNode.get(Field.VALID_UNTIL).textValue() : null;
+            String versionId = versionJsonNode.get(Field.VERSION).asText();
+            LOG.debug("version "+versionId+" has validFrom "+entryValidFrom+" and validUntil "+(entryValidFrom != null ? entryValidUntil : "does not exist"));
             if (entryValidFrom.compareTo(date) <= 0 && (entryValidUntil == null || entryValidUntil.compareTo(date) >= 0)) {
+                LOG.debug("The date "+date+" was within the range!");
                 JsonNode codes = versionJsonNode.get(Field.CODES);
                 return new ResponseEntity<>(codes, OK);
+            } else {
+                LOG.debug("The date "+date+" was not within the range.");
             }
         }
-        return new ResponseEntity<>(new ObjectMapper().createArrayNode(), OK);
+        return new ResponseEntity<>(new ObjectMapper().createArrayNode(), OK); //TODO Maybe this should be "not found"?
     }
 
     @GetMapping("/v2/subsets/schema")
