@@ -14,16 +14,10 @@ variables:
   - group: Hemmeligheter
   - name: fullSha
     value: '$(Build.SourceVersion)'
-  - name: imageHost
-    value: 'https://eu.gcr.io/'
   - name: imageName
     value: 'eu.gcr.io/prod-bip/ssb/klass/subsets-api'
   - name: repoName
     value: 'prod-bip/ssb/klass/subsets-api'
-  - name: imageTagBeforeVulnerabilityScan
-    value: $(Build.SourceBranchName)-imagescan-$(fullSha)
-  - name: imageTagAfterVulnerabilityScan
-    value: $(Build.SourceBranchName)-$(fullSha)
 
 resources:
   repositories:
@@ -87,8 +81,5 @@ jobs:
           options: '-DskipTests=false -Dmaven.javadoc.skip=true'
       - template: 'docker/docker-build-image-and-push-to-gcr.yml@templates'
         parameters:
-          imageHost: $(imageHost)
           imageName: $(imageName)
           repoName: $(repoName)
-          imageTagBeforeVulnerabilityScan: $(imageTagBeforeVulnerabilityScan)
-          imageTagAfterVulnerabilityScan: $(imageTagAfterVulnerabilityScan)
