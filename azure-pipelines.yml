@@ -14,10 +14,16 @@ variables:
   - group: Hemmeligheter
   - name: fullSha
     value: '$(Build.SourceVersion)'
+  - name: imageHost
+    value: 'https://eu.gcr.io/'
   - name: imageName
     value: 'eu.gcr.io/prod-bip/ssb/klass/subsets-api'
   - name: repoName
     value: 'prod-bip/ssb/klass/subsets-api'
+  - name: imageTagBeforeVulnerabilityScan
+    value: $(Build.SourceBranchName)-imagescan-$(fullSha)
+  - name: imageTagAfterVulnerabilityScan
+    value: $(Build.SourceBranchName)-$(fullSha)
 
 jobs:
   - job: buildTestDockerBuildDockerPush
@@ -79,7 +85,7 @@ jobs:
           command: 'build'
           Dockerfile: 'Dockerfile'
           tags: |
-            $(Build.SourceBranchName)-imagescan-$(fullSha)
+            $(imageTagBeforeVulnerabilityScan)
       - task: Docker@2
         condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
         displayName: 'Login to GCR'
@@ -95,4 +101,30 @@ jobs:
           command: 'push'
           Dockerfile: 'Dockerfile'
           tags: |
-            $(Build.SourceBranchName)-imagescan-$(fullSha)
+            $(imageTagBeforeVulnerabilityScan)
+      - task: DownloadSecureFile@1
+        name: gcrJsonKey
+        displayName: 'Download gcr creds'
+        inputs:
+          secureFile: 'gcr-key.json'
+      - script: |
+          echo "Setting env variable GOOGLE_APPLICATION_CREDENTIALS"
+          echo "##vso[task.setvariable variable=GOOGLE_APPLICATION_CREDENTIALS]$(gcrJsonKey.secureFilePath)"
+        displayName: 'Setting GOOGLE_APPLICATION_CREDENTIALS env variable'
+      - task: gcr-vulneralbility-check@0
+        displayName: 'Image vulnerability check'
+        inputs:
+          projectId: 'prod-bip'
+          imageHost: $(imageHost)
+          image: $(repoName)
+          imageTag: $(imageTagBeforeVulnerabilityScan)
+          timeBetweenRetries: '10000'
+      - script: |
+          TAG=`git describe --tags`
+          echo $TAG
+          cat $(gcrJsonKey.secureFilePath) | docker login -u _json_key --password-stdin $(imageHost)
+          docker pull $(imageName):$(imageTagBeforeVulnerabilityScan)
+          docker tag $(imageName):$(imageTagBeforeVulnerabilityScan) $(imageName):$(imageTagAfterVulnerabilityScan)
+          docker push $(imageName):$(imageTagAfterVulnerabilityScan)
+        displayName: "Retagging docker image if successful vulnerability scan"
+        condition: succeeded()
