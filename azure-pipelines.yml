@@ -34,7 +34,7 @@ resources:
     endpoint: statisticsnorway
 
 jobs:
-- job: buildTestDockerBuildDockerPush
+- job: buildTestAndRunTest
   displayName: 'Test/build app and Dockerimage'
   steps:
   - task: DownloadSecureFile@1
