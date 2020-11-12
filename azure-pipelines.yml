@@ -3,93 +3,93 @@ name: $(Build.SourceBranch)-$(date:yyyyMMdd)$(rev:.r)
 trigger:
   branches:
     include:
-    - 'v2'
+      - 'v2'
     exclude:
-    - 'development'
+      - 'development'
 
 pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-- group: Hemmeligheter
-- name: fullSha
-  value: '$(Build.SourceVersion)'
-- name: imageHost
-  value: 'https://eu.gcr.io/'
-- name: imageName
-  value: 'eu.gcr.io/prod-bip/ssb/klass/subsets-api'
-- name: repoName
-  value: 'prod-bip/ssb/klass/subsets-api'
-- name: imageTagBeforeVulnerabilityScan
-  value: $(Build.SourceBranchName)-imagescan-$(fullSha)
-- name: imageTagAfterVulnerabilityScan
-  value: $(Build.SourceBranchName)-$(fullSha)
+  - group: Hemmeligheter
+  - name: fullSha
+    value: '$(Build.SourceVersion)'
+  - name: imageHost
+    value: 'https://eu.gcr.io/'
+  - name: imageName
+    value: 'eu.gcr.io/prod-bip/ssb/klass/subsets-api'
+  - name: repoName
+    value: 'prod-bip/ssb/klass/subsets-api'
+  - name: imageTagBeforeVulnerabilityScan
+    value: $(Build.SourceBranchName)-imagescan-$(fullSha)
+  - name: imageTagAfterVulnerabilityScan
+    value: $(Build.SourceBranchName)-$(fullSha)
 
 resources:
   repositories:
-  - repository: templates
-    type: github
-    name: statisticsnorway/azure-pipelines-templates
-    ref: refs/tags/1.1.9
-    endpoint: statisticsnorway
+    - repository: templates
+      type: github
+      name: statisticsnorway/azure-pipelines-templates
+      ref: refs/tags/1.1.9
+      endpoint: statisticsnorway
 
 jobs:
-- job: buildTestAndRunTest
-  displayName: 'Test/build app and Dockerimage'
-  steps:
-  - task: DownloadSecureFile@1
-    name: dockerComposeCIBuild # use $(dockerComposeCIBuild.secureFilePath) to refer to it
-    displayName: 'Download docker-compose.ci.build.yml'
-    inputs:
-      secureFile: 'docker-compose.ci.build.yml'
-  - task: DownloadSecureFile@1
-    name: sqlInit # use $(sqlInit.secureFilePath) to refer to it
-    displayName: 'Download init-db-and-user.sql'
-    inputs:
-      secureFile: 'init-db-and-user.sql'
-  - task: DownloadSecureFile@1
-    name: schemaGraphQL # use $(schemaGraphQL.secureFilePath) to refer to it
-    displayName: 'Download schema.graphql'
-    inputs:
-      secureFile: 'schema.graphql'
-  - task: DockerCompose@0
-    env:
-      SQL_INIT_PATH: $(sqlInit.secureFilePath)
-      SCHEMA_PATH: $(schemaGraphQL.secureFilePath)
-    displayName: 'Run integration test backend services'
-    inputs:
-      action: Run services
-      containerregistrytype: Container Registry
-      dockerRegistryEndpoint: dockerHubOlved
-      dockerComposeFile: $(dockerComposeCIBuild.secureFilePath)
-      projectName: $(Build.Repository.Name)
-      qualifyImageNames: true
-      buildImages: false
-      abortOnContainerExit: true
-      detached: true
-  - task: ShellScript@2
-    inputs:
-      scriptPath: sethost.sh
-  - task: Maven@3
-    env:
-      API_LDS: "http://localhost:9090"
-      API_KLASS: "https://data.ssb.no/api/klass"
-    displayName: 'Maven install'
-    inputs:
-      mavenPomFile: 'pom.xml'
-      mavenOptions: '-Xmx3072m'
-      javaHomeOption: 'JDKVersion'
-      jdkVersionOption: '1.11'
-      jdkArchitectureOption: 'x64'
-      publishJUnitResults: false
-      testResultsFiles: '**/TEST-*.xml'
-      goals: 'install'
-      options: '-DskipTests=false -Dmaven.javadoc.skip=true'
+  - job: buildTestAndRunTest
+    displayName: 'Test/build app and Dockerimage'
+    steps:
+      - task: DownloadSecureFile@1
+        name: dockerComposeCIBuild # use $(dockerComposeCIBuild.secureFilePath) to refer to it
+        displayName: 'Download docker-compose.ci.build.yml'
+        inputs:
+          secureFile: 'docker-compose.ci.build.yml'
+      - task: DownloadSecureFile@1
+        name: sqlInit # use $(sqlInit.secureFilePath) to refer to it
+        displayName: 'Download init-db-and-user.sql'
+        inputs:
+          secureFile: 'init-db-and-user.sql'
+      - task: DownloadSecureFile@1
+        name: schemaGraphQL # use $(schemaGraphQL.secureFilePath) to refer to it
+        displayName: 'Download schema.graphql'
+        inputs:
+          secureFile: 'schema.graphql'
+      - task: DockerCompose@0
+        env:
+          SQL_INIT_PATH: $(sqlInit.secureFilePath)
+          SCHEMA_PATH: $(schemaGraphQL.secureFilePath)
+        displayName: 'Run integration test backend services'
+        inputs:
+          action: Run services
+          containerregistrytype: Container Registry
+          dockerRegistryEndpoint: dockerHubOlved
+          dockerComposeFile: $(dockerComposeCIBuild.secureFilePath)
+          projectName: $(Build.Repository.Name)
+          qualifyImageNames: true
+          buildImages: false
+          abortOnContainerExit: true
+          detached: true
+      - task: ShellScript@2
+        inputs:
+          scriptPath: sethost.sh
+      - task: Maven@3
+        env:
+          API_LDS: "http://localhost:9090"
+          API_KLASS: "https://data.ssb.no/api/klass"
+        displayName: 'Maven install'
+        inputs:
+          mavenPomFile: 'pom.xml'
+          mavenOptions: '-Xmx3072m'
+          javaHomeOption: 'JDKVersion'
+          jdkVersionOption: '1.11'
+          jdkArchitectureOption: 'x64'
+          publishJUnitResults: false
+          testResultsFiles: '**/TEST-*.xml'
+          goals: 'install'
+          options: '-DskipTests=false -Dmaven.javadoc.skip=true'
 
-- template: 'docker/docker-build-image-and-push-to-gcr.yml@templates'
-    parameters:
-      project: 'forbruk'
-      imageName: $(imageName)
-      repoName: $(repoName)
-      imageTagBeforeVulnerabilityScan: $(imageTagBeforeVulnerabilityScan)
-      imageTagAfterVulnerabilityScan: $(imageTagAfterVulnerabilityScan)
+  - template: 'docker/docker-build-image-and-push-to-gcr.yml@templates'
+      parameters:
+        project: 'forbruk'
+        imageName: $(imageName)
+        repoName: $(repoName)
+        imageTagBeforeVulnerabilityScan: $(imageTagBeforeVulnerabilityScan)
+        imageTagAfterVulnerabilityScan: $(imageTagAfterVulnerabilityScan)
