@@ -85,11 +85,10 @@ jobs:
           testResultsFiles: '**/TEST-*.xml'
           goals: 'install'
           options: '-DskipTests=false -Dmaven.javadoc.skip=true'
-
-  - template: 'docker/docker-build-image-and-push-to-gcr.yml@templates'
-    parameters:
-      imageHost: $(imageHost)
-      imageName: $(imageName)
-      repoName: $(repoName)
-      imageTagBeforeVulnerabilityScan: $(imageTagBeforeVulnerabilityScan)
-      imageTagAfterVulnerabilityScan: $(imageTagAfterVulnerabilityScan)
+      - template: 'docker/docker-build-image-and-push-to-gcr.yml@templates'
+        parameters:
+          imageHost: $(imageHost)
+          imageName: $(imageName)
+          repoName: $(repoName)
+          imageTagBeforeVulnerabilityScan: $(imageTagBeforeVulnerabilityScan)
+          imageTagAfterVulnerabilityScan: $(imageTagAfterVulnerabilityScan)
