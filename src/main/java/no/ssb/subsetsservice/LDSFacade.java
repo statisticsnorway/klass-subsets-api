@@ -114,7 +114,7 @@ public class LDSFacade implements LDSInterface {
     }
 
     public ResponseEntity<JsonNode> createSubsetSeries(JsonNode subset, String id){
-        return new LDSConsumer(API_LDS).putTo(SERIES_API+"/" + id, subset);
+        return new LDSConsumer(API_LDS).postTo(SERIES_API+"/" + id, subset);
     }
 
     public boolean healthReady() {
@@ -209,13 +209,12 @@ public class LDSFacade implements LDSInterface {
     public ResponseEntity<JsonNode> deleteSubsetSeries(String id) {
         ResponseEntity<JsonNode> getSeriesRE = getSubsetSeries(id);
         ArrayNode versionsArrayNode = (ArrayNode)getSeriesRE.getBody().get(Field.VERSIONS);
-        for (JsonNode versionLink : versionsArrayNode){
+        for (JsonNode versionLink : versionsArrayNode) {
             String[] splitSlash = versionLink.asText().split("/");
             String versionUID = splitSlash[splitSlash.length-1];
             new LDSConsumer(API_LDS).delete(VERSIONS_API+"/"+versionUID);
         }
-        String url = SERIES_API+"/"+id;
-        new LDSConsumer(API_LDS).delete(url);
+        new LDSConsumer(API_LDS).delete(SERIES_API+"/"+id);
         return new ResponseEntity<>(OK);
     }
 

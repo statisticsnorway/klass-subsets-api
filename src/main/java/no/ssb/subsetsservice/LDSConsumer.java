@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.ConnectException;
+import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
@@ -126,7 +127,7 @@ public class LDSConsumer {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         org.springframework.http.HttpEntity<JsonNode> request = new org.springframework.http.HttpEntity<>(json, headers);
-        ResponseEntity<JsonNode> response = null;
+        ResponseEntity<JsonNode> response;
         try {
             response = new RestTemplate().postForEntity(fullURLString, request, JsonNode.class);
         } catch (HttpClientErrorException e){
@@ -152,16 +153,7 @@ public class LDSConsumer {
         HttpPut httpPut = new HttpPut(urlString);
         httpPut.setHeader("Accept", "application/json");
         httpPut.setHeader("Content-type", "application/json");
-        StringEntity stringEntity = null;
-        try {
-            stringEntity = new StringEntity(json.toString());
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-            return ErrorHandler.newHttpError(
-                    "Could not parse jsonNode.toString() into a StringEntity. Exception "+e.toString(),
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    LOG);
-        }
+        StringEntity stringEntity = new StringEntity(json.toString(), "UTF-8");
         httpPut.setEntity(stringEntity);
         try {
             CloseableHttpResponse response = httpclient.execute(httpPut);

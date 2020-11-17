@@ -133,6 +133,67 @@ class SubsetsControllerV2Test {
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
         //TODO: Make sure all the right fields have been added to the version
+
+        //TODO: Check that the version has been added to the series
+    }
+
+    @Test
+    void checkNorwegianLetters() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ResponseEntity<JsonNode> getSeriesRE = instance.getSubsetSeriesByID(seriesId, false);
+
+        ArrayNode originalDescriptionArrayNode = series.get("description").deepCopy();
+        String originalNbDescription = "";
+        for (JsonNode languageTextObject : originalDescriptionArrayNode)
+            if (languageTextObject.get("languageCode").asText().equals("nb"))
+                originalNbDescription = languageTextObject.get("languageText").asText();
+
+        ArrayNode newDescriptionArrayNode = getSeriesRE.getBody().get("description").deepCopy();
+        String newNbDescription = "";
+        for (JsonNode languageTextObject : newDescriptionArrayNode)
+            if (languageTextObject.get("languageCode").asText().equals("nb"))
+                newNbDescription = languageTextObject.get("languageText").asText();
+
+        assertEquals(originalNbDescription, newNbDescription);
+
+        JsonNode version = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ResponseEntity<JsonNode> getVersionsRE = instance.getVersions(seriesId, true, true);
+
+        ArrayNode originalRationaleArrayNode = version.get("versionRationale").deepCopy();
+        String originalNbRationale = "";
+        for (JsonNode languageTextObject : originalRationaleArrayNode)
+            if (languageTextObject.get("languageCode").asText().equals("nb"))
+                originalNbRationale = languageTextObject.get("languageText").asText();
+
+        ArrayNode newRationaleArrayNode = getVersionsRE.getBody().get(0).get("versionRationale").deepCopy();
+        String newNbRationale = "";
+        for (JsonNode languageTextObject : newRationaleArrayNode)
+            if (languageTextObject.get("languageCode").asText().equals("nb"))
+                newNbRationale = languageTextObject.get("languageText").asText();
+
+        assertEquals(originalNbRationale, newNbRationale);
+
     }
 
 
