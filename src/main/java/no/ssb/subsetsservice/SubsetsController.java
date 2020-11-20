@@ -136,7 +136,7 @@ public class SubsetsController {
 
         editableSubset.set(Field.VERSION_VALID_UNTIL, editableSubset.get(Field.VALID_UNTIL));
 
-        JsonNode cleanSubset = Utils.cleanSubsetVersion(editableSubset);
+        JsonNode cleanSubset = Utils.cleanV1SubsetVersionField(editableSubset);
         ResponseEntity<JsonNode> responseEntity = new LDSFacade().createSubset(cleanSubset, id);
         if (responseEntity.getStatusCode().equals(HttpStatus.CREATED)){
             responseEntity = new ResponseEntity<>(cleanSubset, HttpStatus.CREATED);
@@ -232,7 +232,7 @@ public class SubsetsController {
                     LOG);
 
 
-        ObjectNode editableNewVersionOfSubset = Utils.cleanSubsetVersion(newVersionOfSubset).deepCopy();
+        ObjectNode editableNewVersionOfSubset = Utils.cleanV1SubsetVersionField(newVersionOfSubset).deepCopy();
         newVersionOfSubset = null;
 
         /*
@@ -283,7 +283,7 @@ public class SubsetsController {
         }
 
 
-        ArrayNode versionsArrayNode = Utils.sortByVersionValidFrom(Utils.cleanSubsetVersion(Objects.requireNonNull(oldVersionsRE.getBody())).deepCopy());
+        ArrayNode versionsArrayNode = Utils.sortByVersionValidFrom(Utils.cleanV1SubsetVersionField(Objects.requireNonNull(oldVersionsRE.getBody())).deepCopy());
         JsonNode mostRecentVersionOfThisSubset = versionsArrayNode.get(0);
 
         assert mostRecentVersionOfThisSubset.has(Field.ID) : "most recent version of this subset did not have the field '"+Field.ID+"' ";

@@ -9,9 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -78,7 +75,7 @@ public class Utils {
         return df.format(new Date());
     }
 
-    public static JsonNode cleanSubsetVersion(JsonNode subset) {
+    public static JsonNode cleanV1SubsetVersionField(JsonNode subset) {
         if (subset.isArray()){
             ArrayNode arrayNode = (ArrayNode) subset;
             return cleanSubsetVersionsArray(arrayNode);
@@ -97,7 +94,7 @@ public class Utils {
     private static ArrayNode cleanSubsetVersionsArray(ArrayNode subsetArray) {
         ArrayNode clone = subsetArray.deepCopy();
         for (int i = 0; i < subsetArray.size(); i++) {
-            clone.set(i, cleanSubsetVersion(clone.get(i)));
+            clone.set(i, cleanV1SubsetVersionField(clone.get(i)));
         }
         return clone;
     }
