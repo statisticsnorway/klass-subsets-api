@@ -47,8 +47,8 @@ This version of the API treats the information relation to the Classification Su
 - `GET /v1/subsets/{id}/versions/{version}` to retrieve the version with the UID `version`, or the UID `id_version` if it exists
 - Where it makes sense there are optional `includeDraft` and `includeFuture` boolean parameters. `includeDraft` includes versions of subsets that are not currently published. `includeFuture` includes versions of subsets that will only be valid from a future date.
 
-The schema for the Series: https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubsetSeries
-The schema fro the Versions: https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubsetVersion
+The schema for the Series: https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubsetSeries?schema
+The schema fro the Versions: https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubsetVersion?schema
 
 ### Misc
 In addition, we support getting the subset schema at "/v1/subsets?schema"
