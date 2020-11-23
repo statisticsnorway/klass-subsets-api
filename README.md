@@ -207,8 +207,8 @@ The version has gotten an automatically generated v4 UUID version id, stored in 
 
 Observe that at this point the single code included in our version has a new field called `versions`. This field was generated when the version was POSTed. The `versions` array in each code contains a link to each classification version that was valid and had this exact name and level in the subset version's validity period at the time of creation. When a subset version has a validity period extending into the future, it might be that a new version of a classification comes out that also contains that code, or does not contain that code, or that makes edits to that code. Storing an array of versions that existed and contained the code in the validity period at the time of creation ensures our ability to detect and resolve possible conflicts and changes to the code, and to avoid including unintended versions of a code.
 
-The schema for the Series as stored in LDS: https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubsetSeries
-The schema for the Versions as stored in LDS: https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubsetVersion
+The schema for the Series as stored in LDS: https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubsetSeries?schema
+The schema for the Versions as stored in LDS: https://lds-klass.staging-bip-app.ssb.no/ns/ClassificationSubsetVersion?schema
 
 # Connecting to LDS and KLASS
 This service needs to be able to connect to the LDS instance's API, and the KLASS Classifications API.
