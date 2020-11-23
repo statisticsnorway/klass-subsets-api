@@ -54,17 +54,18 @@ This is an example of the contents of a valid POST to `v2/subsets`:
 {
 	"id":"UID_for_dette_uttrekket_1",
 	"description": [
-        {"languageCode":"nb", "languageText":"tekst på norsk bokmål"}, 
-        {"languageCode":"en", "languageText":"text in english"}
-    ],
+        	{"languageCode":"nb", "languageText":"tekst på norsk bokmål"}, 
+        	{"languageCode":"en", "languageText":"text in english"}
+    	],
 	"name": [
-        {"languageCode":"nb", "languageText":"fullt navn på norsk bokmål"}, 
-        {"languageCode":"en", "languageText":"full name in english"}
-    ],
+        	{"languageCode":"nb", "languageText":"fullt navn på norsk bokmål"}, 
+        	{"languageCode":"en", "languageText":"full name in english"}
+    	],
 	"administrativeDetails": [
-        {"administrativeDetailType":"DEFAULTLANGUAGE", "values":["nb"]}
-    ],
-	"owningSection":"700 it"
+        	{"administrativeDetailType":"DEFAULTLANGUAGE", "values":["nb"]}
+    	],
+	"owningSection":"700 it",
+	"classificationFamily":"Some Family"
 }
 ```
 
@@ -80,19 +81,19 @@ Once a subset series has been successfully created, you can add versions to it. 
 	"administrativeStatus":"DRAFT",
 	"codes":[
 	{
-	      "classificationId": "131",
-	      "code": "1144",
-	      "rank": "1",
-	      "level": "1",
-	      "name": "Kvitsøy",
-	      "validFromInRequestedRange": "2020-10-19",
-	      "validUntilInRequestedRange": "2021-10-19"
+      		"classificationId": "131",
+      		"code": "1144",
+      		"rank": "1",
+      		"level": "1",
+      		"name": "Kvitsøy",
+      		"validFromInRequestedRange": "2020-10-19",
+      		"validUntilInRequestedRange": "2021-10-19"
 	}
 	],
 	"versionRationale": [
-        {"languageCode":"nb", "languageText":"versjon rasjonale på norsk bokmål"}, 
-        {"languageCode":"en", "languageText":"version rationale in english"}
-    ]
+        	{"languageCode":"nb", "languageText":"versjon rasjonale på norsk bokmål"}, 
+        	{"languageCode":"en", "languageText":"version rationale in english"}
+    	]
 }
 
 ```
