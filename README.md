@@ -49,6 +49,9 @@ This version of the API treats the information relation to the Classification Su
 - `GET /v1/subsets/{seriesID}/versions/{version}` to retrieve the version with the UID `version`, or the UID `seriesID_version` if it exists
 - Where it makes sense there are optional `includeDraft` and `includeFuture` boolean parameters. `includeDraft` includes versions of subsets that are not currently published. `includeFuture` includes versions of subsets that will only be valid from a future date.
 
+### Subset data structure
+A description to the subset data structure is available here `GET /v1/subsets/schema`.
+
 This is an example of the contents of a valid POST to `v2/subsets`:
 ```
 {
