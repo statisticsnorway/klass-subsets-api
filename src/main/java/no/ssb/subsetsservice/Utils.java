@@ -204,11 +204,11 @@ public class Utils {
         Iterator<String> submittedFieldNamesIterator = instance.fieldNames();
         while (submittedFieldNamesIterator.hasNext()){
             String field = submittedFieldNamesIterator.next();
-            LOG.debug("Checking the field '"+field+"' from the instance against the definition . . .");
+            LOG.debug("Checking the field '"+field+"' from the instance against the given definition . . .");
             if (!properties.has(field)){
                 LOG.error("the definition had no such property as '"+field+"'");
                 return ErrorHandler.newHttpError(
-                        "Submitted field "+field+" is not legal in ClassificationSubsetVersion",
+                        "Submitted field "+field+" is not legal in this definition",
                         BAD_REQUEST,
                         LOG);
             }
