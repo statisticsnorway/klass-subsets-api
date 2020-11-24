@@ -201,7 +201,7 @@ public class LDSFacade implements LDSInterface {
 
     @Override
     public ResponseEntity<JsonNode> getSubsetCodeDefinition() {
-        ResponseEntity<JsonNode> codeSchemaRE = new LDSConsumer(API_LDS).getFrom("/ns/ClassificationSubsetCode/?schema");
+        ResponseEntity<JsonNode> codeSchemaRE = new LDSConsumer(API_LDS).getFrom("/ns/ClassificationSubsetCode?schema");
         if (!codeSchemaRE.getStatusCode().is2xxSuccessful()) {
             return codeSchemaRE;
         }
