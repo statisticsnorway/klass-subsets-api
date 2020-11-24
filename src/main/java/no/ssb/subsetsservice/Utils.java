@@ -78,7 +78,7 @@ public class Utils {
     public static JsonNode cleanV1SubsetVersionField(JsonNode subset) {
         if (subset.isArray()){
             ArrayNode arrayNode = (ArrayNode) subset;
-            return cleanSubsetVersionsArray(arrayNode);
+            return cleanV1SubsetArrayVersionFields(arrayNode);
         }
         ObjectNode clone = subset.deepCopy();
         if (!clone.has(Field.VERSION)) {
@@ -91,7 +91,7 @@ public class Utils {
         return clone;
     }
 
-    private static ArrayNode cleanSubsetVersionsArray(ArrayNode subsetArray) {
+    private static ArrayNode cleanV1SubsetArrayVersionFields(ArrayNode subsetArray) {
         ArrayNode clone = subsetArray.deepCopy();
         for (int i = 0; i < subsetArray.size(); i++) {
             clone.set(i, cleanV1SubsetVersionField(clone.get(i)));
