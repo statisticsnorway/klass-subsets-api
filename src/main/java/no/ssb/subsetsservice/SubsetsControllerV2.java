@@ -82,8 +82,10 @@ public class SubsetsControllerV2 {
         metricsService.incrementPOSTCounter();
         LOG.info("POST subset series received. Checking body . . .");
 
-        if (subsetSeriesJson == null)
-            return ErrorHandler.newHttpError("POST subset series: Can not create subset series from an empty body", BAD_REQUEST, LOG);
+        if (subsetSeriesJson.isNull() || subsetSeriesJson.isEmpty())
+            return ErrorHandler.newHttpError("POST subset series body was empty. Must be a subset series object.", BAD_REQUEST, LOG);
+        if (subsetSeriesJson.isArray())
+            return ErrorHandler.newHttpError("POST subset series body was array. Most be single subset series object.", BAD_REQUEST, LOG);
 
         ObjectNode editableSubsetSeries = subsetSeriesJson.deepCopy();
         subsetSeriesJson = null;
@@ -314,11 +316,18 @@ public class SubsetsControllerV2 {
             return ErrorHandler.illegalID(LOG);
         LOG.info("series id "+seriesId+" was legal");
 
+
+        if (version.isNull() || version.isEmpty())
+            return ErrorHandler.newHttpError("POST body was empty. Should contain a single subset version.", BAD_REQUEST, LOG);
+        if (version.isArray())
+            return ErrorHandler.newHttpError("POST body was an array. Should be an object representing a single subset version.", BAD_REQUEST, LOG);
+
         ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(seriesId, false);
         if (!getSeriesByIDRE.getStatusCode().equals(OK)) {
             LOG.error("Attempt to get subset series by id '"+seriesId+"' returned a non-OK status code.");
             return getSeriesByIDRE;
         }
+
         ObjectNode editableVersion = version.deepCopy();
         version = null;
 
