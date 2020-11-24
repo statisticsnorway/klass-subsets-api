@@ -212,7 +212,7 @@ public class Utils {
                         BAD_REQUEST,
                         LOG);
             }
-            if (properties.get(field).get("type").asText().equals("array") && !instance.get(field).isArray())
+            else if (properties.get(field).has("type") && properties.get(field).get("type").asText().equals("array") && !instance.get(field).isArray())
                 return ErrorHandler.newHttpError("Submitted field "+field+" has to be an array, but was not", BAD_REQUEST, LOG);
         }
         if (properties.has("codes")) {

@@ -125,12 +125,13 @@ public class LDSConsumer {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         org.springframework.http.HttpEntity<JsonNode> request = new org.springframework.http.HttpEntity<>(json, headers);
+        LOG.debug("POST request body: "+json.toString().replaceAll("\n", "").replaceAll("\t", ""));
         ResponseEntity<JsonNode> response;
         try {
             response = new RestTemplate().postForEntity(fullURLString, request, JsonNode.class);
         } catch (HttpClientErrorException e){
             e.printStackTrace();
-            return ErrorHandler.newHttpError("LDS: Could not POST to "+fullURLString+" because of exception "+e.toString(), e.getStatusCode(), LOG);
+            return ErrorHandler.newHttpError("LDS: Could not POST to "+fullURLString+" because of exception: "+e.toString(), e.getStatusCode(), LOG);
         }
         LOG.debug("POST to "+fullURLString+" - Status: "+response.getStatusCodeValue()+" "+response.getStatusCode().name());
         return response;
