@@ -150,7 +150,7 @@ public class Utils {
                 LOG.debug("Resolving code "+i+"/"+codesArrayNode.size());
                 JsonNode code = Utils.addCodeVersions(codesArrayNode.get(i), LOG);
                 if (code.get(Field.VERSIONS).size() < 1)
-                    LOG.error("Code "+code.get(Field.CODE)+" "+code.get(Field.NAME)+" failed to resolve any versions in validity range "+code.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText()+" - "+(code.has(Field.VALID_UNTIL_IN_REQUESTED_RANGE) ? code.get(Field.VALID_UNTIL_IN_REQUESTED_RANGE).asText() : "null"));
+                    LOG.error("Code "+code.get(Field.CODE)+" "+code.get(Field.NAME)+" failed to resolve any versions in validity range "+code.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText()+" - "+(code.has(Field.VALID_TO_IN_REQUESTED_RANGE) ? code.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText() : "null"));
                 codesArrayNode.set(i, code);
             }
             LOG.debug("codesArrayNode size "+codesArrayNode.size());
@@ -163,7 +163,7 @@ public class Utils {
         ObjectNode editableCode = code.deepCopy();
         code = null;
         String validFromInRequestedRange = editableCode.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
-        String validUntilInRequestedRange = editableCode.has(Field.VALID_UNTIL_IN_REQUESTED_RANGE) ? editableCode.get(Field.VALID_UNTIL_IN_REQUESTED_RANGE).asText() : null;
+        String validUntilInRequestedRange = editableCode.has(Field.VALID_TO_IN_REQUESTED_RANGE) ? editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText() : null;
         String classificationID = editableCode.get(Field.CLASSIFICATION_ID).asText();
         ResponseEntity<JsonNode> classificationJsonNodeRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSClassificationURL(classificationID));
         if (!classificationJsonNodeRE.getStatusCode().is2xxSuccessful())
