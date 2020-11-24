@@ -170,6 +170,9 @@ public class SubsetsControllerV2 {
 
         if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
+        
+        if (newEditionOfSeries.isNull() || newEditionOfSeries.isEmpty() || newEditionOfSeries.isArray())
+            return ErrorHandler.newHttpError("PUT body must be a non-empty object representing a single subset series", BAD_REQUEST, LOG);
 
         ResponseEntity<JsonNode> getSeriesRE = new LDSFacade().getSubsetSeries(seriesId);
 
@@ -241,6 +244,9 @@ public class SubsetsControllerV2 {
             return ErrorHandler.illegalID(LOG);
         if (!Utils.isClean(versionUID))
             return ErrorHandler.newHttpError("Illegal characters in versionUID", BAD_REQUEST, LOG);
+
+        if (putVersion.isNull() || putVersion.isEmpty() || putVersion.isArray())
+            return ErrorHandler.newHttpError("PUT body must be a non-empty object representing a single subset version", BAD_REQUEST, LOG);
 
         ResponseEntity<JsonNode> getPreviousEditionOfVersion = getVersion(seriesId, versionUID);
         HttpStatus status = getPreviousEditionOfVersion.getStatusCode();
