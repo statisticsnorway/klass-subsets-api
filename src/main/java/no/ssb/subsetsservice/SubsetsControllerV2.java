@@ -414,6 +414,10 @@ public class SubsetsControllerV2 {
             LOG.debug("The series "+seriesId+" was successfully updated with a new statistical units array.");
         }
 
+        ResponseEntity<JsonNode> versionSchemaValidationRE = validateVersion(editableVersion);
+        if (!versionSchemaValidationRE.getStatusCode().is2xxSuccessful())
+            return versionSchemaValidationRE;
+
         if (versionsSize == 0) {
             LOG.debug("Since there are no versions from before, we post the new version to LDS without checking validity overlap");
             LOG.debug("Attempting to POST version nr "+versionNr+" of subset series "+seriesId+" to LDS");
@@ -427,10 +431,6 @@ public class SubsetsControllerV2 {
         ResponseEntity<JsonNode> isOverlappingValidityRE = isOverlappingValidity(editableVersion);
         if (!isOverlappingValidityRE.getStatusCode().is2xxSuccessful())
             return isOverlappingValidityRE;
-
-        ResponseEntity<JsonNode> versionSchemaValidationRE = validateVersion(editableVersion);
-        if (!versionSchemaValidationRE.getStatusCode().is2xxSuccessful())
-            return versionSchemaValidationRE;
 
         LOG.debug("Attempting to POST version nr "+versionNr+" of subset series "+seriesId+" to LDS");
         ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionNr, editableVersion);
@@ -758,7 +758,7 @@ public class SubsetsControllerV2 {
         String versionNr = version.has(Field.VERSION) ? version.get(Field.VERSION).asText() : "with no version nr";
         String seriesID = version.has(Field.SERIES_ID) ? version.get(Field.SERIES_ID).asText() : "";
         String versionUID = seriesID+"_"+versionNr;
-        LOG.debug("validating version "+versionUID+" ");
+        LOG.debug("Validating version "+versionUID+" ");
         ResponseEntity<JsonNode> versionSchemaRE = new LDSFacade().getSubsetVersionsDefinition();
         if (!versionSchemaRE.getStatusCode().is2xxSuccessful())
             return resolveNonOKLDSResponse("Request for subset versions definition ", versionSchemaRE);

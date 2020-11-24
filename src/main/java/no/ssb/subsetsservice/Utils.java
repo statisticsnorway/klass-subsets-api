@@ -200,27 +200,31 @@ public class Utils {
     }
 
     public static ResponseEntity<JsonNode> checkAgainstSchema(JsonNode definition, JsonNode instance, Logger LOG) {
-        JsonNode properties = definition.get("properties");
+        JsonNode definitionPoperties = definition.get("properties");
         Iterator<String> submittedFieldNamesIterator = instance.fieldNames();
         while (submittedFieldNamesIterator.hasNext()) {
             String field = submittedFieldNamesIterator.next();
             LOG.debug("Checking the field '"+field+"' from the instance against the given definition . . .");
-            if (!properties.has(field)) {
-                LOG.error("the definition had no such property as '"+field+"'");
+            if (!definitionPoperties.has(field)) {
+                LOG.error("the definition had no such property as '"+field+"', which makes it illegal");
                 return ErrorHandler.newHttpError(
                         "Submitted field "+field+" is not legal in this definition",
                         BAD_REQUEST,
                         LOG);
             }
-            else if (properties.get(field).has("type") && properties.get(field).get("type").asText().equals("array") && !instance.get(field).isArray())
-                return ErrorHandler.newHttpError("Submitted field "+field+" has to be an array, but was not", BAD_REQUEST, LOG);
+            else if (definitionPoperties.get(field).has("type") && definitionPoperties.get(field).get("type").asText().equals("array") && !instance.get(field).isArray())
+                return ErrorHandler.newHttpError("Submitted field "+field+" has to be an array according to the definition, but was not an array", BAD_REQUEST, LOG);
         }
-        if (properties.has("codes")) {
-            JsonNode codesProperty = properties.get("codes");
-            if (codesProperty.isArray() && codesProperty.get("items").get("$ref").asText().split("/")[2].equals("ClassificationSubsetCode")){
+        if (definitionPoperties.has("codes")) {
+            LOG.debug("'codes' field present in definition. Checking each element of instance against ClassificationSubsetCode definition");
+            JsonNode codesProperty = definitionPoperties.get("codes");
+            if (codesProperty.has("type") && codesProperty.get("type").asText().equals("array") && codesProperty.get("items").get("$ref").asText().split("/")[2].equals("ClassificationSubsetCode")){
+                LOG.debug("'codes' property of definition was an array of type ClassificationSubsetCode");
                 if (instance.has("codes")) {
+                    LOG.debug("the instance has a field called 'codes'");
                     JsonNode codes = instance.get("codes");
                     if (codes.isArray() && !codes.isEmpty()) {
+                        LOG.debug("The field 'codes' of the instance is a non-empty array of size "+codes.size());
                         ArrayNode codesArray = codes.deepCopy();
                         ResponseEntity<JsonNode> codeDefRE = new LDSFacade().getSubsetCodeDefinition();
                         if (!codeDefRE.getStatusCode().is2xxSuccessful())
@@ -232,7 +236,11 @@ public class Utils {
                                 return validateCodeRE;
                         }
                     }
+                } else {
+                    LOG.warn("'codes' field was not present in the instance that is being validated");
                 }
+            } else {
+                LOG.warn("'codes' field was present in definition, but it was not and array AND of type ClassificationSubsetCode according to the check");
             }
         }
         LOG.debug("All the fields in the instance were present in the definition");
