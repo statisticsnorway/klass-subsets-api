@@ -171,7 +171,7 @@ public class LDSFacade implements LDSInterface {
 
     @Override
     public ResponseEntity<JsonNode> getSubsetSeriesDefinition() {
-        ResponseEntity<JsonNode> versionSchemaRE = new LDSConsumer(API_LDS).getFrom(SERIES_API+"/?schema");
+        ResponseEntity<JsonNode> versionSchemaRE = getSubsetSeriesSchema();
         if (!versionSchemaRE.getStatusCode().is2xxSuccessful()){
             return versionSchemaRE;
         }
@@ -191,6 +191,21 @@ public class LDSFacade implements LDSInterface {
             return versionSchemaRE;
         }
         JsonNode definition = versionSchemaRE.getBody().get("definitions").get("ClassificationSubsetVersion");
+        return new ResponseEntity<>(definition, OK);
+    }
+
+    @Override
+    public ResponseEntity<JsonNode> getSubsetVersionSchema() {
+        return new LDSConsumer(API_LDS).getFrom(VERSIONS_API+"/?schema");
+    }
+
+    @Override
+    public ResponseEntity<JsonNode> getSubsetCodeDefinition() {
+        ResponseEntity<JsonNode> codeSchemaRE = new LDSConsumer(API_LDS).getFrom("/ns/ClassificationSubsetCode/?schema");
+        if (!codeSchemaRE.getStatusCode().is2xxSuccessful()) {
+            return codeSchemaRE;
+        }
+        JsonNode definition = codeSchemaRE.getBody().get("definitions").get("ClassificationSubsetCode");
         return new ResponseEntity<>(definition, OK);
     }
 

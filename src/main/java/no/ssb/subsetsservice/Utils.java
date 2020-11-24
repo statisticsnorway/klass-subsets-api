@@ -202,15 +202,37 @@ public class Utils {
     public static ResponseEntity<JsonNode> checkAgainstSchema(JsonNode definition, JsonNode instance, Logger LOG) {
         JsonNode properties = definition.get("properties");
         Iterator<String> submittedFieldNamesIterator = instance.fieldNames();
-        while (submittedFieldNamesIterator.hasNext()){
+        while (submittedFieldNamesIterator.hasNext()) {
             String field = submittedFieldNamesIterator.next();
             LOG.debug("Checking the field '"+field+"' from the instance against the given definition . . .");
-            if (!properties.has(field)){
+            if (!properties.has(field)) {
                 LOG.error("the definition had no such property as '"+field+"'");
                 return ErrorHandler.newHttpError(
                         "Submitted field "+field+" is not legal in this definition",
                         BAD_REQUEST,
                         LOG);
+            }
+            if (properties.get(field).get("type").asText().equals("array") && !instance.get(field).isArray())
+                return ErrorHandler.newHttpError("Submitted field "+field+" has to be an array, but was not", BAD_REQUEST, LOG);
+        }
+        if (properties.has("codes")) {
+            JsonNode codesProperty = properties.get("codes");
+            if (codesProperty.isArray() && codesProperty.get("items").get("$ref").asText().split("/")[2].equals("ClassificationSubsetCode")){
+                if (instance.has("codes")) {
+                    JsonNode codes = instance.get("codes");
+                    if (codes.isArray() && !codes.isEmpty()) {
+                        ArrayNode codesArray = codes.deepCopy();
+                        ResponseEntity<JsonNode> codeDefRE = new LDSFacade().getSubsetCodeDefinition();
+                        if (!codeDefRE.getStatusCode().is2xxSuccessful())
+                            return codeDefRE;
+                        JsonNode codeDefinition = codeDefRE.getBody();
+                        for (JsonNode code : codesArray) {
+                            ResponseEntity<JsonNode> validateCodeRE = Utils.checkAgainstSchema(codeDefinition, code, LOG);
+                            if (!validateCodeRE.getStatusCode().is2xxSuccessful())
+                                return validateCodeRE;
+                        }
+                    }
+                }
             }
         }
         LOG.debug("All the fields in the instance were present in the definition");
