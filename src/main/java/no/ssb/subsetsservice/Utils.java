@@ -218,26 +218,33 @@ public class Utils {
         if (definitionPoperties.has("codes")) {
             LOG.debug("'codes' field present in definition. Checking each element of instance against ClassificationSubsetCode definition");
             JsonNode codesProperty = definitionPoperties.get("codes");
-            if (codesProperty.has("type") && codesProperty.get("type").asText().equals("array") && codesProperty.get("items").get("$ref").asText().split("/")[2].equals("ClassificationSubsetCode")){
-                LOG.debug("'codes' property of definition was an array of type ClassificationSubsetCode");
-                if (instance.has("codes")) {
-                    LOG.debug("the instance has a field called 'codes'");
-                    JsonNode codes = instance.get("codes");
-                    if (codes.isArray() && !codes.isEmpty()) {
-                        LOG.debug("The field 'codes' of the instance is a non-empty array of size "+codes.size());
-                        ArrayNode codesArray = codes.deepCopy();
-                        ResponseEntity<JsonNode> codeDefRE = new LDSFacade().getSubsetCodeDefinition();
-                        if (!codeDefRE.getStatusCode().is2xxSuccessful())
-                            return codeDefRE;
-                        JsonNode codeDefinition = codeDefRE.getBody();
-                        for (JsonNode code : codesArray) {
-                            ResponseEntity<JsonNode> validateCodeRE = Utils.checkAgainstSchema(codeDefinition, code, LOG);
-                            if (!validateCodeRE.getStatusCode().is2xxSuccessful())
-                                return validateCodeRE;
+            if (codesProperty.has("type") && codesProperty.get("type").asText().equals("array")){
+                LOG.debug("'codes' property in definition has a type that is array");
+                if (codesProperty.has("items") && codesProperty.get("items").has("$ref") && codesProperty.get("items").get("$ref").asText().split("/")[2].equals("ClassificationSubsetCode")) {
+                    LOG.debug("'codes' property in definition has items of type ClassificationSubsetCode");
+                    if (instance.has("codes")) {
+                        LOG.debug("the instance has a field called 'codes'");
+                        JsonNode codes = instance.get("codes");
+                        if (codes.isArray() && !codes.isEmpty()) {
+                            LOG.debug("The field 'codes' of the instance is a non-empty array of size " + codes.size());
+                            ArrayNode codesArray = codes.deepCopy();
+                            ResponseEntity<JsonNode> codeDefRE = new LDSFacade().getSubsetCodeDefinition();
+                            if (!codeDefRE.getStatusCode().is2xxSuccessful())
+                                return codeDefRE;
+                            JsonNode codeDefinition = codeDefRE.getBody();
+                            for (JsonNode code : codesArray) {
+                                ResponseEntity<JsonNode> validateCodeRE = Utils.checkAgainstSchema(codeDefinition, code, LOG);
+                                if (!validateCodeRE.getStatusCode().is2xxSuccessful())
+                                    return validateCodeRE;
+                            }
+                        } else {
+                            LOG.warn("'codes' field in instance was not array or was empty");
                         }
+                    } else {
+                        LOG.warn("'codes' field was not present in the instance that is being validated");
                     }
                 } else {
-                    LOG.warn("'codes' field was not present in the instance that is being validated");
+                    LOG.warn("definition.codes.items.$ref was not present or was not ClassificationSubsetSeries");
                 }
             } else {
                 LOG.warn("'codes' field was present in definition, but it was not and array AND of type ClassificationSubsetCode according to the check");
