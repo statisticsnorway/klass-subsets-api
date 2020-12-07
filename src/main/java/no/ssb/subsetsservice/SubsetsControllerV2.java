@@ -82,8 +82,10 @@ public class SubsetsControllerV2 {
         metricsService.incrementPOSTCounter();
         LOG.info("POST subset series received. Checking body . . .");
 
-        if (subsetSeriesJson == null)
-            return ErrorHandler.newHttpError("POST subset series: Can not create subset series from an empty body", BAD_REQUEST, LOG);
+        if (subsetSeriesJson.isNull() || subsetSeriesJson.isEmpty())
+            return ErrorHandler.newHttpError("POST subset series body was empty. Must be a subset series object.", BAD_REQUEST, LOG);
+        if (subsetSeriesJson.isArray())
+            return ErrorHandler.newHttpError("POST subset series body was array. Most be single subset series object.", BAD_REQUEST, LOG);
 
         ObjectNode editableSubsetSeries = subsetSeriesJson.deepCopy();
         subsetSeriesJson = null;
@@ -168,6 +170,9 @@ public class SubsetsControllerV2 {
 
         if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
+        
+        if (newEditionOfSeries.isNull() || newEditionOfSeries.isEmpty() || newEditionOfSeries.isArray())
+            return ErrorHandler.newHttpError("PUT body must be a non-empty object representing a single subset series", BAD_REQUEST, LOG);
 
         ResponseEntity<JsonNode> getSeriesRE = new LDSFacade().getSubsetSeries(seriesId);
 
@@ -239,6 +244,9 @@ public class SubsetsControllerV2 {
             return ErrorHandler.illegalID(LOG);
         if (!Utils.isClean(versionUID))
             return ErrorHandler.newHttpError("Illegal characters in versionUID", BAD_REQUEST, LOG);
+
+        if (putVersion.isNull() || putVersion.isEmpty() || putVersion.isArray())
+            return ErrorHandler.newHttpError("PUT body must be a non-empty object representing a single subset version", BAD_REQUEST, LOG);
 
         ResponseEntity<JsonNode> getPreviousEditionOfVersion = getVersion(seriesId, versionUID);
         HttpStatus status = getPreviousEditionOfVersion.getStatusCode();
@@ -314,11 +322,18 @@ public class SubsetsControllerV2 {
             return ErrorHandler.illegalID(LOG);
         LOG.info("series id "+seriesId+" was legal");
 
+
+        if (version.isNull() || version.isEmpty())
+            return ErrorHandler.newHttpError("POST body was empty. Should contain a single subset version.", BAD_REQUEST, LOG);
+        if (version.isArray())
+            return ErrorHandler.newHttpError("POST body was an array. Should be an object representing a single subset version.", BAD_REQUEST, LOG);
+
         ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(seriesId, false);
         if (!getSeriesByIDRE.getStatusCode().equals(OK)) {
             LOG.error("Attempt to get subset series by id '"+seriesId+"' returned a non-OK status code.");
             return getSeriesByIDRE;
         }
+
         ObjectNode editableVersion = version.deepCopy();
         version = null;
 
@@ -399,6 +414,10 @@ public class SubsetsControllerV2 {
             LOG.debug("The series "+seriesId+" was successfully updated with a new statistical units array.");
         }
 
+        ResponseEntity<JsonNode> versionSchemaValidationRE = validateVersion(editableVersion);
+        if (!versionSchemaValidationRE.getStatusCode().is2xxSuccessful())
+            return versionSchemaValidationRE;
+
         if (versionsSize == 0) {
             LOG.debug("Since there are no versions from before, we post the new version to LDS without checking validity overlap");
             LOG.debug("Attempting to POST version nr "+versionNr+" of subset series "+seriesId+" to LDS");
@@ -412,10 +431,6 @@ public class SubsetsControllerV2 {
         ResponseEntity<JsonNode> isOverlappingValidityRE = isOverlappingValidity(editableVersion);
         if (!isOverlappingValidityRE.getStatusCode().is2xxSuccessful())
             return isOverlappingValidityRE;
-
-        ResponseEntity<JsonNode> versionSchemaValidationRE = validateVersion(editableVersion);
-        if (!versionSchemaValidationRE.getStatusCode().is2xxSuccessful())
-            return versionSchemaValidationRE;
 
         LOG.debug("Attempting to POST version nr "+versionNr+" of subset series "+seriesId+" to LDS");
         ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionNr, editableVersion);
@@ -743,7 +758,7 @@ public class SubsetsControllerV2 {
         String versionNr = version.has(Field.VERSION) ? version.get(Field.VERSION).asText() : "with no version nr";
         String seriesID = version.has(Field.SERIES_ID) ? version.get(Field.SERIES_ID).asText() : "";
         String versionUID = seriesID+"_"+versionNr;
-        LOG.debug("validating version "+versionUID+" ");
+        LOG.debug("Validating version "+versionUID+" ");
         ResponseEntity<JsonNode> versionSchemaRE = new LDSFacade().getSubsetVersionsDefinition();
         if (!versionSchemaRE.getStatusCode().is2xxSuccessful())
             return resolveNonOKLDSResponse("Request for subset versions definition ", versionSchemaRE);

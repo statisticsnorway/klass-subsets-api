@@ -89,6 +89,10 @@ public interface LDSInterface {
 
     ResponseEntity<JsonNode> getSubsetVersionsDefinition();
 
+    ResponseEntity<JsonNode> getSubsetVersionSchema();
+
+    ResponseEntity<JsonNode> getSubsetCodeDefinition();
+
     ResponseEntity<JsonNode> deleteAllSubsetSeries();
 
     ResponseEntity<JsonNode> deleteSubsetSeries(String id);

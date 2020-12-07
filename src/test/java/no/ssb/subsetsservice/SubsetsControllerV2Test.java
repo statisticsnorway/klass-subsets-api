@@ -134,7 +134,14 @@ class SubsetsControllerV2Test {
 
         //TODO: Make sure all the right fields have been added to the version
 
-        //TODO: Check that the version has been added to the series
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ResponseEntity<JsonNode> getVersionsRE = instance.getVersions(seriesId, true, true);
+        assertEquals(getVersionsRE.getBody().size(), 1);
     }
 
     @Test
@@ -198,7 +205,7 @@ class SubsetsControllerV2Test {
 
 
     @Test
-    void postDraftThenPutOpenExpectingStatusCreatedAndOK(){
+    void postDraftThenPutOpenExpectingStatusCreatedAndOK() {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();

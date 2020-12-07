@@ -9,9 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -78,10 +75,10 @@ public class Utils {
         return df.format(new Date());
     }
 
-    public static JsonNode cleanSubsetVersion(JsonNode subset) {
+    public static JsonNode cleanV1SubsetVersionField(JsonNode subset) {
         if (subset.isArray()){
             ArrayNode arrayNode = (ArrayNode) subset;
-            return cleanSubsetVersionsArray(arrayNode);
+            return cleanV1SubsetArrayVersionFields(arrayNode);
         }
         ObjectNode clone = subset.deepCopy();
         if (!clone.has(Field.VERSION)) {
@@ -94,10 +91,10 @@ public class Utils {
         return clone;
     }
 
-    private static ArrayNode cleanSubsetVersionsArray(ArrayNode subsetArray) {
+    private static ArrayNode cleanV1SubsetArrayVersionFields(ArrayNode subsetArray) {
         ArrayNode clone = subsetArray.deepCopy();
         for (int i = 0; i < subsetArray.size(); i++) {
-            clone.set(i, cleanSubsetVersion(clone.get(i)));
+            clone.set(i, cleanV1SubsetVersionField(clone.get(i)));
         }
         return clone;
     }
@@ -153,7 +150,7 @@ public class Utils {
                 LOG.debug("Resolving code "+i+"/"+codesArrayNode.size());
                 JsonNode code = Utils.addCodeVersions(codesArrayNode.get(i), LOG);
                 if (code.get(Field.VERSIONS).size() < 1)
-                    LOG.error("Code "+code.get(Field.CODE)+" "+code.get(Field.NAME)+" failed to resolve any versions in validity range "+code.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText()+" - "+(code.has(Field.VALID_UNTIL_IN_REQUESTED_RANGE) ? code.get(Field.VALID_UNTIL_IN_REQUESTED_RANGE).asText() : "null"));
+                    LOG.error("Code "+code.get(Field.CODE)+" "+code.get(Field.NAME)+" failed to resolve any versions in validity range "+code.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText()+" - "+(code.has(Field.VALID_TO_IN_REQUESTED_RANGE) ? code.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText() : "null"));
                 codesArrayNode.set(i, code);
             }
             LOG.debug("codesArrayNode size "+codesArrayNode.size());
@@ -166,7 +163,7 @@ public class Utils {
         ObjectNode editableCode = code.deepCopy();
         code = null;
         String validFromInRequestedRange = editableCode.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
-        String validUntilInRequestedRange = editableCode.has(Field.VALID_UNTIL_IN_REQUESTED_RANGE) ? editableCode.get(Field.VALID_UNTIL_IN_REQUESTED_RANGE).asText() : null;
+        String validUntilInRequestedRange = editableCode.has(Field.VALID_TO_IN_REQUESTED_RANGE) ? editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText() : null;
         String classificationID = editableCode.get(Field.CLASSIFICATION_ID).asText();
         ResponseEntity<JsonNode> classificationJsonNodeRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSClassificationURL(classificationID));
         if (!classificationJsonNodeRE.getStatusCode().is2xxSuccessful())
@@ -203,17 +200,54 @@ public class Utils {
     }
 
     public static ResponseEntity<JsonNode> checkAgainstSchema(JsonNode definition, JsonNode instance, Logger LOG) {
-        JsonNode properties = definition.get("properties");
+        JsonNode definitionPoperties = definition.get("properties");
         Iterator<String> submittedFieldNamesIterator = instance.fieldNames();
-        while (submittedFieldNamesIterator.hasNext()){
+        while (submittedFieldNamesIterator.hasNext()) {
             String field = submittedFieldNamesIterator.next();
-            LOG.debug("Checking the field '"+field+"' from the instance against the definition . . .");
-            if (!properties.has(field)){
-                LOG.error("the definition had no such property as '"+field+"'");
+            LOG.debug("Checking the field '"+field+"' from the instance against the given definition . . .");
+            if (!definitionPoperties.has(field)) {
+                LOG.error("the definition had no such property as '"+field+"', which makes it illegal");
                 return ErrorHandler.newHttpError(
-                        "Submitted field "+field+" is not legal in ClassificationSubsetVersion",
+                        "Submitted field "+field+" is not legal in this definition",
                         BAD_REQUEST,
                         LOG);
+            }
+            else if (definitionPoperties.get(field).has("type") && definitionPoperties.get(field).get("type").asText().equals("array") && !instance.get(field).isArray())
+                return ErrorHandler.newHttpError("Submitted field "+field+" has to be an array according to the definition, but was not an array", BAD_REQUEST, LOG);
+        }
+        if (definitionPoperties.has("codes")) {
+            LOG.debug("'codes' field present in definition. Checking each element of instance against ClassificationSubsetCode definition");
+            JsonNode codesProperty = definitionPoperties.get("codes");
+            if (codesProperty.has("type") && codesProperty.get("type").asText().equals("array")){
+                LOG.debug("'codes' property in definition has a type that is array");
+                if (codesProperty.has("items") && codesProperty.get("items").has("$ref") && codesProperty.get("items").get("$ref").asText().split("/")[2].equals("ClassificationSubsetCode")) {
+                    LOG.debug("'codes' property in definition has items of type ClassificationSubsetCode");
+                    if (instance.has("codes")) {
+                        LOG.debug("the instance has a field called 'codes'");
+                        JsonNode codes = instance.get("codes");
+                        if (codes.isArray() && !codes.isEmpty()) {
+                            LOG.debug("The field 'codes' of the instance is a non-empty array of size " + codes.size());
+                            ArrayNode codesArray = codes.deepCopy();
+                            ResponseEntity<JsonNode> codeDefRE = new LDSFacade().getSubsetCodeDefinition();
+                            if (!codeDefRE.getStatusCode().is2xxSuccessful())
+                                return codeDefRE;
+                            JsonNode codeDefinition = codeDefRE.getBody();
+                            for (JsonNode code : codesArray) {
+                                ResponseEntity<JsonNode> validateCodeRE = Utils.checkAgainstSchema(codeDefinition, code, LOG);
+                                if (!validateCodeRE.getStatusCode().is2xxSuccessful())
+                                    return validateCodeRE;
+                            }
+                        } else {
+                            LOG.warn("'codes' field in instance was not array or was empty");
+                        }
+                    } else {
+                        LOG.warn("'codes' field was not present in the instance that is being validated");
+                    }
+                } else {
+                    LOG.warn("definition.codes.items.$ref was not present or was not ClassificationSubsetSeries");
+                }
+            } else {
+                LOG.warn("'codes' field was present in definition, but it was not and array AND of type ClassificationSubsetCode according to the check");
             }
         }
         LOG.debug("All the fields in the instance were present in the definition");
