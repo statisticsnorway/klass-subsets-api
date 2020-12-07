@@ -37,10 +37,10 @@ This version of the api uses one data structure for all information for a subset
 ## V2 API
 This version of the API treats the information relation to the Classification Subset Series separately from the information related to the Classification Subset Versions that belong to the series.
 
-- When creating a Series, you first have to POST the series to `/v2/subsets` without any subset versions inside it.
-- To edit the series, `PUT /v2/subsets/{seriesID}`. PUT requests to the series can not edit or add versions.
-- To add a Version to a Series, POST the version to `/v2/subsets/{seriesID}/versions`
-- To edit a version, use PUT `/v2/subsets/{seriesID}/versions/{version}`
+- When creating a Series, you first have to POST the series to `/v2/subsets` without any subset versions inside it. See example of valid Series POST/PUT requests in the "subset data structure" section below.
+- `PUT /v2/subsets/{seriesID}` to edit the series. PUT requests to the series can not edit or add versions.
+- `POST /v2/subsets/{seriesID}/versions` to add a Version to a Series. See example of valid versions in the "subset data structure" section below.
+- `PUT /v2/subsets/{seriesID}/versions/{version}`to edit a version 
 - If the UID of the subset series is `example`, then use version = `example_1` or `1` to retrieve the first version that was added to the series.
 - `GET /v2/subsets/{seriesID}/codes` to retrieve a list of the codes that are valid today. 
     - Optional query parameters "from" and "to" take dates on form "YYYY-MM-DD". When both are given, a list containing all codes that are valid in all versions from the "from" date to the "to" date will be returned. Example: `GET /v2/subsets/{seriesID}/codes?from=2019-11-02&to=2020-03-20`
@@ -56,7 +56,7 @@ At the moment we allow for complete deletion of subset series and versions, for 
 - `DELETE /v2/subset/{seriesID}/versions/{versionID}` will delete the version
 
 ### Subset data structure
-A description to the subset data structure is available here `GET /v1/subsets/schema`.
+A description to the subset data structure is available here `GET /v2/subsets/schema`.
 
 This is an example of the contents of a valid POST to `v2/subsets`:
 ```
@@ -81,7 +81,7 @@ This is an example of the contents of a valid POST to `v2/subsets`:
 The field `id` needs to contain a unique identifier for the series. Legal characters are a-z, A-Z, 0-9, `_` and `-`.
 At least one description and one name must be given, in the default language.
 
-Once a subset series has been successfully created, you can add versions to it. This is an example of a valid POST to `v2/subsets/UID_for_dette_uttrekket_1/versions` *after* the POST request of the series above has been made:
+Once a subset series has been successfully created, you can add versions to it. This is an example of a valid POST to `/v2/subsets/UID_for_dette_uttrekket_1/versions` *after* the POST request of the series above has been made:
 
 ```
 {
