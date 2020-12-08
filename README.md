@@ -24,7 +24,7 @@ This version of the api uses one data structure for all information for a subset
 - `GET /v1/subsets/{id}/codesAt?date=YYYY-MM-DD` to retrieve a list of the codes valid on the given date
 - `GET /v1/subsets/{id}/versions` to retrieve a list of all versions of this subset, in descending order (most recent first).
 - `GET /v1/subsets/{id}/versions/{version}` to retrieve a list of versions that start with {version}
-- Where it makes sense there are optional `includeDraft` and `includeFuture` boolean parameters. `includeDraft` includes versions of subsets that are not currently published. `includeFuture` includes versions of subsets that will only be valid from a future date.
+- Where it makes sense there are optional `includeDrafts` and `includeFuture` boolean parameters. `includeDrafts` includes versions of subsets that are not currently published. `includeFuture` includes versions of subsets that will only be valid from a future date.
 
 ### Health
 - at `GET /health/alive` you can check whether the service is running.
@@ -47,7 +47,7 @@ This version of the API treats the information relation to the Classification Su
 - `GET /v2/subsets/{seriesID}/codesAt?date=YYYY-MM-DD` to retrieve a list of the codes valid on the given date
 - `GET /v2/subsets/{seriesID}/versions` to retrieve a list of all versions of this subset
 - `GET /v2/subsets/{seriesID}/versions/{version}` to retrieve the version with the UID `version`, or the UID `seriesID_version` if it exists
-- Where it makes sense there are optional `includeDraft` and `includeFuture` boolean parameters. `includeDraft` includes versions of subsets that are not currently published. `includeFuture` includes versions of subsets that will only be valid from a future date.
+- Where it makes sense there are optional `includeDrafts` and `includeFuture` boolean parameters. `includeDrafts` includes versions of subsets that are not currently published. `includeFuture` includes versions of subsets that will only be valid from a future date.
 
 
 ### Deletion
