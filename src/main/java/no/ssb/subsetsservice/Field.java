@@ -3,7 +3,7 @@ package no.ssb.subsetsservice;
 public class Field {
     public static final String VALID_FROM = "validFrom";
     public static final String VALID_UNTIL = "validUntil";
-    public static final String VERSION = "version";
+    public static final String VERSION_ID = "versionId";
     public static final String VERSION_VALID_FROM = "versionValidFrom";
     public static final String VERSION_VALID_UNTIL = "versionValidUntil";
     public static final String VERSION_RATIONALE = "versionRationale";
@@ -27,10 +27,10 @@ public class Field {
     public static final String SUBSET = "Subset";
     public static final String CLASSIFICATION_TYPE = "classificationType";
     public static final String VERSIONS = "versions";
+    public static final String CLASSIFICATION_VERSIONS = "classificationVersions";
     public static final String LAST_MODIFIED = "lastModified";
     public static final String SUBSET_ID = "subsetId";
     public static final String LAST_MODIFIED_BY = "lastModifiedBy";
-    public static final String SERIES_ID = "seriesId";
     public static final String VALID_FROM_IN_REQUESTED_RANGE = "validFromInRequestedRange";
     public static final String VALID_TO_IN_REQUESTED_RANGE = "validToInRequestedRange";
     public static final String STATISTICAL_UNITS = "statisticalUnits";
