@@ -96,7 +96,7 @@ Once a subset series has been successfully created, you can add versions to it. 
       		"level": "1",
       		"name": "Kvitsøy",
       		"validFromInRequestedRange": "2020-10-19",
-      		"validUntilInRequestedRange": "2021-10-19"
+      		"validToInRequestedRange": "2021-10-19"
 	}
 	],
 	"versionRationale": [
@@ -110,7 +110,7 @@ When the administrative status is `DRAFT`, anything in the version is subject to
 
 The `validFromInRequestedRange` of a code indicates the earliest point in the subset version's validity period (starting at `validFrom`) where this code with this name and level is also valid. If the code with this name and level is valid from some point before the subset version's `validFrom` date, then the `validFromInRequestedRange` of the code will be equal to the `validFrom` of the subset version.
 
-The `validUntilInRequestedRange` of a code indicates the latest point in the subset version's validity period (ending with `validUntil`) where this code with this name and level is also valid. If the code with this name and level is valid from some point after the subset version's `validUntil` date, then the `validUntilInRequestedRange` of the code will be equal to the `validUntil` of the subset version.
+The `validToInRequestedRange` of a code indicates the latest point in the subset version's validity period (ending with `validUntil`) where this code with this name and level is also valid. If the code with this name and level is valid from some point after the subset version's `validUntil` date, then the `validToInRequestedRange` of the code will be equal to the `validUntil` of the subset version.
 
 If we GET `v2/subsets/UID_for_dette_uttrekket_1` the response will look like this:
 ```
@@ -187,7 +187,7 @@ If we GET the subset version that we just created (`/v2/subsets/UID_for_dette_ut
       "name": "Kvitsøy",
       "rank": "1",
       "validFromInRequestedRange": "2020-10-19",
-      "validUntilInRequestedRange": "2021-10-19",
+      "validToInRequestedRange": "2021-10-19",
       "versions": []
     }
   ],
