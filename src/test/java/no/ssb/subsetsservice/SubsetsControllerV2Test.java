@@ -1001,6 +1001,34 @@ class SubsetsControllerV2Test {
     }
 
     @Test
+    void getSubsetCodesToday() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_2_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version201validUntil = readJsonFile(version_2_0_1);
+        ResponseEntity<JsonNode> postVersion1validUntilRE = instance.postSubsetVersion(seriesId, version201validUntil);
+        assertEquals(HttpStatus.CREATED, postVersion1validUntilRE.getStatusCode());
+
+        JsonNode version202validUntil = readJsonFile(version_2_0_2);
+        ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, version202validUntil);
+        assertEquals(HttpStatus.CREATED, postVersion2validUntilRE.getStatusCode());
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ResponseEntity<JsonNode> getCodesTodayRE = instance.getSubsetCodes(seriesId, null, null, true, true);
+        System.out.println("GET codes from a version that is valid today (codes need not be valid today, just the version) ");
+        System.out.println(getCodesTodayRE.getBody().toPrettyString());
+    }
+
+    @Test
     void getSubsetCodesInDateRange() {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
 
