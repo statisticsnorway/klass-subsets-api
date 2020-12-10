@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLOutput;
 import java.time.Clock;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -712,6 +713,57 @@ class SubsetsControllerV2Test {
         System.out.println(versionsArrayNode.toPrettyString());
         System.out.println();
         assertEquals(2, versionsArrayNode.size());
+    }
+
+    @Test
+    void postNewVersionThatSetsValidUntilOfPreviousVersionToOneDayBeforeValidFromOfNewVersion(){
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version_2_0_2 = readJsonFile(this.version_2_0_2);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version_2_0_2);
+        String version202_uid = postVersionRE.getBody().get(Field.VERSION).asText();
+        assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+
+        // DANGER: POSTing two versions right after each other often leads to overwriting the first version.
+        // Therefore we sleep for a bit
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+            fail("Sleep failed");
+        }
+
+        JsonNode version_2_0_3 = readJsonFile(this.version_2_0_3);
+        ResponseEntity<JsonNode> putVersionRE = instance.postSubsetVersion(seriesId, version_2_0_3);
+        assertEquals(HttpStatus.CREATED, putVersionRE.getStatusCode());
+
+        try {
+            Thread.sleep(50); //To make sure the resource is available from LDS before we GET it
+        } catch (InterruptedException e) {
+            fail("Sleep failed");
+        }
+
+        ResponseEntity<JsonNode> getVersionsRE = instance.getVersions(seriesId, true, true);
+        assertEquals(HttpStatus.OK, getVersionsRE.getStatusCode());
+        JsonNode getVersionsBody = getVersionsRE.getBody();
+        assertTrue(getVersionsBody.isArray());
+        ArrayNode versionsArrayNode = (ArrayNode)getVersionsBody;
+        System.out.println("*** VERSIONS ARRAY NODE ***");
+        System.out.println(versionsArrayNode.toPrettyString());
+        System.out.println();
+        assertEquals(2, versionsArrayNode.size());
+
+        JsonNode version202AfterUpdate = instance.getVersion(seriesId, version202_uid).getBody();
+        assertNotNull(version202AfterUpdate);
+        assertTrue(version202AfterUpdate.has(Field.VALID_UNTIL));
+        String validUntilAfterUpdate = version202AfterUpdate.get(Field.VALID_UNTIL).asText();
+        System.out.println("version 202 validUntil after update: "+validUntilAfterUpdate);
+        System.out.println("version 203 validFrom: "+version_2_0_3.get(Field.VALID_FROM).asText());
+        assertTrue(validUntilAfterUpdate.compareTo(version_2_0_3.get(Field.VALID_FROM).asText()) < 0);
     }
 
     @Test

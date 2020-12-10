@@ -282,8 +282,6 @@ public class SubsetsControllerV2 {
 
         // One set of rules for if the old version is DRAFT:
         if (wasDraftFromBefore){
-            // If the new version is OPEN and the old one was DRAFT:
-            // OR If validFrom or validUntil is changed
             if (isStatusOpen ||
                     (!previousEditionOfVersion.get(Field.VALID_FROM).equals(editablePutVersion.get(Field.VALID_FROM))) ||
                     (previousEditionOfVersion.has(Field.VALID_UNTIL) && (!editablePutVersion.has(Field.VALID_UNTIL)) || !editablePutVersion.get(Field.VALID_UNTIL).equals(previousEditionOfVersion.get(Field.VALID_UNTIL))) ||
@@ -293,9 +291,14 @@ public class SubsetsControllerV2 {
                 if (!isOverlappingValidityRE.getStatusCode().is2xxSuccessful()){
                     return isOverlappingValidityRE;
                 }
-                // TODO: If checkOverlapRE shows that the new published version is now the last version, edit previous last version to end when this one starts
-
+                if (isStatusOpen) { // If this version is being published, check if we need to end the validity period of the previous currently valid version.
+                    ResponseEntity<JsonNode> updateLatestPublishedValidUntilRE = updateLatestPublishedValidUntil(isOverlappingValidityRE, editablePutVersion, seriesId);
+                    //TODO: Handle possible errors in the updateLatestPublishedValidUntilRE
+                }
             }
+            // If the new version is OPEN and the old one was DRAFT:
+            // OR If validFrom or validUntil is changed
+
         } else { // Another stricter set of rules for if the old version is OPEN
             String oldCodeList = previousEditionOfVersion.get(Field.CODES).asText();
             String newCodeList = editablePutVersion.get(Field.CODES).asText();
@@ -311,6 +314,7 @@ public class SubsetsControllerV2 {
             ResponseEntity<JsonNode> compareFieldsRE = compareFields(previousEditionOfVersion, editablePutVersion, changeableFields);
             if (!compareFieldsRE.getStatusCode().is2xxSuccessful())
                 return compareFieldsRE;
+
         }
         ResponseEntity<JsonNode> editVersionRE = new LDSFacade().editVersion(editablePutVersion);
         if (editVersionRE.getStatusCode().is2xxSuccessful())
@@ -459,6 +463,7 @@ public class SubsetsControllerV2 {
                 LocalDate validFromLocalDate = LocalDate.parse(newVersion.get(Field.VALID_FROM).asText());
                 LocalDate newValidUntilOfLastVersion = validFromLocalDate.minusDays(1);
                 latestPublishedVersion.put(Field.VALID_UNTIL, newValidUntilOfLastVersion.toString());
+                latestPublishedVersion.remove(Field._LINKS);
                 LOG.debug("Attempting to PUT the previous latest version with a new validUntil that is one day before the validFrom of the new latest version");
                 ResponseEntity<JsonNode> putVersionRE = putSubsetVersion(seriesId, latestPublishedVersion.get(Field.VERSION).asText(), latestPublishedVersion);
                 if (!putVersionRE.getStatusCode().is2xxSuccessful()){
