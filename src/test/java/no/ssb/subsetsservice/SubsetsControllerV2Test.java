@@ -763,7 +763,7 @@ class SubsetsControllerV2Test {
         String validUntilAfterUpdate = version202AfterUpdate.get(Field.VALID_UNTIL).asText();
         System.out.println("version 202 validUntil after update: "+validUntilAfterUpdate);
         System.out.println("version 203 validFrom: "+version_2_0_3.get(Field.VALID_FROM).asText());
-        assertTrue(validUntilAfterUpdate.compareTo(version_2_0_3.get(Field.VALID_FROM).asText()) < 0);
+        assertTrue(validUntilAfterUpdate.compareTo(version_2_0_3.get(Field.VALID_FROM).asText()) == 0);
     }
 
     @Test
