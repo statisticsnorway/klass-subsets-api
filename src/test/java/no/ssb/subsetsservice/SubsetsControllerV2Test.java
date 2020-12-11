@@ -725,7 +725,7 @@ class SubsetsControllerV2Test {
 
         JsonNode version_2_0_2 = readJsonFile(this.version_2_0_2);
         ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version_2_0_2);
-        String version202_uid = postVersionRE.getBody().get(Field.VERSION).asText();
+        String version202_uid = postVersionRE.getBody().get(Field.VERSION_ID).asText();
         assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
