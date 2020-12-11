@@ -459,12 +459,10 @@ public class SubsetsControllerV2 {
             if (latestPublishedVersion == null)
                 return ErrorHandler.newHttpError("There is supposedly other published versions, and the posted version is the new latest version, but the old latest version returned from the overlap check was null", INTERNAL_SERVER_ERROR, LOG);
             if ((!latestPublishedVersion.has(Field.VALID_UNTIL) || latestPublishedVersion.get(Field.VALID_UNTIL).isNull())) {
-                LOG.debug("The latestPublishedVersion did not have a validUntil date. Attempting to set it to one day before the validFrom of the new latest version");
-                LocalDate validFromLocalDate = LocalDate.parse(newVersion.get(Field.VALID_FROM).asText());
-                LocalDate newValidUntilOfLastVersion = validFromLocalDate.minusDays(1);
-                latestPublishedVersion.put(Field.VALID_UNTIL, newValidUntilOfLastVersion.toString());
+                LOG.debug("The latestPublishedVersion did not have a validUntil date. Attempting to set it to the validFrom of the new version");
+                latestPublishedVersion.put(Field.VALID_UNTIL, newVersion.get(Field.VALID_FROM).asText());
                 latestPublishedVersion.remove(Field._LINKS);
-                LOG.debug("Attempting to PUT the previous latest version with a new validUntil that is one day before the validFrom of the new latest version");
+                LOG.debug("Attempting to PUT the previous latest version with a new validUntil that is the same as the validFrom of the new version");
                 ResponseEntity<JsonNode> putVersionRE = putSubsetVersion(seriesId, latestPublishedVersion.get(Field.VERSION).asText(), latestPublishedVersion);
                 if (!putVersionRE.getStatusCode().is2xxSuccessful()){
                     return ErrorHandler.newHttpError("Failed to update the validUntil of the previous last published version. PUT caused error code "+putVersionRE.getStatusCode()+" and had body "+(putVersionRE.hasBody() && putVersionRE.getBody() != null ? putVersionRE.getBody().toPrettyString().replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "") : ""), INTERNAL_SERVER_ERROR, LOG);
