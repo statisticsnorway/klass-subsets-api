@@ -28,7 +28,7 @@ public class HealthController {
     public ResponseEntity<String> ready() {
         boolean klassReady = new KlassURNResolver().pingKLASSClassifications();
         boolean ldsReady = new LDSFacade().healthReady();
-        boolean schemaPresent = new LDSFacade().getClassificationSubsetSchema().getStatusCode().equals(HttpStatus.OK);
+        boolean schemaPresent = new LDSFacade().getSubsetSeriesSchema().getStatusCode().equals(HttpStatus.OK);
         if (klassReady && ldsReady && schemaPresent)
             return new ResponseEntity<>("The service is ready!", HttpStatus.OK);
         return new ResponseEntity<>("The service is not ready yet.\n KLASS ready: "+klassReady+" \n", HttpStatus.SERVICE_UNAVAILABLE);

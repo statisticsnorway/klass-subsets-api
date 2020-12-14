@@ -28,37 +28,10 @@ public class LDSFacade implements LDSInterface {
         this.API_LDS = API_LDS;
     }
 
-    public List<String> getAllSubsetIDs() throws HttpClientErrorException {
-
-        ResponseEntity<JsonNode> allSubsetsRE = getLastUpdatedVersionOfAllSubsets();
-
-        if (allSubsetsRE.getStatusCode().equals(OK)) {
-            JsonNode ldsREBody = allSubsetsRE.getBody();
-            if (ldsREBody != null) {
-                if (ldsREBody.isArray()) {
-                    ArrayNode ldsAllSubsetsArrayNode = (ArrayNode) ldsREBody;
-                    List<String> idList = new ArrayList<>(ldsAllSubsetsArrayNode.size());
-                    for (JsonNode jsonNode : ldsAllSubsetsArrayNode) {
-                        idList.add(jsonNode.get(Field.ID).asText());
-                    }
-                    return idList;
-                }
-                throw new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "GET all subsets body was not ArrayNode");
-            }
-            throw new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "GET all subsets body was null");
-        }
-        throw new HttpClientErrorException(allSubsetsRE.getStatusCode());
-    }
-
-    public ResponseEntity<JsonNode> getVersionsInSubsetWithID(String subsetId){
+    public ResponseEntity<JsonNode> getVersionsInSubsetWithID(String subsetId) {
         ResponseEntity<JsonNode> seriesRE = new LDSConsumer(API_LDS).getFrom(SERIES_API+"/"+subsetId);
         JsonNode subsetSeriesJsonNode = seriesRE.getBody();
         ArrayNode versionArrayNode = subsetSeriesJsonNode.get("versions").deepCopy();
-        /*
-        for (JsonNode version : versionArrayNode){
-            String versionID = version.get("_links").get("self").get("href").asText();
-        }
-        */
         return new ResponseEntity<>(versionArrayNode, OK);
     }
 
@@ -79,38 +52,8 @@ public class LDSFacade implements LDSInterface {
         return new LDSConsumer(API_LDS).getFrom(SERIES_API+"");
     }
 
-    public ResponseEntity<JsonNode> getLastUpdatedVersionOfAllSubsets(){
-        return new LDSConsumer(API_LDS).getFrom(SUBSETS_API+"");
-    }
-
-    public ResponseEntity<JsonNode> getTimelineOfSubset(String id){
-        return new LDSConsumer(API_LDS).getFrom(SUBSETS_API+"/"+id+"?timeline");
-    }
-
-    public boolean existsSubsetWithID(String id){
-        return new LDSConsumer(API_LDS).getFrom(SUBSETS_API+"/"+id).getStatusCode().equals(OK);
-    }
-
     public boolean existsSubsetSeriesWithID(String id){
         return new LDSConsumer(API_LDS).getFrom(SERIES_API+"/"+id).getStatusCode().equals(OK);
-    }
-
-    public ResponseEntity<JsonNode> getClassificationSubsetSchema(){
-        return new LDSConsumer(API_LDS).getFrom(SUBSETS_API+"/?schema");
-    }
-
-    public ResponseEntity<JsonNode> editSubset(JsonNode subset, String id){
-        ResponseEntity<JsonNode> postRE = new LDSConsumer(API_LDS).postTo(SUBSETS_API+"/" + id, subset);
-        HttpStatus status = postRE.getStatusCode();
-        if (status.is2xxSuccessful())
-            status = OK;
-        if (postRE.hasBody())
-            return new ResponseEntity<>(postRE.getBody(), postRE.getHeaders(), status);
-        return new ResponseEntity<>(postRE.getHeaders(), status);
-    }
-
-    public ResponseEntity<JsonNode> createSubset(JsonNode subset, String id){
-        return new LDSConsumer(API_LDS).postTo(SUBSETS_API+"/" + id, subset);
     }
 
     public ResponseEntity<JsonNode> createSubsetSeries(JsonNode subset, String id){
@@ -121,19 +64,8 @@ public class LDSFacade implements LDSInterface {
         return new LDSConsumer(API_LDS).getFrom("/health/ready").getStatusCode().equals(OK);
     }
 
-    public void deleteSubset(String id) {
-        String url = SUBSETS_API+"/"+id;
-        new LDSConsumer(API_LDS).delete(url);
-    }
-
     public ResponseEntity<JsonNode> editSeries(JsonNode series, String id) {
         return new LDSConsumer(API_LDS).putTo(SERIES_API+"/" + id, series);
-    }
-
-    public void deleteAllSubsets(){
-        List<String> idList = getAllSubsetIDs();
-        LoggerFactory.getLogger(LDSFacade.class).info("DELETE all "+idList.size()+" subset(s) from LDS");
-        idList.forEach(this::deleteSubset);
     }
 
     public ResponseEntity<JsonNode> postVersionInSeries(String seriesID, String versionNr, JsonNode versionJsonNode) {

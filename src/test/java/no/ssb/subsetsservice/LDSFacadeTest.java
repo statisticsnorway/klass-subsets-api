@@ -17,7 +17,7 @@ class LDSFacadeTest {
     @Test
     void getLastUpdatedVersionOfAllSubsets() {
         try {
-            ResponseEntity<JsonNode> allSubsets = new LDSFacade().getLastUpdatedVersionOfAllSubsets();
+            ResponseEntity<JsonNode> allSubsets = new LDSFacade().getAllSubsetSeries();
             assertTrue(allSubsets.hasBody());
             if (allSubsets.hasBody())
                 assertTrue(allSubsets.getBody().isArray());
