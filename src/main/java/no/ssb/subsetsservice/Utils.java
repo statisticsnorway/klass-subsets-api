@@ -41,8 +41,8 @@ public class Utils {
     }
 
     public static JsonNode getSubsetVersionLinkNode(JsonNode subset) {
-        String selfURN = getVersionLink(subset.get(Field.SERIES_ID).asText(), subset.get(Field.VERSION).asText());
-        String seriesUrn = getSeriesLink(subset.get(Field.SERIES_ID).asText());
+        String selfURN = getVersionLink(subset.get(Field.SUBSET_ID).asText(), subset.get(Field.VERSION_ID).asText());
+        String seriesUrn = getSeriesLink(subset.get(Field.SUBSET_ID).asText());
         ObjectNode linksObject = getLinkSelfObject(selfURN);
         linksObject.set("series", getHrefNode(seriesUrn));
         return linksObject;
@@ -81,13 +81,13 @@ public class Utils {
             return cleanV1SubsetArrayVersionFields(arrayNode);
         }
         ObjectNode clone = subset.deepCopy();
-        if (!clone.has(Field.VERSION)) {
+        if (!clone.has(Field.VERSION_ID)) {
             LoggerFactory.getLogger(Utils.class).error("subset did not contain 'version', so it could not be cleaned");
             return clone;
         }
-        String oldVersion = clone.get(Field.VERSION).asText();
+        String oldVersion = clone.get(Field.VERSION_ID).asText();
         String majorVersion = oldVersion.split("\\.")[0];
-        clone.put(Field.VERSION, majorVersion);
+        clone.put(Field.VERSION_ID, majorVersion);
         return clone;
     }
 
@@ -149,7 +149,7 @@ public class Utils {
             for (int i = 0; i < codesArrayNode.size(); i++) {
                 LOG.debug("Resolving code "+i+"/"+codesArrayNode.size());
                 JsonNode code = Utils.addCodeVersions(codesArrayNode.get(i), LOG);
-                if (code.get(Field.VERSIONS).size() < 1)
+                if (code.get(Field.CLASSIFICATION_VERSIONS).size() < 1)
                     LOG.error("Code "+code.get(Field.CODE)+" "+code.get(Field.NAME)+" failed to resolve any versions in validity range "+code.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText()+" - "+(code.has(Field.VALID_TO_IN_REQUESTED_RANGE) ? code.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText() : "null"));
                 codesArrayNode.set(i, code);
             }
@@ -183,7 +183,7 @@ public class Utils {
                 }
             }
         }
-        editableCode.set(Field.VERSIONS, classificationVersionLinksArrayNode);
+        editableCode.set(Field.CLASSIFICATION_VERSIONS, classificationVersionLinksArrayNode);
         return editableCode;
     }
 
