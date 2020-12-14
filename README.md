@@ -138,7 +138,7 @@ If we GET `v2/subsets/UID_for_dette_uttrekket_1` the response will look like thi
   "description": [
     {
       "languageCode": "nb",
-      "languageText": "tekst p? norsk bokm?l"
+      "languageText": "tekst på norsk bokmål"
     },
     {
       "languageCode": "en",
@@ -148,7 +148,7 @@ If we GET `v2/subsets/UID_for_dette_uttrekket_1` the response will look like thi
   "name": [
     {
       "languageCode": "nb",
-      "languageText": "fullt navn p? norsk bokm?l"
+      "languageText": "fullt navn på norsk bokmål"
     },
     {
       "languageCode": "en",
