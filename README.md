@@ -172,10 +172,10 @@ If we GET the subset version that we just created (`/v2/subsets/UID_for_dette_ut
   "administrativeStatus": "DRAFT",
   "createdDate": "2020-11-10",
   "lastModified": "2020-11-10T15:23:41Z",
-  "seriesId": "UID_for_dette_uttrekket_1",
+  "subsetId": "UID_for_dette_uttrekket_1",
   "validFrom": "2020-10-19",
   "validUntil": "2021-10-19",
-  "version": "e815e953-90dc-4103-b592-0f3b231dfeb3",
+  "versionId": "e815e953-90dc-4103-b592-0f3b231dfeb3",
   "statisticalUnits": [
     "Region"
   ],
@@ -188,7 +188,9 @@ If we GET the subset version that we just created (`/v2/subsets/UID_for_dette_ut
       "rank": "1",
       "validFromInRequestedRange": "2020-10-19",
       "validToInRequestedRange": "2021-10-19",
-      "versions": []
+      "classificationVersions": [
+      	"https://data.ssb.no/api/klass/v1/versions/1160"
+      ]
     }
   ],
   "versionRationale": [
