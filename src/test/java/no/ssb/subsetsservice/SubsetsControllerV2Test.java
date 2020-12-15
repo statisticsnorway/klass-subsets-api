@@ -600,6 +600,12 @@ class SubsetsControllerV2Test {
 
         instance.deleteSeriesById(seriesId);
 
+        try {
+            Thread.sleep(50); // To make sure creation is completed before deletion is attempted
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         ResponseEntity<JsonNode> getSubsetWhenItShouldNotExistRE = instance.getSubsetSeriesByID(seriesId, false);
         assertEquals(HttpStatus.NOT_FOUND, getSubsetWhenItShouldNotExistRE.getStatusCode());
 
