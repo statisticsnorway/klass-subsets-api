@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -239,7 +240,7 @@ public class SubsetsControllerV2 {
      * @return
      */
     @PutMapping(value = "/v2/subsets/{seriesId}/versions/{versionUID}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("seriesId") String seriesId, @PathVariable("versionUID") String versionUID, @RequestBody JsonNode putVersion) {
+    public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("seriesId") String seriesId, @PathVariable("versionUID") String versionUID, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode putVersion) {
         LOG.info("PUT subset version of series "+seriesId+" with version id "+versionUID);
         if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
@@ -264,6 +265,10 @@ public class SubsetsControllerV2 {
         editablePutVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
         editablePutVersion.set(Field.CREATED_DATE, previousEditionOfVersion.get(Field.CREATED_DATE));
         editablePutVersion = Utils.addCodeVersionsToAllCodesInVersion(editablePutVersion, LOG);
+
+        if (ignoreSuperfluousFields){
+            editablePutVersion = removeSuperfluousFieldsFromVersion(editablePutVersion);
+        }
 
         ResponseEntity<JsonNode> versionSchemaValidationRE = validateVersion(editablePutVersion);
         if (!versionSchemaValidationRE.getStatusCode().is2xxSuccessful())
@@ -323,7 +328,7 @@ public class SubsetsControllerV2 {
     }
 
     @PostMapping(value = "/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> postSubsetVersion(@PathVariable("seriesId") String seriesId, @RequestBody JsonNode version) {
+    public ResponseEntity<JsonNode> postSubsetVersion(@PathVariable("seriesId") String seriesId, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode version) {
         LOG.info("POST request to create a version of series "+seriesId);
         if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
@@ -421,6 +426,10 @@ public class SubsetsControllerV2 {
             LOG.debug("The series "+seriesId+" was successfully updated with a new statistical units array.");
         }
 
+        if (ignoreSuperfluousFields){
+            editableVersion = removeSuperfluousFieldsFromVersion(editableVersion);
+        }
+
         ResponseEntity<JsonNode> versionSchemaValidationRE = validateVersion(editableVersion);
         if (!versionSchemaValidationRE.getStatusCode().is2xxSuccessful())
             return versionSchemaValidationRE;
@@ -451,6 +460,7 @@ public class SubsetsControllerV2 {
             return ldsPostRE;
     }
 
+
     private ResponseEntity<JsonNode> updateLatestPublishedValidUntil(ResponseEntity<JsonNode> isOverlappingValidityRE, JsonNode newVersion, String seriesId){
         JsonNode isOverlapREBody = isOverlappingValidityRE.getBody();
         if (isOverlapREBody.get("existOtherPublishedVersions").asBoolean() && isOverlapREBody.get("isNewLatestVersion").asBoolean()) {
@@ -463,7 +473,7 @@ public class SubsetsControllerV2 {
                 latestPublishedVersion.put(Field.VALID_UNTIL, newVersion.get(Field.VALID_FROM).asText());
                 latestPublishedVersion.remove(Field._LINKS);
                 LOG.debug("Attempting to PUT the previous latest version with a new validUntil that is the same as the validFrom of the new version");
-                ResponseEntity<JsonNode> putVersionRE = putSubsetVersion(seriesId, latestPublishedVersion.get(Field.VERSION_ID).asText(), latestPublishedVersion);
+                ResponseEntity<JsonNode> putVersionRE = putSubsetVersion(seriesId, latestPublishedVersion.get(Field.VERSION_ID).asText(), false, latestPublishedVersion);
                 if (!putVersionRE.getStatusCode().is2xxSuccessful()){
                     return ErrorHandler.newHttpError("Failed to update the validUntil of the previous last published version. PUT caused error code "+putVersionRE.getStatusCode()+" and had body "+(putVersionRE.hasBody() && putVersionRE.getBody() != null ? putVersionRE.getBody().toPrettyString().replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "") : ""), INTERNAL_SERVER_ERROR, LOG);
                 }
@@ -786,6 +796,29 @@ public class SubsetsControllerV2 {
             versionUID = id+"_"+versionId;
         LOG.debug("Version UID used in delete requests to LDS: "+versionUID);
         new LDSFacade().deleteSubsetVersionFromSeriesAndFromLDS(id, versionUID);
+    }
+
+
+    private ObjectNode removeSuperfluousFieldsFromVersion(JsonNode version) {
+        ObjectNode editableVersion = version.deepCopy();
+        String versionNr = editableVersion.has(Field.VERSION_ID) ? editableVersion.get(Field.VERSION_ID).asText() : "with no version nr";
+        String seriesID = editableVersion.has(Field.SUBSET_ID) ? editableVersion.get(Field.SUBSET_ID).asText() : "";
+        String versionUID = seriesID+"_"+versionNr;
+        LOG.debug("Validating version "+versionUID+" ");
+        ResponseEntity<JsonNode> versionSchemaRE = new LDSFacade().getSubsetVersionsDefinition();
+        if (!versionSchemaRE.getStatusCode().is2xxSuccessful())
+            throw new Error("Request to get subset versions definition was unsuccessful");
+        JsonNode versionsDefinition = versionSchemaRE.getBody();
+        JsonNode definitionProperties = versionsDefinition.get("properties");
+        Iterator<String> submittedFieldNamesIterator = editableVersion.fieldNames();
+        while (submittedFieldNamesIterator.hasNext()) {
+            String field = submittedFieldNamesIterator.next();
+            LOG.debug("Checking the field '"+field+"' from the instance against the given definition . . .");
+            if (!definitionProperties.has(field)) {
+                editableVersion.remove(field);
+            }
+        }
+        return editableVersion;
     }
 
     ResponseEntity<JsonNode> validateVersion(JsonNode version){
