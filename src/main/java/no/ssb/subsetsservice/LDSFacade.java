@@ -28,23 +28,16 @@ public class LDSFacade implements LDSInterface {
         this.API_LDS = API_LDS;
     }
 
-    public ResponseEntity<JsonNode> getVersionsInSubsetWithID(String subsetId) {
-        ResponseEntity<JsonNode> seriesRE = new LDSConsumer(API_LDS).getFrom(SERIES_API+"/"+subsetId);
-        JsonNode subsetSeriesJsonNode = seriesRE.getBody();
-        ArrayNode versionArrayNode = subsetSeriesJsonNode.get("versions").deepCopy();
-        return new ResponseEntity<>(versionArrayNode, OK);
-    }
-
     /**
      * Get a specific subset version by its UID, without going through the subset series.
      * @param versionId is the UID for the version, unique among all versions, that is used in LDS
      * @return
      */
-    public ResponseEntity<JsonNode> getVersionByID(String versionId){
+    public ResponseEntity<JsonNode> getVersionByID(String versionId) {
         return new LDSConsumer(API_LDS).getFrom(VERSIONS_API+"/"+versionId);
     }
 
-    public ResponseEntity<JsonNode> getSubsetSeries(String id){
+    public ResponseEntity<JsonNode> getSubsetSeries(String id) {
         return new LDSConsumer(API_LDS).getFrom(SERIES_API+"/"+id);
     }
 
@@ -52,11 +45,11 @@ public class LDSFacade implements LDSInterface {
         return new LDSConsumer(API_LDS).getFrom(SERIES_API+"");
     }
 
-    public boolean existsSubsetSeriesWithID(String id){
+    public boolean existsSubsetSeriesWithID(String id) {
         return new LDSConsumer(API_LDS).getFrom(SERIES_API+"/"+id).getStatusCode().equals(OK);
     }
 
-    public ResponseEntity<JsonNode> createSubsetSeries(JsonNode subset, String id){
+    public ResponseEntity<JsonNode> createSubsetSeries(JsonNode subset, String id) {
         return new LDSConsumer(API_LDS).postTo(SERIES_API+"/" + id, subset);
     }
 
@@ -145,7 +138,7 @@ public class LDSFacade implements LDSInterface {
     public ResponseEntity<JsonNode> deleteAllSubsetSeries() {
         ResponseEntity<JsonNode> getAllRE = getAllSubsetSeries();
         ArrayNode allSeriesArrayNode = (ArrayNode) getAllRE.getBody();
-        for (JsonNode series : allSeriesArrayNode){
+        for (JsonNode series : allSeriesArrayNode) {
             String id = series.get(Field.ID).asText();
             deleteSubsetSeries(id);
         }

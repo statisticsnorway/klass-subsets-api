@@ -831,12 +831,16 @@ public class SubsetsControllerV2 {
         version = null;
 
         Iterator<String> submittedFieldNamesIterator = editableVersion.fieldNames();
+        List<String> fieldsToBeDeleted = new ArrayList<>();
         while (submittedFieldNamesIterator.hasNext()) {
             String field = submittedFieldNamesIterator.next();
             if (!definitionProperties.has(field)) {
                 LOG.debug("removing the field "+field+" from the item because it was not defined in the schema");
-                editableVersion.remove(field);
+                fieldsToBeDeleted.add(field);
             }
+        }
+        for (String fieldName : fieldsToBeDeleted) {
+            editableVersion.remove(fieldName);
         }
         if (definitionProperties.has(Field.CODES)) {
             JsonNode codesProperty = definitionProperties.get(Field.CODES);
@@ -855,12 +859,16 @@ public class SubsetsControllerV2 {
                             for (JsonNode code : codesArray) {
                                 ObjectNode editableCodeNode = code.deepCopy();
                                 Iterator<String> codeFieldNamesIterator = editableCodeNode.fieldNames();
+                                fieldsToBeDeleted = new ArrayList<>();
                                 while (codeFieldNamesIterator.hasNext()) {
                                     String field = codeFieldNamesIterator.next();
-                                    if (!codeDefinition.has(field)) {
-                                        LOG.debug("removing the field "+field+" from a subset version Code because it was not defined in the schema");
-                                        editableCodeNode.remove(field);
+                                    if (!codeDefinition.get("properties").has(field)) {
+                                        LOG.debug("removing the field "+field+" from a code because it was not defined in the schema");
+                                        fieldsToBeDeleted.add(field);
                                     }
+                                }
+                                for (String fieldName : fieldsToBeDeleted) {
+                                    editableCodeNode.remove(fieldName);
                                 }
                                 newCodesArray.add(editableCodeNode);
                             }

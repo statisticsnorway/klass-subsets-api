@@ -215,6 +215,7 @@ public class Utils {
             else if (definitionPoperties.get(field).has("type") && definitionPoperties.get(field).get("type").asText().equals("array") && !instance.get(field).isArray())
                 return ErrorHandler.newHttpError("Submitted field "+field+" has to be an array according to the definition, but was not an array", BAD_REQUEST, LOG);
         }
+
         if (definitionPoperties.has("codes")) {
             LOG.debug("'codes' field present in definition. Checking each element of instance against ClassificationSubsetCode definition");
             JsonNode codesProperty = definitionPoperties.get("codes");
