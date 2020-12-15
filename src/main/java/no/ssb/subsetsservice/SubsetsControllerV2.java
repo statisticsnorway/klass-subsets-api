@@ -800,11 +800,11 @@ public class SubsetsControllerV2 {
 
 
     private ObjectNode removeSuperfluousFieldsFromVersion(JsonNode version) {
+        LOG.debug("Removing superfluous fields from a subset version");
         ObjectNode editableVersion = version.deepCopy();
         String versionNr = editableVersion.has(Field.VERSION_ID) ? editableVersion.get(Field.VERSION_ID).asText() : "with no version nr";
         String seriesID = editableVersion.has(Field.SUBSET_ID) ? editableVersion.get(Field.SUBSET_ID).asText() : "";
         String versionUID = seriesID+"_"+versionNr;
-        LOG.debug("Validating version "+versionUID+" ");
         ResponseEntity<JsonNode> versionSchemaRE = new LDSFacade().getSubsetVersionsDefinition();
         if (!versionSchemaRE.getStatusCode().is2xxSuccessful())
             throw new Error("Request to get subset versions definition was unsuccessful");
@@ -813,15 +813,55 @@ public class SubsetsControllerV2 {
         Iterator<String> submittedFieldNamesIterator = editableVersion.fieldNames();
         while (submittedFieldNamesIterator.hasNext()) {
             String field = submittedFieldNamesIterator.next();
-            LOG.debug("Checking the field '"+field+"' from the instance against the given definition . . .");
             if (!definitionProperties.has(field)) {
+                LOG.debug("removing the field "+field+" from the subset version because it was not defined in the schema");
                 editableVersion.remove(field);
+            }
+        }
+        if (definitionProperties.has(Field.CODES)) {
+            JsonNode codesProperty = definitionProperties.get(Field.CODES);
+            if (codesProperty.has("type") && codesProperty.get("type").asText().equals("array")){
+                if (codesProperty.has("items") && codesProperty.get("items").has("$ref") && codesProperty.get("items").get("$ref").asText().split("/")[2].equals("ClassificationSubsetCode")) {
+                    if (editableVersion.has(Field.CODES)) {
+                        LOG.debug("the instance has a field called 'codes'");
+                        JsonNode codes = editableVersion.get(Field.CODES);
+                        if (codes.isArray() && !codes.isEmpty()) {
+                            ArrayNode codesArray = codes.deepCopy();
+                            ResponseEntity<JsonNode> codeDefRE = new LDSFacade().getSubsetCodeDefinition();
+                            if (!codeDefRE.getStatusCode().is2xxSuccessful())
+                                throw new Error("Request to get subset code definition was unsuccessful");
+                            JsonNode codeDefinition = codeDefRE.getBody();
+                            ArrayNode newCodesArray = new ObjectMapper().createArrayNode();
+                            for (JsonNode code : codesArray) {
+                                ObjectNode editableCodeNode = code.deepCopy();
+                                Iterator<String> codeFieldNamesIterator = editableCodeNode.fieldNames();
+                                while (codeFieldNamesIterator.hasNext()) {
+                                    String field = codeFieldNamesIterator.next();
+                                    if (!codeDefinition.has(field)) {
+                                        LOG.debug("removing the field "+field+" from a subset version Code because it was not defined in the schema");
+                                        editableCodeNode.remove(field);
+                                    }
+                                }
+                                newCodesArray.add(editableCodeNode);
+                            }
+                            editableVersion.set(Field.CODES, newCodesArray);
+                        } else {
+                            LOG.warn("'codes' field in instance was not array or was empty");
+                        }
+                    } else {
+                        LOG.warn("'codes' field was not present in the instance that is being validated");
+                    }
+                } else {
+                    LOG.warn("definition.codes.items.$ref was not present or was not ClassificationSubsetSeries");
+                }
+            } else {
+                LOG.warn("'codes' field was present in definition, but it was not and array AND of type ClassificationSubsetCode according to the check");
             }
         }
         return editableVersion;
     }
 
-    ResponseEntity<JsonNode> validateVersion(JsonNode version){
+    ResponseEntity<JsonNode> validateVersion(JsonNode version) {
         String versionNr = version.has(Field.VERSION_ID) ? version.get(Field.VERSION_ID).asText() : "with no version nr";
         String seriesID = version.has(Field.SUBSET_ID) ? version.get(Field.SUBSET_ID).asText() : "";
         String versionUID = seriesID+"_"+versionNr;
@@ -836,7 +876,7 @@ public class SubsetsControllerV2 {
         return new ResponseEntity<>(OK);
     }
 
-    ResponseEntity<JsonNode> validateSeries(JsonNode series){
+    ResponseEntity<JsonNode> validateSeries(JsonNode series) {
         String id = series.has(Field.ID) ? series.get(Field.ID).asText() : " with no field 'id'";
         LOG.debug("Validating series "+id+" . . .");
         ResponseEntity<JsonNode> seriesDefinitionRE = new LDSFacade().getSubsetSeriesDefinition();
