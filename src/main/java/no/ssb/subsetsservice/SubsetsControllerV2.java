@@ -293,23 +293,15 @@ public class SubsetsControllerV2 {
 
         // One set of rules for if the old version is DRAFT:
         if (wasDraftFromBefore){
-            if (isStatusOpen ||
-                    (!previousEditionOfVersion.get(Field.VALID_FROM).equals(editablePutVersion.get(Field.VALID_FROM))) ||
-                    (previousEditionOfVersion.has(Field.VALID_UNTIL) && (!editablePutVersion.has(Field.VALID_UNTIL)) || !editablePutVersion.get(Field.VALID_UNTIL).equals(previousEditionOfVersion.get(Field.VALID_UNTIL))) ||
-                    (editablePutVersion.has(Field.VALID_UNTIL) && !previousEditionOfVersion.has(Field.VALID_UNTIL)) ){
+            if (isStatusOpen){
                 // check validity period overlap with other OPEN versions
                 ResponseEntity<JsonNode> isOverlappingValidityRE = isOverlappingValidity(editablePutVersion);
                 if (!isOverlappingValidityRE.getStatusCode().is2xxSuccessful()){
                     return isOverlappingValidityRE;
                 }
-                if (isStatusOpen) { // If this version is being published, check if we need to end the validity period of the previous currently valid version.
-                    ResponseEntity<JsonNode> updateLatestPublishedValidUntilRE = updateLatestPublishedValidUntil(isOverlappingValidityRE, editablePutVersion, seriesId);
-                    //TODO: Handle possible errors in the updateLatestPublishedValidUntilRE
-                }
+                ResponseEntity<JsonNode> updateLatestPublishedValidUntilRE = updateLatestPublishedValidUntil(isOverlappingValidityRE, editablePutVersion, seriesId);
+                //TODO: Handle if updateLatestPublishedValidUntilRE comes back non-200
             }
-            // If the new version is OPEN and the old one was DRAFT:
-            // OR If validFrom or validUntil is changed
-
         } else { // Another stricter set of rules for if the old version is OPEN
             String oldCodeList = previousEditionOfVersion.get(Field.CODES).asText();
             String newCodeList = editablePutVersion.get(Field.CODES).asText();
@@ -325,7 +317,6 @@ public class SubsetsControllerV2 {
             ResponseEntity<JsonNode> compareFieldsRE = compareFields(previousEditionOfVersion, editablePutVersion, changeableFields);
             if (!compareFieldsRE.getStatusCode().is2xxSuccessful())
                 return compareFieldsRE;
-
         }
         ResponseEntity<JsonNode> editVersionRE = new LDSFacade().editVersion(editablePutVersion);
         if (editVersionRE.getStatusCode().is2xxSuccessful())
@@ -450,14 +441,16 @@ public class SubsetsControllerV2 {
             return new ResponseEntity<>(editableVersion, CREATED);
         }
 
-        ResponseEntity<JsonNode> isOverlappingValidityRE = isOverlappingValidity(editableVersion);
-        if (!isOverlappingValidityRE.getStatusCode().is2xxSuccessful())
-            return isOverlappingValidityRE;
+        if (isStatusOpen){
+            ResponseEntity<JsonNode> isOverlappingValidityRE = isOverlappingValidity(editableVersion);
+            if (!isOverlappingValidityRE.getStatusCode().is2xxSuccessful())
+                return isOverlappingValidityRE;
+            ResponseEntity<JsonNode> updateLatestPublishedValidUntilRE = updateLatestPublishedValidUntil(isOverlappingValidityRE, editableVersion, seriesId);
+        }
 
         LOG.debug("Attempting to POST version nr "+versionUUID+" of subset series "+seriesId+" to LDS");
         ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionUUID, editableVersion);
 
-        ResponseEntity<JsonNode> updateLatestPublishedValidUntilRE = updateLatestPublishedValidUntil(isOverlappingValidityRE, editableVersion, seriesId);
 
         if (ldsPostRE.getStatusCode().equals(CREATED)) {
             LOG.debug("Successfully POSTed version nr "+versionUUID+" of subset series "+seriesId+" to LDS");
@@ -487,7 +480,7 @@ public class SubsetsControllerV2 {
                 LOG.debug("The latestPublishedVersion already had a validUntil date");
             }
         } else {
-            LOG.debug("Either there are no other published versions, or the published version is not the new latest version");
+            LOG.debug("Either there are no other published versions, or the new version is not the new latest published version");
         }
         return new ResponseEntity<>(OK);
     }
