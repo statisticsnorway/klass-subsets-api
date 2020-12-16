@@ -331,7 +331,6 @@ public class SubsetsControllerV2 {
             return ErrorHandler.illegalID(LOG);
         LOG.info("series id "+seriesId+" was legal");
 
-
         if (version.isNull() || version.isEmpty())
             return ErrorHandler.newHttpError("POST body was empty. Should contain a single subset version.", BAD_REQUEST, LOG);
         if (version.isArray())
@@ -356,6 +355,8 @@ public class SubsetsControllerV2 {
                     LOG);
 
         JsonNode series = getSeriesByIDRE.getBody();
+        String defaultLanguage = getDefaultLanguage(series);
+
         int versionsSize = series.has(Field.VERSIONS) ? series.get(Field.VERSIONS).size() : 0;
         LOG.debug("Amount of found versions in series "+seriesId+" before potentially adding new version: "+versionsSize);
         String versionUUID = UUID.randomUUID().toString();
@@ -382,7 +383,7 @@ public class SubsetsControllerV2 {
         Map<String, Boolean> statisticalUnitMap = new HashMap<>();
         classificationMap.keySet().forEach( k -> {
             ResponseEntity<JsonNode> getClassificationRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSClassificationURL(k));
-            if (getClassificationRE.getStatusCode().is2xxSuccessful()){
+            if (getClassificationRE.getStatusCode().is2xxSuccessful()) {
                 JsonNode classification = getClassificationRE.getBody();
                 if (!classification.has(Field.STATISTICAL_UNITS))
                     LOG.error("Classification "+k+" did not contain a "+Field.STATISTICAL_UNITS+" field!");
@@ -457,6 +458,22 @@ public class SubsetsControllerV2 {
             return new ResponseEntity<>(editableVersion, CREATED);
         } else
             return ldsPostRE;
+    }
+
+    private String getDefaultLanguage(JsonNode series) {
+        String defaultLanguage = "none";
+        if (series.has(Field.ADMINISTRATIVE_DETAILS)){
+            ArrayNode adminDetailsArrayNode = series.get(Field.ADMINISTRATIVE_DETAILS).deepCopy();
+            for (JsonNode adminDetail : adminDetailsArrayNode) {
+                if (adminDetail.has(Field.ADMINISTRATIVE_DETAIL_TYPE) && adminDetail.get(Field.ADMINISTRATIVE_DETAIL_TYPE).asText().equals(Field.DEFAULTLANGUAGE)){
+                    if (adminDetail.has(Field.VALUES) && adminDetail.get(Field.VALUES).isArray()){
+                        defaultLanguage = adminDetail.get(Field.VALUES).get(0).asText();
+                        break;
+                    }
+                }
+            }
+        }
+        return defaultLanguage;
     }
 
 

@@ -977,7 +977,7 @@ class SubsetsControllerV2Test {
     }
 
     @Test
-    void postNewDraftVersionWithSameVersionValidFromDateAndExpect200Status(){
+    void postNewDraftVersionWithSameVersionValidFromDateAndExpect200Status() {
         //We should not be able to publish a version that has same validFrom date as an existing published version
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
@@ -995,7 +995,6 @@ class SubsetsControllerV2Test {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
 
         JsonNode version2 = readJsonFile(version_1_0_1);
 
@@ -1042,7 +1041,7 @@ class SubsetsControllerV2Test {
     }
 
     @Test
-    void putToAddValidUntilToOpenVersion(){
+    void putToAddValidUntilToOpenVersion() {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
 
         JsonNode series = readJsonFile(series_2_0);
@@ -1061,7 +1060,7 @@ class SubsetsControllerV2Test {
     }
 
     @Test
-    void postNewVersionCollidingWithEndOfExistingVersion(){
+    void postNewVersionCollidingWithEndOfExistingVersion() {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
 
         JsonNode series = readJsonFile(series_2_0);
@@ -1096,7 +1095,7 @@ class SubsetsControllerV2Test {
     }
 
     @Test
-    void postNewVersionCollidingWithBeginningOfExistingVersion(){
+    void postNewVersionCollidingWithBeginningOfExistingVersion() {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
 
         JsonNode series = readJsonFile(series_2_0);
@@ -1167,7 +1166,7 @@ class SubsetsControllerV2Test {
 
 
     @Test
-    void putNewVersionDraftWhenAnotherDraftAlreadyExists(){
+    void putNewVersionDraftWhenAnotherDraftAlreadyExists() {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
 
         JsonNode series = readJsonFile(series_1_0);

@@ -35,4 +35,8 @@ public class Field {
     public static final String VALID_TO_IN_REQUESTED_RANGE = "validToInRequestedRange";
     public static final String STATISTICAL_UNITS = "statisticalUnits";
     public static final String LEVEL = "level";
+    public static final String ADMINISTRATIVE_DETAILS = "administrativeDetails";
+    public static final String ADMINISTRATIVE_DETAIL_TYPE = "administrativeDetailType";
+    public static final String DEFAULTLANGUAGE = "DEFAULTLANGUAGE";
+    public static final String VALUES = "values";
 }
