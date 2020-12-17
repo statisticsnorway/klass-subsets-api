@@ -14,9 +14,6 @@ import org.springframework.http.ResponseEntity;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.SQLOutput;
-import java.time.Clock;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -25,6 +22,8 @@ class SubsetsControllerV2Test {
 
     private static final Logger LOG = LoggerFactory.getLogger(SubsetsServiceApplicationTests.class);
     private final File series_1_0 = new File("src/test/resources/series_examples/series_1_0.json");
+
+    private final File series_1_extra_field = new File("src/test/resources/series_examples/series_1_extra_field.json");
     private final File series_1_0_invalid_id = new File("src/test/resources/series_examples/series_1_0_invalid_id.json");
     private final File series_1_1 = new File("src/test/resources/series_examples/series_1_1.json"); // A legal edit of series_1_0
     private final File series_2_0 = new File("src/test/resources/series_examples/series_2_0.json");
@@ -39,6 +38,9 @@ class SubsetsControllerV2Test {
     private final File version_2_0_2_validUntil = new File("src/test/resources/version_examples/version_2_0_2_validUntil.json");
     private final File version_2_0_3 = new File("src/test/resources/version_examples/version_2_0_3.json");
     private final File version_2_0_3_overlapping_date = new File("src/test/resources/version_examples/version_2_0_3_overlapping_date.json");
+
+    private final File version_1_extra_field = new File("src/test/resources/version_examples/version_1_extra_field.json");
+    private final File version_1_extra_field_in_code = new File("src/test/resources/version_examples/version_1_extra_field_in_code.json");
 
     public JsonNode readJsonFile(File file){
         assert file.exists() : "File "+file.getAbsolutePath()+" did not exist";
@@ -67,15 +69,193 @@ class SubsetsControllerV2Test {
     void postSubsetSeries() {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+    }
+
+    @Test
+    void postSubsetSeriesWithExtraFieldExpectingBadRequest() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+        JsonNode series = readJsonFile(series_1_extra_field);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+        assertEquals(HttpStatus.BAD_REQUEST, postSeriesRE.getStatusCode());
+    }
+
+    @Test
+    void postSubsetSeriesIgnoringExtraFields() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+        JsonNode series = readJsonFile(series_1_extra_field);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(true, series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ResponseEntity<JsonNode> getSeriesRE = instance.getSubsetSeriesByID(seriesId, false);
+        JsonNode seriesFromGetResponse = getSeriesRE.getBody();
+        assertTrue(!seriesFromGetResponse.has("extraFieldInSeries"));
+    }
+
+
+    @Test
+    void putSubsetSeriesWithExtraFieldExpectingBadRequest() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+
+        JsonNode seriesExtraField = readJsonFile(series_1_extra_field);
+        ResponseEntity<JsonNode> putSeriesRE = instance.putSubsetSeries(seriesId, false, seriesExtraField);
+        assertEquals(HttpStatus.BAD_REQUEST, putSeriesRE.getStatusCode());
+    }
+
+    @Test
+    void putSubsetSeriesWithExtraFieldExpecting200() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+
+        JsonNode seriesExtraField = readJsonFile(series_1_extra_field);
+        ResponseEntity<JsonNode> putSeriesRE = instance.putSubsetSeries(seriesId, true, seriesExtraField);
+        assertEquals(HttpStatus.OK, putSeriesRE.getStatusCode());
+    }
+
+    @Test
+    void postSubsetVersionWithExtraFieldExpectingBadRequest() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode versionWithExtraField = readJsonFile(version_1_extra_field);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, versionWithExtraField);
+        assertEquals(HttpStatus.BAD_REQUEST, postVersionRE.getStatusCode());
+    }
+
+    @Test
+    void postSubsetVersionWithExtraFieldExpecting200() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode versionWithExtraField = readJsonFile(version_1_extra_field);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, true, versionWithExtraField);
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+    }
+
+    @Test
+    void putSubsetVersionWithExtraFieldExpectingBadRequest() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+
+        JsonNode version = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
+        String versionId = postVersionRE.getBody().get(Field.VERSION_ID).asText();
+
+        JsonNode versionWithExtraField = readJsonFile(version_1_extra_field);
+        ResponseEntity<JsonNode> putVersionRE = instance.putSubsetVersion(seriesId, versionId, false, versionWithExtraField);
+        assertEquals(HttpStatus.BAD_REQUEST, putVersionRE.getStatusCode());
+    }
+
+    @Test
+    void putSubsetVersionWithExtraFieldExpecting200() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+
+        JsonNode version = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
+        String versionId = postVersionRE.getBody().get(Field.VERSION_ID).asText();
+
+        JsonNode versionWithExtraField = readJsonFile(version_1_extra_field);
+        ResponseEntity<JsonNode> putVersionRE = instance.putSubsetVersion(seriesId, versionId, true, versionWithExtraField);
+        assertEquals(HttpStatus.OK, putVersionRE.getStatusCode());
+    }
+
+    @Test
+    void postSubsetVersionWithExtraFieldInCodeExpectingBadRequest() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode versionWithExtraField = readJsonFile(version_1_extra_field_in_code);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, versionWithExtraField);
+        assertEquals(HttpStatus.BAD_REQUEST, postVersionRE.getStatusCode());
+    }
+
+    @Test
+    void postSubsetVersionWithExtraFieldInCodeExpecting200() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode versionWithExtraField = readJsonFile(version_1_extra_field_in_code);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, true, versionWithExtraField);
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+    }
+
+    @Test
+    void putSubsetVersionWithExtraFieldInCodeExpectingBadRequest() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+
+        JsonNode version = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
+        String versionId = postVersionRE.getBody().get(Field.VERSION_ID).asText();
+
+        JsonNode versionWithExtraField = readJsonFile(version_1_extra_field_in_code);
+        ResponseEntity<JsonNode> putVersionRE = instance.putSubsetVersion(seriesId, versionId, false, versionWithExtraField);
+        assertEquals(HttpStatus.BAD_REQUEST, putVersionRE.getStatusCode());
+    }
+
+    @Test
+    void putSubsetVersionWithExtraFieldInCodeExpecting200() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+
+        JsonNode version = readJsonFile(version_1_0_1);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
+        String versionId = postVersionRE.getBody().get(Field.VERSION_ID).asText();
+
+        JsonNode versionWithExtraField = readJsonFile(version_1_extra_field_in_code);
+        ResponseEntity<JsonNode> putVersionRE = instance.putSubsetVersion(seriesId, versionId, true, versionWithExtraField);
+        assertEquals(HttpStatus.OK, putVersionRE.getStatusCode());
     }
 
     @Test
     void getAllSubsetSeries() {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         ResponseEntity<JsonNode> getSeriesRE = instance.getSubsetSeries( true, true, true);
@@ -92,7 +272,7 @@ class SubsetsControllerV2Test {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         ResponseEntity<JsonNode> getSeriesRE = instance.getSubsetSeriesByID(seriesId, false);
@@ -109,10 +289,10 @@ class SubsetsControllerV2Test {
         JsonNode series = readJsonFile(series_1_0);
         JsonNode series1_1 = readJsonFile(series_1_1);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
-        ResponseEntity<JsonNode> putSeriesRE = instance.putSubsetSeries(seriesId, series1_1);
+        ResponseEntity<JsonNode> putSeriesRE = instance.putSubsetSeries(seriesId, false, series1_1);
         assertEquals(HttpStatus.OK, putSeriesRE.getStatusCode());
 
         //TODO: Make sure versions list was not overwritten, and createdDate automatically carried over.
@@ -125,11 +305,11 @@ class SubsetsControllerV2Test {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false,  series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
         assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
@@ -150,7 +330,7 @@ class SubsetsControllerV2Test {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         try {
@@ -176,7 +356,7 @@ class SubsetsControllerV2Test {
         assertEquals(originalNbDescription, newNbDescription);
 
         JsonNode version = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
         assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
@@ -210,17 +390,17 @@ class SubsetsControllerV2Test {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
         assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
         String versionUID = postVersionRE.getBody().get(Field.VERSION_ID).asText();
 
         JsonNode versionOpen = readJsonFile(version_1_0_1_open);
-        ResponseEntity<JsonNode> putOpenVersionRE = instance.putSubsetVersion(seriesId, versionUID, versionOpen);
+        ResponseEntity<JsonNode> putOpenVersionRE = instance.putSubsetVersion(seriesId, versionUID, false, versionOpen);
         assertTrue(putOpenVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.OK, putOpenVersionRE.getStatusCode());
     }
@@ -233,11 +413,11 @@ class SubsetsControllerV2Test {
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
 
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
         try {
             Thread.sleep(100); //To make sure the resource is available from LDS before we GET it
@@ -260,11 +440,11 @@ class SubsetsControllerV2Test {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
         assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
         String versionUID1 = postVersionRE.getBody().get(Field.VERSION_ID).asText();
@@ -285,17 +465,17 @@ class SubsetsControllerV2Test {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
         assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
         String versionUID1 = postVersionRE.getBody().get(Field.VERSION_ID).asText();
 
         JsonNode version1_0_1_1 = readJsonFile(version_1_0_1_1);
-        ResponseEntity<JsonNode> putVersionRE = instance.putSubsetVersion(seriesId, versionUID1, version1_0_1_1);
+        ResponseEntity<JsonNode> putVersionRE = instance.putSubsetVersion(seriesId, versionUID1, false, version1_0_1_1);
         assertEquals(HttpStatus.OK, putVersionRE.getStatusCode());
 
         ResponseEntity<JsonNode> getVersionRE = instance.getVersion(seriesId, versionUID1);
@@ -312,16 +492,16 @@ class SubsetsControllerV2Test {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode versionNoCodesDraft = readJsonFile(version_1_0_1_nocodes_draft);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, versionNoCodesDraft);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, versionNoCodesDraft);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
         String versionUID1 = postVersionRE.getBody().get(Field.VERSION_ID).asText();
 
         JsonNode versionNoCodesOpen = readJsonFile(version_1_0_1_nocodes_open);
-        ResponseEntity<JsonNode> putResponseEntity = instance.putSubsetVersion(seriesId, versionUID1, versionNoCodesOpen);
+        ResponseEntity<JsonNode> putResponseEntity = instance.putSubsetVersion(seriesId, versionUID1, false, versionNoCodesOpen);
         assertEquals(HttpStatus.BAD_REQUEST, putResponseEntity.getStatusCode()); // 0 codes is not allowed in published subset
     }
 
@@ -330,11 +510,11 @@ class SubsetsControllerV2Test {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode versionNoCodesDraft = readJsonFile(version_1_0_1_nocodes_open);
-        ResponseEntity<JsonNode> postResponseEntity = instance.postSubsetVersion(seriesId, versionNoCodesDraft);
+        ResponseEntity<JsonNode> postResponseEntity = instance.postSubsetVersion(seriesId, false, versionNoCodesDraft);
         assertEquals(HttpStatus.BAD_REQUEST, postResponseEntity.getStatusCode());
         System.out.println(postResponseEntity.getBody().toPrettyString());
     }
@@ -345,11 +525,11 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
         assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
         String versionUID1 = postVersionRE.getBody().get(Field.VERSION_ID).asText();
@@ -393,11 +573,11 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
         assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
         String versionUID1 = postVersionRE.getBody().get(Field.VERSION_ID).asText();
@@ -420,6 +600,12 @@ class SubsetsControllerV2Test {
 
         instance.deleteSeriesById(seriesId);
 
+        try {
+            Thread.sleep(50); // To make sure creation is completed before deletion is attempted
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         ResponseEntity<JsonNode> getSubsetWhenItShouldNotExistRE = instance.getSubsetSeriesByID(seriesId, false);
         assertEquals(HttpStatus.NOT_FOUND, getSubsetWhenItShouldNotExistRE.getStatusCode());
 
@@ -441,11 +627,11 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
         assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
         String versionUID1 = postVersionRE.getBody().get(Field.VERSION_ID).asText();
@@ -465,7 +651,7 @@ class SubsetsControllerV2Test {
         }
 
         JsonNode version2 = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersion2RE = instance.postSubsetVersion(seriesId, version2);
+        ResponseEntity<JsonNode> postVersion2RE = instance.postSubsetVersion(seriesId, false, version2);
         assertTrue(postVersion2RE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersion2RE.getStatusCode());
         String versionUID2 = postVersion2RE.getBody().get(Field.VERSION_ID).asText();
@@ -526,11 +712,11 @@ class SubsetsControllerV2Test {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
 
         JsonNode seriesJsonNode = readJsonFile(series_1_0);
-        instance.postSubsetSeries(seriesJsonNode);
+        instance.postSubsetSeries(false, seriesJsonNode);
         String seriesID = seriesJsonNode.get(Field.ID).asText();
 
         JsonNode versionJsonNode = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesID, versionJsonNode);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesID, false, versionJsonNode);
         String versionUID = postVersionRE.getBody().get(Field.VERSION_ID).asText();
         JsonNode retrievedSubsetSeries = instance.getSubsetSeriesByID(seriesID, false).getBody();
         assertTrue(retrievedSubsetSeries.has(Field.LAST_MODIFIED));
@@ -549,14 +735,14 @@ class SubsetsControllerV2Test {
 
         JsonNode seriesJsonNode = readJsonFile(series_1_0);
         String seriesID = seriesJsonNode.get(Field.ID).asText();
-        instance.postSubsetSeries(seriesJsonNode);
+        instance.postSubsetSeries(false, seriesJsonNode);
 
         JsonNode versionOpenJsonNode = readJsonFile(version_1_0_1_open);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesID, versionOpenJsonNode);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesID, false, versionOpenJsonNode);
         String versionUID = postVersionRE.getBody().get(Field.VERSION_ID).asText();
 
         JsonNode versionDraftJsonNode = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> putDraftAfterOpenRE = instance.putSubsetVersion(seriesID, versionUID, versionDraftJsonNode);
+        ResponseEntity<JsonNode> putDraftAfterOpenRE = instance.putSubsetVersion(seriesID, versionUID, false, versionDraftJsonNode);
 
         assertEquals(HttpStatus.BAD_REQUEST, putDraftAfterOpenRE.getStatusCode());
     }
@@ -567,7 +753,7 @@ class SubsetsControllerV2Test {
 
         JsonNode seriesJsonNode = readJsonFile(series_1_0);
         String seriesId = seriesJsonNode.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(seriesJsonNode);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, seriesJsonNode);
         JsonNode getSeriesJsonNode = postSeriesRE.getBody();
 
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
@@ -586,7 +772,7 @@ class SubsetsControllerV2Test {
 
         JsonNode seriesJsonNode = readJsonFile(series_1_0_invalid_id);
         String seriesId = seriesJsonNode.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(seriesJsonNode);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, seriesJsonNode);
         assertEquals(HttpStatus.BAD_REQUEST, postSeriesRE.getStatusCode());
         System.out.println("Supposedly invalid series ID: "+seriesId);
     }
@@ -597,9 +783,9 @@ class SubsetsControllerV2Test {
 
         JsonNode seriesJsonNode = readJsonFile(series_1_0);
         JsonNode seriesJsonNode2 = readJsonFile(series_1_0);
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(seriesJsonNode);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, seriesJsonNode);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
-        ResponseEntity<JsonNode> postSeriesRE2 = instance.postSubsetSeries(seriesJsonNode2);
+        ResponseEntity<JsonNode> postSeriesRE2 = instance.postSubsetSeries(false, seriesJsonNode2);
         assertEquals(HttpStatus.BAD_REQUEST, postSeriesRE2.getStatusCode());
     }
 
@@ -609,7 +795,7 @@ class SubsetsControllerV2Test {
 
         JsonNode seriesJsonNode = readJsonFile(series_1_0);
         String seriesId = seriesJsonNode.get(Field.ID).asText();
-        ResponseEntity<JsonNode> putSeriesRE = instance.putSubsetSeries(seriesId, seriesJsonNode);
+        ResponseEntity<JsonNode> putSeriesRE = instance.putSubsetSeries(seriesId, false, seriesJsonNode);
         assertEquals(HttpStatus.BAD_REQUEST, putSeriesRE.getStatusCode());
     }
 
@@ -619,10 +805,10 @@ class SubsetsControllerV2Test {
 
         JsonNode seriesJsonNode = readJsonFile(series_1_0);
         String seriesID = seriesJsonNode.get(Field.ID).asText();
-        instance.postSubsetSeries(seriesJsonNode);
+        instance.postSubsetSeries(false, seriesJsonNode);
 
         JsonNode versionOpenJsonNode = readJsonFile(version_1_0_1_open);
-        ResponseEntity<JsonNode> putVersionRE = instance.putSubsetVersion(seriesID, "1", versionOpenJsonNode);
+        ResponseEntity<JsonNode> putVersionRE = instance.putSubsetVersion(seriesID, "1", false, versionOpenJsonNode);
         assertEquals(HttpStatus.BAD_REQUEST, putVersionRE.getStatusCode());
     }
 
@@ -632,10 +818,10 @@ class SubsetsControllerV2Test {
 
         JsonNode seriesJsonNode = readJsonFile(series_1_0);
         String seriesID = seriesJsonNode.get(Field.ID).asText();
-        instance.postSubsetSeries(seriesJsonNode);
+        instance.postSubsetSeries(false, seriesJsonNode);
 
         JsonNode versionDraftJsonNode = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postDraftVersionRE = instance.postSubsetVersion(seriesID, versionDraftJsonNode);
+        ResponseEntity<JsonNode> postDraftVersionRE = instance.postSubsetVersion(seriesID, false, versionDraftJsonNode);
         String lastMod1 = postDraftVersionRE.getBody().get(Field.LAST_MODIFIED).asText();
         String versionUID = postDraftVersionRE.getBody().get(Field.VERSION_ID).asText();
         try {
@@ -654,7 +840,7 @@ class SubsetsControllerV2Test {
         }
 
         JsonNode versionOpenJsonNode = readJsonFile(version_1_0_1_open);
-        ResponseEntity<JsonNode> putOpenVersionRE = instance.putSubsetVersion(seriesID, versionUID, versionOpenJsonNode);
+        ResponseEntity<JsonNode> putOpenVersionRE = instance.putSubsetVersion(seriesID, versionUID, false, versionOpenJsonNode);
         assertEquals(HttpStatus.OK, putOpenVersionRE.getStatusCode());
         String lastMod2 = putOpenVersionRE.getBody().get(Field.LAST_MODIFIED).asText();
 
@@ -678,11 +864,11 @@ class SubsetsControllerV2Test {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
         assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
@@ -695,7 +881,7 @@ class SubsetsControllerV2Test {
         }
 
         JsonNode version1_0_1_1 = readJsonFile(version_1_0_1_1);
-        ResponseEntity<JsonNode> putVersionRE = instance.postSubsetVersion(seriesId, version1_0_1_1);
+        ResponseEntity<JsonNode> putVersionRE = instance.postSubsetVersion(seriesId, false, version1_0_1_1);
         assertEquals(HttpStatus.CREATED, putVersionRE.getStatusCode());
 
         try {
@@ -720,11 +906,11 @@ class SubsetsControllerV2Test {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version_2_0_2 = readJsonFile(this.version_2_0_2);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version_2_0_2);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version_2_0_2);
         String version202_uid = postVersionRE.getBody().get(Field.VERSION_ID).asText();
         assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
@@ -738,7 +924,7 @@ class SubsetsControllerV2Test {
         }
 
         JsonNode version_2_0_3 = readJsonFile(this.version_2_0_3);
-        ResponseEntity<JsonNode> putVersionRE = instance.postSubsetVersion(seriesId, version_2_0_3);
+        ResponseEntity<JsonNode> putVersionRE = instance.postSubsetVersion(seriesId, false, version_2_0_3);
         assertEquals(HttpStatus.CREATED, putVersionRE.getStatusCode());
 
         try {
@@ -772,11 +958,11 @@ class SubsetsControllerV2Test {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version = readJsonFile(version_1_0_1_open);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
         assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
@@ -786,7 +972,7 @@ class SubsetsControllerV2Test {
             e.printStackTrace();
         }
 
-        ResponseEntity<JsonNode> postVersionRE2 = instance.postSubsetVersion(seriesId, version);
+        ResponseEntity<JsonNode> postVersionRE2 = instance.postSubsetVersion(seriesId, false, version);
         assertEquals(HttpStatus.BAD_REQUEST, postVersionRE2.getStatusCode());
     }
 
@@ -818,7 +1004,7 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         ResponseEntity<JsonNode> getVersionRE = instance.getVersion(seriesId, "1");
@@ -834,16 +1020,16 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_2_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version202 = readJsonFile(version_2_0_2);
-        ResponseEntity<JsonNode> postVersion2RE = instance.postSubsetVersion(seriesId, version202);
+        ResponseEntity<JsonNode> postVersion2RE = instance.postSubsetVersion(seriesId, false, version202);
         assertEquals(HttpStatus.CREATED, postVersion2RE.getStatusCode());
         String version2ID = postVersion2RE.getBody().get(Field.VERSION_ID).asText();
 
         JsonNode version202validUntil = readJsonFile(version_2_0_2_validUntil);
-        ResponseEntity<JsonNode> putVersion2validUntilRE = instance.putSubsetVersion(seriesId, version2ID, version202validUntil);
+        ResponseEntity<JsonNode> putVersion2validUntilRE = instance.putSubsetVersion(seriesId, version2ID, false, version202validUntil);
         assertEquals(HttpStatus.OK, putVersion2validUntilRE.getStatusCode());
     }
 
@@ -853,20 +1039,20 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_2_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version201 = readJsonFile(version_2_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, version201);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version201);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
         JsonNode version202 = readJsonFile(version_2_0_2);
-        ResponseEntity<JsonNode> postVersion2RE = instance.postSubsetVersion(seriesId, version202);
+        ResponseEntity<JsonNode> postVersion2RE = instance.postSubsetVersion(seriesId, false, version202);
         assertEquals(HttpStatus.CREATED, postVersion2RE.getStatusCode());
         String version2ID = postVersion2RE.getBody().get(Field.VERSION_ID).asText();
 
         JsonNode version202validUntil = readJsonFile(version_2_0_2_validUntil);
-        ResponseEntity<JsonNode> putVersion2validUntilRE = instance.putSubsetVersion(seriesId, version2ID, version202validUntil);
+        ResponseEntity<JsonNode> putVersion2validUntilRE = instance.putSubsetVersion(seriesId, version2ID, false, version202validUntil);
         if (!putVersion2validUntilRE.getStatusCode().is2xxSuccessful()) {
             System.out.println("*** BODY ***");
             System.out.println(putVersion2validUntilRE.getBody().toPrettyString());
@@ -874,11 +1060,11 @@ class SubsetsControllerV2Test {
         assertEquals(HttpStatus.OK, putVersion2validUntilRE.getStatusCode());
 
         JsonNode version203_overlap = readJsonFile(version_2_0_3_overlapping_date);
-        ResponseEntity<JsonNode> postVersion3RE = instance.postSubsetVersion(seriesId, version203_overlap);
+        ResponseEntity<JsonNode> postVersion3RE = instance.postSubsetVersion(seriesId, false, version203_overlap);
         assertEquals(HttpStatus.BAD_REQUEST, postVersion3RE.getStatusCode());
 
         JsonNode version203_no_overlap = readJsonFile(version_2_0_3);
-        postVersion3RE = instance.postSubsetVersion(seriesId, version203_no_overlap);
+        postVersion3RE = instance.postSubsetVersion(seriesId, false, version203_no_overlap);
         assertEquals(HttpStatus.CREATED, postVersion3RE.getStatusCode());
     }
 
@@ -888,11 +1074,11 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_2_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version203_overlap = readJsonFile(version_2_0_3_overlapping_date);
-        ResponseEntity<JsonNode> postVersion3RE = instance.postSubsetVersion(seriesId, version203_overlap);
+        ResponseEntity<JsonNode> postVersion3RE = instance.postSubsetVersion(seriesId, false, version203_overlap);
         assertEquals(HttpStatus.CREATED, postVersion3RE.getStatusCode());
 
         try {
@@ -902,7 +1088,7 @@ class SubsetsControllerV2Test {
         }
 
         JsonNode version202validUntil = readJsonFile(version_2_0_2_validUntil);
-        ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, version202validUntil);
+        ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, false, version202validUntil);
         assertEquals(HttpStatus.BAD_REQUEST, postVersion2validUntilRE.getStatusCode());
     }
 
@@ -912,11 +1098,11 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode versionDraft = readJsonFile(version_1_0_1_nocodes_draft);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, versionDraft);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, versionDraft);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
         try {
@@ -926,7 +1112,7 @@ class SubsetsControllerV2Test {
         }
 
         JsonNode versionOpen = readJsonFile(version_1_0_1_open);
-        ResponseEntity<JsonNode> postVersionOpenRE = instance.postSubsetVersion(seriesId, versionOpen);
+        ResponseEntity<JsonNode> postVersionOpenRE = instance.postSubsetVersion(seriesId, false, versionOpen);
         assertEquals(HttpStatus.CREATED, postVersionOpenRE.getStatusCode());
 
         try {
@@ -959,11 +1145,11 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode versionDraft = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, versionDraft);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, versionDraft);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
         try {
@@ -973,7 +1159,7 @@ class SubsetsControllerV2Test {
         }
 
         JsonNode versionDraft2 = readJsonFile(version_1_0_1_1);
-        ResponseEntity<JsonNode> postVersionRE2 = instance.postSubsetVersion(seriesId, versionDraft2);
+        ResponseEntity<JsonNode> postVersionRE2 = instance.postSubsetVersion(seriesId, false, versionDraft2);
         assertEquals(HttpStatus.CREATED, postVersionRE2.getStatusCode());
     }
 
@@ -983,11 +1169,11 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries( false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode versionDraft = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, versionDraft);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, versionDraft);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
         try {
@@ -1008,11 +1194,11 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode versionDraft = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, versionDraft);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, versionDraft);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
         try {
@@ -1033,11 +1219,11 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode versionDraft = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, versionDraft);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, versionDraft);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
 
         try {
@@ -1058,15 +1244,15 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_2_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version201validUntil = readJsonFile(version_2_0_1);
-        ResponseEntity<JsonNode> postVersion1validUntilRE = instance.postSubsetVersion(seriesId, version201validUntil);
+        ResponseEntity<JsonNode> postVersion1validUntilRE = instance.postSubsetVersion(seriesId, false, version201validUntil);
         assertEquals(HttpStatus.CREATED, postVersion1validUntilRE.getStatusCode());
 
         JsonNode version202validUntil = readJsonFile(version_2_0_2);
-        ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, version202validUntil);
+        ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, false, version202validUntil);
         assertEquals(HttpStatus.CREATED, postVersion2validUntilRE.getStatusCode());
 
         try {
@@ -1086,15 +1272,15 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_2_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version201validUntil = readJsonFile(version_2_0_1);
-        ResponseEntity<JsonNode> postVersion1validUntilRE = instance.postSubsetVersion(seriesId, version201validUntil);
+        ResponseEntity<JsonNode> postVersion1validUntilRE = instance.postSubsetVersion(seriesId, false, version201validUntil);
         assertEquals(HttpStatus.CREATED, postVersion1validUntilRE.getStatusCode());
 
         JsonNode version202validUntil = readJsonFile(version_2_0_2_validUntil);
-        ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, version202validUntil);
+        ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, false, version202validUntil);
         assertEquals(HttpStatus.CREATED, postVersion2validUntilRE.getStatusCode());
 
         try {
@@ -1114,11 +1300,11 @@ class SubsetsControllerV2Test {
 
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
-        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(series);
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
         JsonNode version201validUntil = readJsonFile(version_1_0_1);
-        ResponseEntity<JsonNode> postVersion1validUntilRE = instance.postSubsetVersion(seriesId, version201validUntil);
+        ResponseEntity<JsonNode> postVersion1validUntilRE = instance.postSubsetVersion(seriesId, false, version201validUntil);
         assertEquals(HttpStatus.CREATED, postVersion1validUntilRE.getStatusCode());
 
         try {

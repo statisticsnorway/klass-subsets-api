@@ -12,7 +12,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -79,7 +78,7 @@ public class SubsetsControllerV2 {
      * @return
      */
     @PostMapping("/v2/subsets")
-    public ResponseEntity<JsonNode> postSubsetSeries(@RequestBody JsonNode subsetSeriesJson) {
+    public ResponseEntity<JsonNode> postSubsetSeries(@RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode subsetSeriesJson) {
         metricsService.incrementPOSTCounter();
         LOG.info("POST subset series received. Checking body . . .");
 
@@ -112,6 +111,10 @@ public class SubsetsControllerV2 {
         editableSubsetSeries.put(Field.CREATED_DATE, Utils.getNowDate());
         editableSubsetSeries.put(Field.CLASSIFICATION_TYPE, Field.SUBSET);
         editableSubsetSeries.set(Field.VERSIONS, new ObjectMapper().createArrayNode());
+
+        if (ignoreSuperfluousFields){
+            editableSubsetSeries = removeSuperfluousSeriesFields(editableSubsetSeries);
+        }
 
         ResponseEntity<JsonNode> seriesSchemaValidationRE = validateSeries(editableSubsetSeries);
         if (!seriesSchemaValidationRE.getStatusCode().is2xxSuccessful())
@@ -165,7 +168,7 @@ public class SubsetsControllerV2 {
      * @return
      */
     @PutMapping(value = "/v2/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> putSubsetSeries(@PathVariable("id") String seriesId, @RequestBody JsonNode newEditionOfSeries) {
+    public ResponseEntity<JsonNode> putSubsetSeries(@PathVariable("id") String seriesId, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode newEditionOfSeries) {
         metricsService.incrementPUTCounter();
         LOG.info("PUT subset series with id "+seriesId);
 
@@ -200,6 +203,10 @@ public class SubsetsControllerV2 {
         assert editableNewEditionOfSeries.has(Field.ID) : "Subset series did not have the field '"+Field.ID+"'.";
 
         editableNewEditionOfSeries.put(Field.LAST_MODIFIED, Utils.getNowISO());
+
+        if (ignoreSuperfluousFields){
+            editableNewEditionOfSeries = removeSuperfluousSeriesFields(editableNewEditionOfSeries);
+        }
 
         ResponseEntity<JsonNode> seriesSchemaValidationRE = validateSeries(editableNewEditionOfSeries);
         if (!seriesSchemaValidationRE.getStatusCode().is2xxSuccessful())
@@ -239,7 +246,7 @@ public class SubsetsControllerV2 {
      * @return
      */
     @PutMapping(value = "/v2/subsets/{seriesId}/versions/{versionUID}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("seriesId") String seriesId, @PathVariable("versionUID") String versionUID, @RequestBody JsonNode putVersion) {
+    public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("seriesId") String seriesId, @PathVariable("versionUID") String versionUID, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode putVersion) {
         LOG.info("PUT subset version of series "+seriesId+" with version id "+versionUID);
         if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
@@ -264,6 +271,10 @@ public class SubsetsControllerV2 {
         editablePutVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
         editablePutVersion.set(Field.CREATED_DATE, previousEditionOfVersion.get(Field.CREATED_DATE));
         editablePutVersion = Utils.addCodeVersionsToAllCodesInVersion(editablePutVersion, LOG);
+
+        if (ignoreSuperfluousFields){
+            editablePutVersion = removeSuperfluousVersionFields(editablePutVersion);
+        }
 
         ResponseEntity<JsonNode> versionSchemaValidationRE = validateVersion(editablePutVersion);
         if (!versionSchemaValidationRE.getStatusCode().is2xxSuccessful())
@@ -323,7 +334,7 @@ public class SubsetsControllerV2 {
     }
 
     @PostMapping(value = "/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> postSubsetVersion(@PathVariable("seriesId") String seriesId, @RequestBody JsonNode version) {
+    public ResponseEntity<JsonNode> postSubsetVersion(@PathVariable("seriesId") String seriesId, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode version) {
         LOG.info("POST request to create a version of series "+seriesId);
         if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
@@ -414,11 +425,15 @@ public class SubsetsControllerV2 {
         ObjectNode editableSeries = series.deepCopy();
         series = null;
         editableSeries.set(Field.STATISTICAL_UNITS, newSeriesStatisticalUnitsArrayNode);
-        ResponseEntity<JsonNode> putSeriesRE = putSubsetSeries(seriesId, editableSeries);
+        ResponseEntity<JsonNode> putSeriesRE = putSubsetSeries(seriesId, false, editableSeries);
         if (!putSeriesRE.getStatusCode().is2xxSuccessful()){
             LOG.error("PUT series "+seriesId+" to update the statistical units array did not succeed. Status code "+putSeriesRE.getStatusCode());
         } else {
             LOG.debug("The series "+seriesId+" was successfully updated with a new statistical units array.");
+        }
+
+        if (ignoreSuperfluousFields){
+            editableVersion = removeSuperfluousVersionFields(editableVersion);
         }
 
         ResponseEntity<JsonNode> versionSchemaValidationRE = validateVersion(editableVersion);
@@ -451,6 +466,7 @@ public class SubsetsControllerV2 {
             return ldsPostRE;
     }
 
+
     private ResponseEntity<JsonNode> updateLatestPublishedValidUntil(ResponseEntity<JsonNode> isOverlappingValidityRE, JsonNode newVersion, String seriesId){
         JsonNode isOverlapREBody = isOverlappingValidityRE.getBody();
         if (isOverlapREBody.get("existOtherPublishedVersions").asBoolean() && isOverlapREBody.get("isNewLatestVersion").asBoolean()) {
@@ -463,7 +479,7 @@ public class SubsetsControllerV2 {
                 latestPublishedVersion.put(Field.VALID_UNTIL, newVersion.get(Field.VALID_FROM).asText());
                 latestPublishedVersion.remove(Field._LINKS);
                 LOG.debug("Attempting to PUT the previous latest version with a new validUntil that is the same as the validFrom of the new version");
-                ResponseEntity<JsonNode> putVersionRE = putSubsetVersion(seriesId, latestPublishedVersion.get(Field.VERSION_ID).asText(), latestPublishedVersion);
+                ResponseEntity<JsonNode> putVersionRE = putSubsetVersion(seriesId, latestPublishedVersion.get(Field.VERSION_ID).asText(), false, latestPublishedVersion);
                 if (!putVersionRE.getStatusCode().is2xxSuccessful()){
                     return ErrorHandler.newHttpError("Failed to update the validUntil of the previous last published version. PUT caused error code "+putVersionRE.getStatusCode()+" and had body "+(putVersionRE.hasBody() && putVersionRE.getBody() != null ? putVersionRE.getBody().toPrettyString().replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "") : ""), INTERNAL_SERVER_ERROR, LOG);
                 }
@@ -788,7 +804,92 @@ public class SubsetsControllerV2 {
         new LDSFacade().deleteSubsetVersionFromSeriesAndFromLDS(id, versionUID);
     }
 
-    ResponseEntity<JsonNode> validateVersion(JsonNode version){
+    private ObjectNode removeSuperfluousSeriesFields(JsonNode version){
+        ResponseEntity<JsonNode> seriesDefinitionRE = new LDSFacade().getSubsetSeriesDefinition();
+        if (!seriesDefinitionRE.getStatusCode().is2xxSuccessful())
+            throw new Error("Request to get subset versions definition was unsuccessful");
+        JsonNode versionsDefinition = seriesDefinitionRE.getBody();
+        JsonNode definitionProperties = versionsDefinition.get("properties");
+
+        return removeSuperfluousFields(version, definitionProperties);
+    }
+
+    private ObjectNode removeSuperfluousVersionFields(JsonNode version){
+        ResponseEntity<JsonNode> versionDefinitionRE = new LDSFacade().getSubsetVersionsDefinition();
+        if (!versionDefinitionRE.getStatusCode().is2xxSuccessful())
+            throw new Error("Request to get subset versions definition was unsuccessful");
+        JsonNode versionsDefinition = versionDefinitionRE.getBody();
+        JsonNode definitionProperties = versionsDefinition.get("properties");
+
+        return removeSuperfluousFields(version, definitionProperties);
+    }
+
+
+    private ObjectNode removeSuperfluousFields(JsonNode version, JsonNode definitionProperties) {
+        LOG.debug("Removing superfluous fields");
+        ObjectNode editableVersion = version.deepCopy();
+        version = null;
+
+        Iterator<String> submittedFieldNamesIterator = editableVersion.fieldNames();
+        List<String> fieldsToBeDeleted = new ArrayList<>();
+        while (submittedFieldNamesIterator.hasNext()) {
+            String field = submittedFieldNamesIterator.next();
+            if (!definitionProperties.has(field)) {
+                LOG.debug("removing the field "+field+" from the item because it was not defined in the schema");
+                fieldsToBeDeleted.add(field);
+            }
+        }
+        for (String fieldName : fieldsToBeDeleted) {
+            editableVersion.remove(fieldName);
+        }
+        if (definitionProperties.has(Field.CODES)) {
+            JsonNode codesProperty = definitionProperties.get(Field.CODES);
+            if (codesProperty.has("type") && codesProperty.get("type").asText().equals("array")){
+                if (codesProperty.has("items") && codesProperty.get("items").has("$ref") && codesProperty.get("items").get("$ref").asText().split("/")[2].equals("ClassificationSubsetCode")) {
+                    if (editableVersion.has(Field.CODES)) {
+                        LOG.debug("the instance has a field called 'codes'");
+                        JsonNode codes = editableVersion.get(Field.CODES);
+                        if (codes.isArray() && !codes.isEmpty()) {
+                            ArrayNode codesArray = codes.deepCopy();
+                            ResponseEntity<JsonNode> codeDefRE = new LDSFacade().getSubsetCodeDefinition();
+                            if (!codeDefRE.getStatusCode().is2xxSuccessful())
+                                throw new Error("Request to get subset code definition was unsuccessful");
+                            JsonNode codeDefinition = codeDefRE.getBody();
+                            ArrayNode newCodesArray = new ObjectMapper().createArrayNode();
+                            for (JsonNode code : codesArray) {
+                                ObjectNode editableCodeNode = code.deepCopy();
+                                Iterator<String> codeFieldNamesIterator = editableCodeNode.fieldNames();
+                                fieldsToBeDeleted = new ArrayList<>();
+                                while (codeFieldNamesIterator.hasNext()) {
+                                    String field = codeFieldNamesIterator.next();
+                                    if (!codeDefinition.get("properties").has(field)) {
+                                        LOG.debug("removing the field "+field+" from a code because it was not defined in the schema");
+                                        fieldsToBeDeleted.add(field);
+                                    }
+                                }
+                                for (String fieldName : fieldsToBeDeleted) {
+                                    editableCodeNode.remove(fieldName);
+                                }
+                                newCodesArray.add(editableCodeNode);
+                            }
+                            editableVersion.set(Field.CODES, newCodesArray);
+                        } else {
+                            LOG.warn("'codes' field in instance was not array or was empty");
+                        }
+                    } else {
+                        LOG.warn("'codes' field was not present in the instance that is being validated");
+                    }
+                } else {
+                    LOG.warn("definition.codes.items.$ref was not present or was not ClassificationSubsetSeries");
+                }
+            } else {
+                LOG.warn("'codes' field was present in definition, but it was not and array AND of type ClassificationSubsetCode according to the check");
+            }
+        }
+        return editableVersion;
+    }
+
+    ResponseEntity<JsonNode> validateVersion(JsonNode version) {
         String versionNr = version.has(Field.VERSION_ID) ? version.get(Field.VERSION_ID).asText() : "with no version nr";
         String seriesID = version.has(Field.SUBSET_ID) ? version.get(Field.SUBSET_ID).asText() : "";
         String versionUID = seriesID+"_"+versionNr;
@@ -803,7 +904,7 @@ public class SubsetsControllerV2 {
         return new ResponseEntity<>(OK);
     }
 
-    ResponseEntity<JsonNode> validateSeries(JsonNode series){
+    ResponseEntity<JsonNode> validateSeries(JsonNode series) {
         String id = series.has(Field.ID) ? series.get(Field.ID).asText() : " with no field 'id'";
         LOG.debug("Validating series "+id+" . . .");
         ResponseEntity<JsonNode> seriesDefinitionRE = new LDSFacade().getSubsetSeriesDefinition();
