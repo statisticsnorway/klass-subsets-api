@@ -271,6 +271,7 @@ public class SubsetsControllerV2 {
         editablePutVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
         editablePutVersion.set(Field.CREATED_DATE, previousEditionOfVersion.get(Field.CREATED_DATE));
         editablePutVersion = Utils.addCodeVersionsToAllCodesInVersion(editablePutVersion, LOG);
+        editablePutVersion = addCodeNamesFromKlass(editablePutVersion);
 
         if (ignoreSuperfluousFields){
             editablePutVersion = removeSuperfluousVersionFields(editablePutVersion);
@@ -279,6 +280,7 @@ public class SubsetsControllerV2 {
         ResponseEntity<JsonNode> versionSchemaValidationRE = validateVersion(editablePutVersion);
         if (!versionSchemaValidationRE.getStatusCode().is2xxSuccessful())
             return versionSchemaValidationRE;
+
 
         boolean wasDraftFromBefore = previousEditionOfVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.DRAFT);
         boolean isStatusOpen = editablePutVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
@@ -324,6 +326,33 @@ public class SubsetsControllerV2 {
         return editVersionRE;
     }
 
+    private ObjectNode addCodeNamesFromKlass(ObjectNode editableVersion) {
+        ObjectNode editableVersionCopy = editableVersion.deepCopy();
+        ArrayNode codes = editableVersionCopy.get(Field.CODES).deepCopy();
+        for (int i = 0; i < codes.size(); i++) {
+            ObjectNode editableCode = codes.get(i).deepCopy();
+            ArrayNode namesArray = new ObjectMapper().createArrayNode();
+            for (String languageCode : Utils.LANGUAGE_CODES) {
+                // Get code in missing language from KLASS, and add the name as MultilingualText to the namesArray
+                String classificationID = editableCode.get(Field.CLASSIFICATION_ID).asText();
+                String validFrom = editableCode.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
+                String validTo = editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText();
+                String code = editableCode.get(Field.CODE).asText();
+                ResponseEntity<JsonNode> getCodesFromKlassRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSCodesFromToURL(classificationID, validFrom, validTo, code));
+                ArrayNode codesFromKlassArrayNode = getCodesFromKlassRE.getBody().deepCopy();
+                String name = codesFromKlassArrayNode.get(0).get(Field.NAME).asText();
+                ObjectNode mlT = new ObjectMapper().createObjectNode();
+                mlT.put("languageCode", languageCode);
+                mlT.put("languageText", name);
+                namesArray.add(mlT);
+            }
+            editableCode.set(Field.NAME, namesArray);
+            codes.set(i, editableCode);
+        }
+        editableVersionCopy.set(Field.CODES, codes);
+        return editableVersionCopy;
+    }
+
     @PostMapping(value = "/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> postSubsetVersion(@PathVariable("seriesId") String seriesId, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode version) {
         LOG.info("POST request to create a version of series "+seriesId);
@@ -355,7 +384,6 @@ public class SubsetsControllerV2 {
                     LOG);
 
         JsonNode series = getSeriesByIDRE.getBody();
-        String defaultLanguage = getDefaultLanguage(series);
 
         int versionsSize = series.has(Field.VERSIONS) ? series.get(Field.VERSIONS).size() : 0;
         LOG.debug("Amount of found versions in series "+seriesId+" before potentially adding new version: "+versionsSize);
@@ -365,6 +393,7 @@ public class SubsetsControllerV2 {
         editableVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
         editableVersion.put(Field.CREATED_DATE, Utils.getNowDate());
         editableVersion = Utils.addCodeVersionsToAllCodesInVersion(editableVersion, LOG);
+        editableVersion = addCodeNamesFromKlass(editableVersion);
 
         boolean isStatusOpen = editableVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
 
@@ -372,7 +401,7 @@ public class SubsetsControllerV2 {
             if (!editableVersion.has(Field.CODES) || editableVersion.get(Field.CODES).size() == 0)
                 return ErrorHandler.newHttpError("Published subset version must have a non-empty code list", BAD_REQUEST, LOG);
 
-        ArrayNode codes = (ArrayNode)editableVersion.get(Field.CODES);
+        ArrayNode codes = editableVersion.get(Field.CODES).deepCopy();
         Map<String, Boolean> classificationMap = new HashMap<>();
         codes.forEach(c -> classificationMap.put(c.get(Field.CLASSIFICATION_ID).asText(), true));
         LOG.debug("printing "+classificationMap.keySet().size()+" classifications:");
@@ -452,12 +481,30 @@ public class SubsetsControllerV2 {
         LOG.debug("Attempting to POST version nr "+versionUUID+" of subset series "+seriesId+" to LDS");
         ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionUUID, editableVersion);
 
-
         if (ldsPostRE.getStatusCode().equals(CREATED)) {
             LOG.debug("Successfully POSTed version nr "+versionUUID+" of subset series "+seriesId+" to LDS");
             return new ResponseEntity<>(editableVersion, CREATED);
         } else
             return ldsPostRE;
+    }
+
+    private ObjectNode convertCodeNamesToMultilingualText(ObjectNode editableVersion, String defaultLanguageCode) {
+        ObjectNode editableVersionCopy = editableVersion.deepCopy();
+        editableVersion = null;
+        ArrayNode codes = (ArrayNode)editableVersionCopy.get(Field.CODES);
+        for (int i = 0; i < codes.size(); i++) {
+            JsonNode codeNode = codes.get(i);
+            if (codeNode.has(Field.NAME) && codeNode.get(Field.NAME).isTextual()) {
+                ObjectNode multilingualText = new ObjectMapper().createObjectNode();
+                multilingualText.put("languageCode", defaultLanguageCode);
+                multilingualText.put("languageText", codeNode.get(Field.NAME).asText());
+                ObjectNode editableCodeNode = codeNode.deepCopy();
+                editableCodeNode.set(Field.NAME, multilingualText);
+                codes.set(i, editableCodeNode);
+            }
+        }
+        editableVersionCopy.set(Field.CODES, codes);
+        return editableVersionCopy;
     }
 
     private String getDefaultLanguage(JsonNode series) {
@@ -477,19 +524,26 @@ public class SubsetsControllerV2 {
     }
 
 
-    private ResponseEntity<JsonNode> updateLatestPublishedValidUntil(ResponseEntity<JsonNode> isOverlappingValidityRE, JsonNode newVersion, String seriesId){
+    private ResponseEntity<JsonNode> updateLatestPublishedValidUntil(ResponseEntity<JsonNode> isOverlappingValidityRE,
+                                                                     JsonNode newVersion, String seriesId){
         JsonNode isOverlapREBody = isOverlappingValidityRE.getBody();
-        if (isOverlapREBody.get("existOtherPublishedVersions").asBoolean() && isOverlapREBody.get("isNewLatestVersion").asBoolean()) {
+        if (isOverlapREBody.get("existOtherPublishedVersions").asBoolean() &&
+                isOverlapREBody.get("isNewLatestVersion").asBoolean()) {
             LOG.debug("according to the overlap check there is a previously published version, and the new version is the new latest version");
             ObjectNode latestPublishedVersion = isOverlapREBody.get("latestPublishedVersion").deepCopy();
             if (latestPublishedVersion == null)
-                return ErrorHandler.newHttpError("There is supposedly other published versions, and the posted version is the new latest version, but the old latest version returned from the overlap check was null", INTERNAL_SERVER_ERROR, LOG);
+                return ErrorHandler.newHttpError(
+                        "There is supposedly other published versions, and the posted version is the new latest version, but the old latest version returned from the overlap check was null", INTERNAL_SERVER_ERROR, LOG);
             if ((!latestPublishedVersion.has(Field.VALID_UNTIL) || latestPublishedVersion.get(Field.VALID_UNTIL).isNull())) {
                 LOG.debug("The latestPublishedVersion did not have a validUntil date. Attempting to set it to the validFrom of the new version");
                 latestPublishedVersion.put(Field.VALID_UNTIL, newVersion.get(Field.VALID_FROM).asText());
                 latestPublishedVersion.remove(Field._LINKS);
                 LOG.debug("Attempting to PUT the previous latest version with a new validUntil that is the same as the validFrom of the new version");
-                ResponseEntity<JsonNode> putVersionRE = putSubsetVersion(seriesId, latestPublishedVersion.get(Field.VERSION_ID).asText(), false, latestPublishedVersion);
+                ResponseEntity<JsonNode> putVersionRE = putSubsetVersion(
+                        seriesId,
+                        latestPublishedVersion.get(Field.VERSION_ID).asText(),
+                        false,
+                        latestPublishedVersion);
                 if (!putVersionRE.getStatusCode().is2xxSuccessful()){
                     return ErrorHandler.newHttpError("Failed to update the validUntil of the previous last published version. PUT caused error code "+putVersionRE.getStatusCode()+" and had body "+(putVersionRE.hasBody() && putVersionRE.getBody() != null ? putVersionRE.getBody().toPrettyString().replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "") : ""), INTERNAL_SERVER_ERROR, LOG);
                 }

@@ -27,6 +27,7 @@ public class Utils {
     public static final String URN_FORMAT_VALID_FROM_ENCODED_NAME = "urn:ssb:klass-api:classifications:%s:code:%s:validFrom:%s:name:%s";
     public static final String SERIES_LINK_FORMAT = "/v2/subsets/%s";
     public static final String VERSION_LINK_FORMAT = SERIES_LINK_FORMAT+"/versions/%s";
+    public static final String[] LANGUAGE_CODES = {"nb", "nn", "en"};
 
     public static boolean isYearMonthDay(String date){
         return date.matches(YEAR_MONTH_DAY_REGEX);

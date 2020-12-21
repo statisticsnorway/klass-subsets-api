@@ -21,7 +21,7 @@ public class KlassURNResolver {
     public static String KLASS_BASE_URL = "https://data.ssb.no/api/klass";
     public static final String CLASSIFICATIONS_API = "/v1/classifications";
 
-    public boolean pingKLASSClassifications(){
+    public boolean pingKLASSClassifications() {
         ResponseEntity<String> re = getStringResponseFrom(String.format("%s/ping/", KLASS_BASE_URL));
         return re.getStatusCode().equals(HttpStatus.OK);
     }
@@ -106,17 +106,17 @@ public class KlassURNResolver {
         return allCodesArrayNode;
     }
 
-    private String makeKLASSCodesFromToURL(String classificationID, String from, String to, String codes){
+    static String makeKLASSCodesFromToURL(String classificationID, String from, String to, String codes) {
         KLASS_BASE_URL = getURL();
         return String.format("%s%s/%s/codes.json?from=%s&to=%s&selectCodes=%s", KLASS_BASE_URL, CLASSIFICATIONS_API, classificationID, from, to, codes);
     }
 
-    static String makeKLASSClassificationURL(String classificationID){
+    static String makeKLASSClassificationURL(String classificationID) {
         KLASS_BASE_URL = getURL();
         return String.format("%s%s/%s.json", KLASS_BASE_URL, CLASSIFICATIONS_API, classificationID);
     }
 
-    static ResponseEntity<JsonNode> getFrom(String url){
+    static ResponseEntity<JsonNode> getFrom(String url) {
         LOG.info("KLASS Attempting to GET JsonNode from "+url);
         try {
             ResponseEntity<JsonNode> re = new RestTemplate().getForEntity(url, JsonNode.class);
@@ -135,8 +135,7 @@ public class KlassURNResolver {
         }
     }
 
-    private ResponseEntity<String> getStringResponseFrom(String url)
-    {
+    private ResponseEntity<String> getStringResponseFrom(String url) {
         LOG.info("Attempting to GET "+url);
         try {
             return new RestTemplate().getForEntity(url, String.class);
