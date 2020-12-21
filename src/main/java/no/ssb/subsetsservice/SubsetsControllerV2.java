@@ -256,7 +256,7 @@ public class SubsetsControllerV2 {
         if (putVersion.isNull() || putVersion.isEmpty() || putVersion.isArray())
             return ErrorHandler.newHttpError("PUT body must be a non-empty object representing a single subset version", BAD_REQUEST, LOG);
 
-        ResponseEntity<JsonNode> getPreviousEditionOfVersion = getVersion(seriesId, versionUID);
+        ResponseEntity<JsonNode> getPreviousEditionOfVersion = getVersion(seriesId, versionUID, "all");
         HttpStatus status = getPreviousEditionOfVersion.getStatusCode();
         if (status.equals(NOT_FOUND)){
             return ErrorHandler.newHttpError("Can not edit a subset version that does not exist.", BAD_REQUEST, LOG);
@@ -518,7 +518,8 @@ public class SubsetsControllerV2 {
     @GetMapping("/v2/subsets/{id}/versions/{versionID}")
     public ResponseEntity<JsonNode> getVersion(
             @PathVariable("id") String seriesID,
-            @PathVariable("versionID") String versionID) {
+            @PathVariable("versionID") String versionID,
+            @RequestParam(defaultValue = "all") String language) {
         metricsService.incrementGETCounter();
         LOG.info("GET version "+versionID+" of subset with id "+seriesID);
 
@@ -538,9 +539,30 @@ public class SubsetsControllerV2 {
             return versionByIdRE;
         if (!status.is2xxSuccessful())
             return resolveNonOKLDSResponse("GET version of series '"+seriesID+"' from LDS by versionId '"+versionID+"' ", versionByIdRE);
-        JsonNode versionJsonNode = versionByIdRE.getBody();
+        ObjectNode versionJsonNode = versionByIdRE.getBody().deepCopy();
         versionJsonNode = Utils.addLinksToSubsetVersion(versionJsonNode);
+        if (!language.equals("all")) {
+            versionJsonNode = setCodeNameToSingleLanguage(versionJsonNode, language);
+        }
         return new ResponseEntity<>(versionJsonNode, OK);
+    }
+
+    private ObjectNode setCodeNameToSingleLanguage(ObjectNode versionNode, String languageCode){
+        ObjectNode versionNodeCopy = versionNode.deepCopy();
+        ArrayNode codes = versionNodeCopy.get(Field.CODES).deepCopy();
+        for (int i = 0; i < codes.size(); i++) {
+            ObjectNode code = codes.get(i).deepCopy();
+            ArrayNode nameMLTArray = code.get(Field.NAME).deepCopy();
+            for (JsonNode nameMLT : nameMLTArray) {
+                if (nameMLT.get("languageCode").asText().equals(languageCode)){
+                    code.put(Field.NAME, nameMLT.get("languageText").asText());
+                    codes.set(i, code);
+                    break;
+                }
+            }
+        }
+        versionNodeCopy.set(Field.CODES, codes);
+        return versionNodeCopy;
     }
 
     /**
