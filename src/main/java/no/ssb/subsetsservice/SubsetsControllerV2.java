@@ -132,7 +132,9 @@ public class SubsetsControllerV2 {
     }
 
     @GetMapping("/v2/subsets/{id}")
-    public ResponseEntity<JsonNode> getSubsetSeriesByID(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeFullVersions) {
+    public ResponseEntity<JsonNode> getSubsetSeriesByID(@PathVariable("id") String id,
+                                                        @RequestParam(defaultValue = "false") boolean includeFullVersions,
+                                                        @RequestParam(defaultValue = "all") String language) {
         metricsService.incrementGETCounter();
         LOG.info("GET subset series with id "+id);
 
@@ -146,7 +148,7 @@ public class SubsetsControllerV2 {
             ObjectNode series = addLinksToSeries(subsetSeriesByIDRE.getBody());
             if (includeFullVersions){
                 LOG.debug("Including full versions");
-                ResponseEntity<JsonNode> versionsRE = getVersions(id, true, true, "all");
+                ResponseEntity<JsonNode> versionsRE = getVersions(id, true, true, language);
                 if (versionsRE.getStatusCode().is2xxSuccessful())
                     series.set(Field.VERSIONS, versionsRE.getBody());
                 else
@@ -338,7 +340,7 @@ public class SubsetsControllerV2 {
         if (version.isArray())
             return ErrorHandler.newHttpError("POST body was an array. Should be an object representing a single subset version.", BAD_REQUEST, LOG);
 
-        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(seriesId, false);
+        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(seriesId, false, "all");
         if (!getSeriesByIDRE.getStatusCode().equals(OK)) {
             LOG.error("Attempt to get subset series by id '"+seriesId+"' returned a non-OK status code.");
             return getSeriesByIDRE;
@@ -473,7 +475,7 @@ public class SubsetsControllerV2 {
         if (!Utils.isClean(id))
             return ErrorHandler.illegalID(LOG);
 
-        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(id, false);
+        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(id, false, "all");
         if (!getSeriesByIDRE.getStatusCode().equals(OK))
             return getSeriesByIDRE;
 
@@ -567,27 +569,6 @@ public class SubsetsControllerV2 {
     }
 
     /**
-     * Get a subset corresponding to a given version id.
-     * @param versionUID
-     * @return
-     */
-    @GetMapping("/v2/ClassificationSubsetVersion/{id}")
-    public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String versionUID) {
-        metricsService.incrementGETCounter();
-        LOG.info("GET version w id '"+versionUID+"'.");
-
-        if (!Utils.isClean(versionUID))
-            return ErrorHandler.newHttpError("Illegal characters in versionUID", BAD_REQUEST, LOG);
-
-        ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionUID);
-        HttpStatus status = versionRE.getStatusCode();
-        if (status.equals(OK) || status.equals(NOT_FOUND))
-            return versionRE;
-        else
-            return resolveNonOKLDSResponse("GET version by id '"+versionUID+"' ", versionRE);
-    }
-
-    /**
      * If no parameters are given, returns valid codes in last version.
      * If from and to parameters are given (DATES),
      * returns a list of codes that are present in all the versions in the interval.
@@ -602,7 +583,8 @@ public class SubsetsControllerV2 {
                                                    @RequestParam(required = false) String from,
                                                    @RequestParam(required = false) String to,
                                                    @RequestParam(defaultValue = "false") boolean includeDrafts,
-                                                   @RequestParam(defaultValue = "false") boolean includeFuture) {
+                                                   @RequestParam(defaultValue = "false") boolean includeFuture,
+                                                   @RequestParam(defaultValue = "all") String language) {
         LOG.info("GET codes of subset with id "+id);
         metricsService.incrementGETCounter();
 
@@ -616,7 +598,7 @@ public class SubsetsControllerV2 {
 
         if (!isFromDate && !isToDate) {
             LOG.debug("getting all codes of the latest/current version of subset "+id);
-            ResponseEntity<JsonNode> versionsByIDRE = getVersions(id, includeDrafts, includeFuture, "all");
+            ResponseEntity<JsonNode> versionsByIDRE = getVersions(id, includeDrafts, includeFuture, language);
             JsonNode responseBodyJSON = versionsByIDRE.getBody();
             if (!versionsByIDRE.getStatusCode().equals(OK))
                 return resolveNonOKLDSResponse("get versions of series with id "+id+" ", versionsByIDRE);
@@ -625,7 +607,7 @@ public class SubsetsControllerV2 {
                     return ErrorHandler.newHttpError("response body of getSubset with id " + id + " was null, so could not get codes.", INTERNAL_SERVER_ERROR, LOG);
                 }
                 String date = Utils.getNowDate();
-                ResponseEntity<JsonNode> codesAtRE = getSubsetCodesAt(id, date, includeFuture, includeDrafts, "all");
+                ResponseEntity<JsonNode> codesAtRE = getSubsetCodesAt(id, date, includeFuture, includeDrafts, language);
                 if (!codesAtRE.getStatusCode().equals(OK))
                     return resolveNonOKLDSResponse("GET codesAt "+date+" in series with id "+id+" ", codesAtRE);
                 ArrayNode codes = (ArrayNode) codesAtRE.getBody();
@@ -634,7 +616,7 @@ public class SubsetsControllerV2 {
         }
 
         // If a date interval is specified using 'from' and 'to' query parameters
-        ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts, "all");
+        ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts, language);
         if (!versionsResponseEntity.getStatusCode().equals(OK))
             return versionsResponseEntity;
         JsonNode versionsResponseBodyJson = versionsResponseEntity.getBody();
