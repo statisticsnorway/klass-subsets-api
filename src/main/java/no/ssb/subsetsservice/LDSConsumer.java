@@ -6,6 +6,8 @@ import okhttp3.*;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
@@ -15,10 +17,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.ConnectException;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
@@ -81,11 +85,17 @@ public class LDSConsumer {
         // Because Spring RestTemplate fails when the response is too long, I use Apache Commons Http Client instead,
         // and pack the response into a ResponseEntity, so it feels like Spring to the user.
         // I could not get Spring WebClient to work, which would have been my first choice.
+        String urlString = LDS_URL + additional;
+        LOG.debug("GET from "+urlString);
         CloseableHttpClient httpclient = HttpClients.createDefault();
-        HttpGet httpGet = new HttpGet(LDS_URL + additional);
+        HttpGet httpGet = new HttpGet(urlString);
         CloseableHttpResponse response1 = null;
         try {
-            response1 = httpclient.execute(httpGet);
+            try {
+                response1 = httpclient.execute(httpGet);
+            } catch (ConnectException e){
+                return ErrorHandler.newHttpError("Could not retrieve "+urlString+" because of a ConnectException: "+e.toString(), HttpStatus.FAILED_DEPENDENCY, LOG);
+            }
             System.out.println(response1.getStatusLine());
             System.out.println(response1.toString());
             HttpEntity entity1 = response1.getEntity();
@@ -96,8 +106,8 @@ public class LDSConsumer {
             EntityUtils.consume(entity1);
             return responseEntity;
         } catch (Exception e) {
-            LOG.error(e.toString());
-            return ErrorHandler.newHttpError("Could not retrieve "+LDS_URL+additional+" because of an exception: "+e.toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
+            e.printStackTrace();
+            return ErrorHandler.newHttpError("Could not retrieve "+urlString+" because of an exception: "+e.toString(), HttpStatus.INTERNAL_SERVER_ERROR, LOG);
         } finally {
             try {
                 if (response1 != null)
@@ -109,21 +119,66 @@ public class LDSConsumer {
     }
 
     ResponseEntity<JsonNode> postTo(String additional, JsonNode json){
+        String fullURLString = LDS_URL+additional;
+        LOG.debug("POST to "+fullURLString);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         org.springframework.http.HttpEntity<JsonNode> request = new org.springframework.http.HttpEntity<>(json, headers);
-        ResponseEntity<JsonNode> response = new RestTemplate().postForEntity(LDS_URL+additional, request, JsonNode.class);
-        LOG.debug("POST to "+LDS_URL+additional+" - Status: "+response.getStatusCodeValue()+" "+response.getStatusCode().name());
+        LOG.debug("POST request body: "+json.toString().replaceAll("\n", "").replaceAll("\t", ""));
+        ResponseEntity<JsonNode> response;
+        try {
+            response = new RestTemplate().postForEntity(fullURLString, request, JsonNode.class);
+        } catch (HttpClientErrorException e){
+            e.printStackTrace();
+            return ErrorHandler.newHttpError("LDS: Could not POST to "+fullURLString+" because of exception: "+e.toString(), e.getStatusCode(), LOG);
+        }
+        LOG.debug("POST to "+fullURLString+" - Status: "+response.getStatusCodeValue()+" "+response.getStatusCode().name());
         return response;
     }
 
+    /**
+     * Using a true HTTP PUT request to the LDS will create or overwrite a managed resource by id,
+     * or an embedded resource (property) within a managed resource.
+     * In the LDS API docs, POST is never mentioned. But I've used POST until now and it worked.
+     * @param additional
+     * @param json
+     * @return
+     */
     ResponseEntity<JsonNode> putTo(String additional, JsonNode json){
-        ResponseEntity<JsonNode> postRE = postTo(additional, json);
-        HttpStatus statusCode = postRE.getStatusCode();
-        if (postRE.getStatusCode().equals(HttpStatus.CREATED))
-            statusCode = HttpStatus.OK;
-        return new ResponseEntity<>(postRE.getBody(), statusCode);
+        String urlString = LDS_URL+additional;
+        LOG.debug("PUT attempt to "+urlString);
+        CloseableHttpClient httpclient = HttpClients.createDefault();
+        HttpPut httpPut = new HttpPut(urlString);
+        httpPut.setHeader("Accept", "application/json");
+        httpPut.setHeader("Content-type", "application/json");
+        StringEntity stringEntity = new StringEntity(json.toString(), "UTF-8");
+        httpPut.setEntity(stringEntity);
+        try {
+            CloseableHttpResponse response = httpclient.execute(httpPut);
+            HttpEntity entity = response.getEntity();
+            int status = response.getStatusLine().getStatusCode();
+            HttpStatus httpStatus = HttpStatus.resolve(status);
+            LOG.debug("PUT to "+urlString+" - Status: "+httpStatus.toString());
+            if (!httpStatus.is2xxSuccessful()){
+                System.out.println("json node: ");
+                System.out.println(json.toPrettyString());
+                String responseBodyString = "";
+                if (entity != null)
+                    responseBodyString = EntityUtils.toString(entity);
+                return ErrorHandler.newHttpError(
+                        "LDS returned code "+httpStatus+" and body "+responseBodyString,
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        LOG);
+            }
+            return new ResponseEntity<>(json, httpStatus);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ErrorHandler.newHttpError(
+                    "Could not PUT because of an exception "+e.toString(),
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    LOG);
+        }
     }
 
     public void delete(String url) {

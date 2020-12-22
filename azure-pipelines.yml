@@ -4,6 +4,7 @@ trigger:
   branches:
     include:
       - 'development'
+      - 'master'
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -17,8 +18,16 @@ variables:
   - name: repoName
     value: 'prod-bip/ssb/klass/subsets-api'
 
+resources:
+  repositories:
+    - repository: templates
+      type: github
+      name: statisticsnorway/azure-pipelines-templates
+      ref: refs/tags/1.1.10
+      endpoint: statisticsnorway
+
 jobs:
-  - job: buildTestDockerBuildDockerPush
+  - job: buildTestAndRunTest
     displayName: 'Test/build app and Dockerimage'
     steps:
       - task: DownloadSecureFile@1
@@ -69,28 +78,7 @@ jobs:
           testResultsFiles: '**/TEST-*.xml'
           goals: 'install'
           options: '-DskipTests=false -Dmaven.javadoc.skip=true'
-      # Build Docker image
-      - task: Docker@2
-        displayName: 'Docker build'
-        inputs:
-          repository: $(imageName)
-          command: 'build'
-          Dockerfile: 'Dockerfile'
-          tags: |
-            $(Build.SourceBranchName)-imagescan-$(fullSha)
-      - task: Docker@2
-        condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
-        displayName: 'Login to GCR'
-        inputs:
-          command: login
-          containerRegistry: gcrServiceConnection
-      - task: Docker@2
-        displayName: 'Docker push'
-        condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
-        inputs:
-          containerRegistry: gcrServiceConnection
-          repository: $(repoName)
-          command: 'push'
-          Dockerfile: 'Dockerfile'
-          tags: |
-            $(Build.SourceBranchName)-imagescan-$(fullSha)
+      - template: 'docker/docker-build-image-and-push-to-gcr.yml@templates'
+        parameters:
+          imageName: $(imageName)
+          repoName: $(repoName)

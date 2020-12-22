@@ -155,12 +155,12 @@ class UtilsTest {
     void cleanSubsetVersion() {
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode subset = mapper.createObjectNode();
-        subset.put(Field.VERSION, version_true_1);
-        assertEquals("1", Utils.cleanSubsetVersion(subset).get(Field.VERSION).asText());
-        subset.put(Field.VERSION, version_true_2);
-        assertEquals("2", Utils.cleanSubsetVersion(subset).get(Field.VERSION).asText());
-        subset.put(Field.VERSION, version_true_3);
-        assertEquals("3", Utils.cleanSubsetVersion(subset).get(Field.VERSION).asText());
+        subset.put(Field.VERSION_ID, version_true_1);
+        assertEquals("1", Utils.cleanV1SubsetVersionField(subset).get(Field.VERSION_ID).asText());
+        subset.put(Field.VERSION_ID, version_true_2);
+        assertEquals("2", Utils.cleanV1SubsetVersionField(subset).get(Field.VERSION_ID).asText());
+        subset.put(Field.VERSION_ID, version_true_3);
+        assertEquals("3", Utils.cleanV1SubsetVersionField(subset).get(Field.VERSION_ID).asText());
     }
 
     @Test

@@ -18,7 +18,7 @@ public class ErrorHandler {
         body.put("error", status.toString());
         body.put("message", message);
         body.put("timestamp", Utils.getNowISO());
-        logger.error(body.toString());
+        logger.error("A Http error status was returned: "+body.toPrettyString().replaceAll("\n", "").replaceAll("\r", "").replaceAll("\"", "'"));
         return new ResponseEntity<>(body, status);
     }
 
@@ -28,7 +28,7 @@ public class ErrorHandler {
         json.put("exception message", e.getMessage());
         json.put("timestamp", Utils.getNowISO());
         json.put("e.toString", e.toString());
-        logger.error(json.toString());
+        logger.error(json.asText());
     }
 
     public static ResponseEntity<JsonNode> illegalID(Logger logger){
