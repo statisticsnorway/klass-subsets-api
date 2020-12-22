@@ -3,7 +3,6 @@ name: $(Build.SourceBranch)-$(date:yyyyMMdd)$(rev:.r)
 trigger:
   branches:
     include:
-      - 'v2'
       - 'development'
       - 'master'
 
