@@ -669,8 +669,6 @@ public class SubsetsControllerV2 {
             }
         }
 
-
-
         ArrayNode codesInRangeArrayNode = new ObjectMapper().createArrayNode();
 
         for (String s : codeMap.keySet()) {
@@ -699,7 +697,7 @@ public class SubsetsControllerV2 {
             editableCode.set(Field.CLASSIFICATION_VERSIONS, classificationVersionList);
             codesInRangeArrayNode.add(editableCode);
         }
-        //TODO: return all (variations of) codes that are valid at all the the interval [from, to]
+        //TODO: We could chose to only return classification versions that are valid inside the requested interval [from, to]
         return new ResponseEntity<>(codesInRangeArrayNode, OK);
     }
 
