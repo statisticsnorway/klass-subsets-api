@@ -977,6 +977,33 @@ class SubsetsControllerV2Test {
     }
 
     @Test
+    void postNewDraftVersionWithSameVersionValidFromDateAndExpect200Status(){
+        //We should not be able to publish a version that has same validFrom date as an existing published version
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version = readJsonFile(version_1_0_1_open);
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, false, version);
+        assertTrue(postVersionRE.getStatusCode().is2xxSuccessful());
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+
+        JsonNode version2 = readJsonFile(version_1_0_1);
+
+        ResponseEntity<JsonNode> postVersionRE2 = instance.postSubsetVersion(seriesId, false, version2);
+        assertEquals(HttpStatus.CREATED, postVersionRE2.getStatusCode());
+    }
+
+    @Test
     void getIllegalIdSubset() {
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
 
