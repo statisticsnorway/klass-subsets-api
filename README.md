@@ -12,9 +12,11 @@ This service replaced a Node.js prototype, which can be found at: https://github
 This API mimics the [KLASS Classifications API](https://data.ssb.no/api/klass/v1/api-guide.html) in many ways.
 
 ## V2 API
+Swagger UI OpenAPI definition: [https://subsets-api.staging-bip-app.ssb.no/swagger-ui/index.html?configUrl=/api-docs/swagger-config](https://subsets-api.staging-bip-app.ssb.no/swagger-ui/index.html?configUrl=/api-docs/swagger-config)
+
 This version of the API treats the information relation to the Classification Subset Series separately from the information related to the Classification Subset Versions that belong to the series.
 
-- When creating a Series, you first have to POST the series to `/v2/subsets` without any subset versions inside it. See example of valid Series POST/PUT requests in the "subset data structure" section below.
+- `POST /v2/subsets` without any subset versions inside it to create a new subset series. See example of valid subset series POST/PUT requests in the "subset data structure" section below.
 - `PUT /v2/subsets/{seriesID}` to edit the series. PUT requests to the series can not edit or add versions.
 - `POST /v2/subsets/{seriesID}/versions` to add a Version to a Series. See example of valid versions in the "subset data structure" section below.
 - `PUT /v2/subsets/{seriesID}/versions/{version}`to edit a version 
