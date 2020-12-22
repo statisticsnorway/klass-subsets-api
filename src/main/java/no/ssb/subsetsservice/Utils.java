@@ -27,6 +27,7 @@ public class Utils {
     public static final String URN_FORMAT_VALID_FROM_ENCODED_NAME = "urn:ssb:klass-api:classifications:%s:code:%s:validFrom:%s:name:%s";
     public static final String SERIES_LINK_FORMAT = "/v2/subsets/%s";
     public static final String VERSION_LINK_FORMAT = SERIES_LINK_FORMAT+"/versions/%s";
+    public static final String[] LANGUAGE_CODES = {"nb", "nn", "en"};
 
     public static boolean isYearMonthDay(String date){
         return date.matches(YEAR_MONTH_DAY_REGEX);
@@ -99,20 +100,6 @@ public class Utils {
         return clone;
     }
 
-    /**
-     * Sort an ArrayNode of versions according to their versionValidFrom fields
-     * @param subsetArrayNode
-     * @return
-     */
-    public static ArrayNode sortByVersionValidFrom(ArrayNode subsetArrayNode) {
-        List<JsonNode> subsetList = new ArrayList<>(subsetArrayNode.size());
-        subsetArrayNode.forEach(subsetList::add);
-        subsetList.sort(Utils::versionComparator);
-        ArrayNode newArrayNode = new ObjectMapper().createArrayNode();
-        subsetList.forEach(newArrayNode::add);
-        return newArrayNode;
-    }
-
     public static boolean isNumeric(String string) {
         if (string == null)
             return false;
@@ -131,10 +118,6 @@ public class Utils {
             return (d % 1) == 0 && !Double.isInfinite(d);
         }
         return false;
-    }
-
-    public static int versionComparator(JsonNode s1, JsonNode s2) {
-        return s2.get(Field.VERSION_VALID_FROM).asText().compareTo(s1.get(Field.VERSION_VALID_FROM).asText());
     }
 
     public static String generateURN(String classification, String code) {

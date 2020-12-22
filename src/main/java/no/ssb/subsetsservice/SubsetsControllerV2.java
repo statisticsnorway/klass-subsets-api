@@ -132,7 +132,9 @@ public class SubsetsControllerV2 {
     }
 
     @GetMapping("/v2/subsets/{id}")
-    public ResponseEntity<JsonNode> getSubsetSeriesByID(@PathVariable("id") String id, @RequestParam(defaultValue = "false") boolean includeFullVersions) {
+    public ResponseEntity<JsonNode> getSubsetSeriesByID(@PathVariable("id") String id,
+                                                        @RequestParam(defaultValue = "false") boolean includeFullVersions,
+                                                        @RequestParam(defaultValue = "all") String language) {
         metricsService.incrementGETCounter();
         LOG.info("GET subset series with id "+id);
 
@@ -146,7 +148,7 @@ public class SubsetsControllerV2 {
             ObjectNode series = addLinksToSeries(subsetSeriesByIDRE.getBody());
             if (includeFullVersions){
                 LOG.debug("Including full versions");
-                ResponseEntity<JsonNode> versionsRE = getVersions(id, true, true);
+                ResponseEntity<JsonNode> versionsRE = getVersions(id, true, true, language);
                 if (versionsRE.getStatusCode().is2xxSuccessful())
                     series.set(Field.VERSIONS, versionsRE.getBody());
                 else
@@ -256,7 +258,7 @@ public class SubsetsControllerV2 {
         if (putVersion.isNull() || putVersion.isEmpty() || putVersion.isArray())
             return ErrorHandler.newHttpError("PUT body must be a non-empty object representing a single subset version", BAD_REQUEST, LOG);
 
-        ResponseEntity<JsonNode> getPreviousEditionOfVersion = getVersion(seriesId, versionUID);
+        ResponseEntity<JsonNode> getPreviousEditionOfVersion = getVersion(seriesId, versionUID, "all");
         HttpStatus status = getPreviousEditionOfVersion.getStatusCode();
         if (status.equals(NOT_FOUND)){
             return ErrorHandler.newHttpError("Can not edit a subset version that does not exist.", BAD_REQUEST, LOG);
@@ -271,6 +273,7 @@ public class SubsetsControllerV2 {
         editablePutVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
         editablePutVersion.set(Field.CREATED_DATE, previousEditionOfVersion.get(Field.CREATED_DATE));
         editablePutVersion = Utils.addCodeVersionsToAllCodesInVersion(editablePutVersion, LOG);
+        editablePutVersion = addCodeNamesFromKlass(editablePutVersion);
 
         if (ignoreSuperfluousFields){
             editablePutVersion = removeSuperfluousVersionFields(editablePutVersion);
@@ -279,6 +282,7 @@ public class SubsetsControllerV2 {
         ResponseEntity<JsonNode> versionSchemaValidationRE = validateVersion(editablePutVersion);
         if (!versionSchemaValidationRE.getStatusCode().is2xxSuccessful())
             return versionSchemaValidationRE;
+
 
         boolean wasDraftFromBefore = previousEditionOfVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.DRAFT);
         boolean isStatusOpen = editablePutVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
@@ -331,13 +335,12 @@ public class SubsetsControllerV2 {
             return ErrorHandler.illegalID(LOG);
         LOG.info("series id "+seriesId+" was legal");
 
-
         if (version.isNull() || version.isEmpty())
             return ErrorHandler.newHttpError("POST body was empty. Should contain a single subset version.", BAD_REQUEST, LOG);
         if (version.isArray())
             return ErrorHandler.newHttpError("POST body was an array. Should be an object representing a single subset version.", BAD_REQUEST, LOG);
 
-        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(seriesId, false);
+        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(seriesId, false, "all");
         if (!getSeriesByIDRE.getStatusCode().equals(OK)) {
             LOG.error("Attempt to get subset series by id '"+seriesId+"' returned a non-OK status code.");
             return getSeriesByIDRE;
@@ -356,6 +359,7 @@ public class SubsetsControllerV2 {
                     LOG);
 
         JsonNode series = getSeriesByIDRE.getBody();
+
         int versionsSize = series.has(Field.VERSIONS) ? series.get(Field.VERSIONS).size() : 0;
         LOG.debug("Amount of found versions in series "+seriesId+" before potentially adding new version: "+versionsSize);
         String versionUUID = UUID.randomUUID().toString();
@@ -364,6 +368,7 @@ public class SubsetsControllerV2 {
         editableVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
         editableVersion.put(Field.CREATED_DATE, Utils.getNowDate());
         editableVersion = Utils.addCodeVersionsToAllCodesInVersion(editableVersion, LOG);
+        editableVersion = addCodeNamesFromKlass(editableVersion);
 
         boolean isStatusOpen = editableVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
 
@@ -371,7 +376,7 @@ public class SubsetsControllerV2 {
             if (!editableVersion.has(Field.CODES) || editableVersion.get(Field.CODES).size() == 0)
                 return ErrorHandler.newHttpError("Published subset version must have a non-empty code list", BAD_REQUEST, LOG);
 
-        ArrayNode codes = (ArrayNode)editableVersion.get(Field.CODES);
+        ArrayNode codes = editableVersion.get(Field.CODES).deepCopy();
         Map<String, Boolean> classificationMap = new HashMap<>();
         codes.forEach(c -> classificationMap.put(c.get(Field.CLASSIFICATION_ID).asText(), true));
         LOG.debug("printing "+classificationMap.keySet().size()+" classifications:");
@@ -382,7 +387,7 @@ public class SubsetsControllerV2 {
         Map<String, Boolean> statisticalUnitMap = new HashMap<>();
         classificationMap.keySet().forEach( k -> {
             ResponseEntity<JsonNode> getClassificationRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSClassificationURL(k));
-            if (getClassificationRE.getStatusCode().is2xxSuccessful()){
+            if (getClassificationRE.getStatusCode().is2xxSuccessful()) {
                 JsonNode classification = getClassificationRE.getBody();
                 if (!classification.has(Field.STATISTICAL_UNITS))
                     LOG.error("Classification "+k+" did not contain a "+Field.STATISTICAL_UNITS+" field!");
@@ -451,7 +456,6 @@ public class SubsetsControllerV2 {
         LOG.debug("Attempting to POST version nr "+versionUUID+" of subset series "+seriesId+" to LDS");
         ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionUUID, editableVersion);
 
-
         if (ldsPostRE.getStatusCode().equals(CREATED)) {
             LOG.debug("Successfully POSTed version nr "+versionUUID+" of subset series "+seriesId+" to LDS");
             return new ResponseEntity<>(editableVersion, CREATED);
@@ -459,44 +463,19 @@ public class SubsetsControllerV2 {
             return ldsPostRE;
     }
 
-
-    private ResponseEntity<JsonNode> updateLatestPublishedValidUntil(ResponseEntity<JsonNode> isOverlappingValidityRE, JsonNode newVersion, String seriesId){
-        JsonNode isOverlapREBody = isOverlappingValidityRE.getBody();
-        if (isOverlapREBody.get("existOtherPublishedVersions").asBoolean() && isOverlapREBody.get("isNewLatestVersion").asBoolean()) {
-            LOG.debug("according to the overlap check there is a previously published version, and the new version is the new latest version");
-            ObjectNode latestPublishedVersion = isOverlapREBody.get("latestPublishedVersion").deepCopy();
-            if (latestPublishedVersion == null)
-                return ErrorHandler.newHttpError("There is supposedly other published versions, and the posted version is the new latest version, but the old latest version returned from the overlap check was null", INTERNAL_SERVER_ERROR, LOG);
-            if ((!latestPublishedVersion.has(Field.VALID_UNTIL) || latestPublishedVersion.get(Field.VALID_UNTIL).isNull())) {
-                LOG.debug("The latestPublishedVersion did not have a validUntil date. Attempting to set it to the validFrom of the new version");
-                latestPublishedVersion.put(Field.VALID_UNTIL, newVersion.get(Field.VALID_FROM).asText());
-                latestPublishedVersion.remove(Field._LINKS);
-                LOG.debug("Attempting to PUT the previous latest version with a new validUntil that is the same as the validFrom of the new version");
-                ResponseEntity<JsonNode> putVersionRE = putSubsetVersion(seriesId, latestPublishedVersion.get(Field.VERSION_ID).asText(), false, latestPublishedVersion);
-                if (!putVersionRE.getStatusCode().is2xxSuccessful()){
-                    return ErrorHandler.newHttpError("Failed to update the validUntil of the previous last published version. PUT caused error code "+putVersionRE.getStatusCode()+" and had body "+(putVersionRE.hasBody() && putVersionRE.getBody() != null ? putVersionRE.getBody().toPrettyString().replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "") : ""), INTERNAL_SERVER_ERROR, LOG);
-                }
-            } else {
-                LOG.debug("The latestPublishedVersion already had a validUntil date");
-            }
-        } else {
-            LOG.debug("Either there are no other published versions, or the new version is not the new latest published version");
-        }
-        return new ResponseEntity<>(OK);
-    }
-
     @GetMapping("/v2/subsets/{id}/versions")
     public ResponseEntity<JsonNode> getVersions(
             @PathVariable("id") String id,
             @RequestParam(defaultValue = "true") boolean includeFuture,
-            @RequestParam(defaultValue = "true") boolean includeDrafts) {
+            @RequestParam(defaultValue = "true") boolean includeDrafts,
+            @RequestParam(defaultValue = "all") String language) {
         metricsService.incrementGETCounter();
         LOG.info("GET all versions of subset with id: "+id+" includeFuture: "+includeFuture+" includeDrafts: "+includeDrafts);
 
         if (!Utils.isClean(id))
             return ErrorHandler.illegalID(LOG);
 
-        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(id, false);
+        ResponseEntity<JsonNode> getSeriesByIDRE = getSubsetSeriesByID(id, false, "all");
         if (!getSeriesByIDRE.getStatusCode().equals(OK))
             return getSeriesByIDRE;
 
@@ -504,33 +483,33 @@ public class SubsetsControllerV2 {
         if (!getSeriesBody.has(Field.VERSIONS))
             return ErrorHandler.newHttpError("The subset series exists, but has no versions", NOT_FOUND, LOG);
 
-        ArrayNode subsetVersionsInSeriesArrayNode = getSeriesBody.get(Field.VERSIONS).deepCopy();
+        ArrayNode subsetVersionsLinkArrayFromSeries = getSeriesBody.get(Field.VERSIONS).deepCopy();
+        ArrayNode fullVersionsArrayNode = new ObjectMapper().createArrayNode();
 
-        for (int i = 0; i < subsetVersionsInSeriesArrayNode.size(); i++) {
-            String[] splitVersionString = subsetVersionsInSeriesArrayNode.get(i).asText().split("/");
+        for (int i = 0; i < subsetVersionsLinkArrayFromSeries.size(); i++) {
+            String[] splitVersionString = subsetVersionsLinkArrayFromSeries.get(i).asText().split("/");
             String versionUID = splitVersionString[splitVersionString.length-1]; // should be "version_id"
-            ResponseEntity<JsonNode> getVersionByIDRE = new LDSFacade().getVersionByID(versionUID);
+            ResponseEntity<JsonNode> getVersionByIDRE = getVersion(id, versionUID, language); //TODO: Should this be self.getVersion instead?
             if (!getVersionByIDRE.getStatusCode().is2xxSuccessful()) {
                 return ErrorHandler.newHttpError(
                         "A version pointed to in the 'versions' array of the series, with the UID "+versionUID+", could not be retrieved from LDS. The call returned status code "+getVersionByIDRE.getStatusCode().toString()+". This might be because the version was just POSTED and the operation to store this version in LDS has not completed yet. Try again shortly.",
                         INTERNAL_SERVER_ERROR,
                         LOG);
             }
-            JsonNode versionBody = getVersionByIDRE.getBody();
-            versionBody = Utils.addLinksToSubsetVersion(versionBody);
-            subsetVersionsInSeriesArrayNode.set(i, versionBody);
+            JsonNode versionByID = getVersionByIDRE.getBody();
+            fullVersionsArrayNode.add(versionByID);
         }
 
         String nowDate = Utils.getNowDate();
-        for (int v = subsetVersionsInSeriesArrayNode.size() - 1; v >= 0; v--) {
-            JsonNode version = subsetVersionsInSeriesArrayNode.get(v);
+        for (int v = fullVersionsArrayNode.size() - 1; v >= 0; v--) {
+            JsonNode version = fullVersionsArrayNode.get(v);
             if (!includeDrafts && version.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.DRAFT))
-                subsetVersionsInSeriesArrayNode.remove(v);
+                fullVersionsArrayNode.remove(v);
             if (!includeFuture && version.get(Field.VALID_FROM).asText().compareTo(nowDate) > 0)
-                subsetVersionsInSeriesArrayNode.remove(v);
+                fullVersionsArrayNode.remove(v);
         }
 
-        return new ResponseEntity<>(subsetVersionsInSeriesArrayNode, OK);
+        return new ResponseEntity<>(fullVersionsArrayNode, OK);
     }
 
     /**
@@ -542,7 +521,8 @@ public class SubsetsControllerV2 {
     @GetMapping("/v2/subsets/{id}/versions/{versionID}")
     public ResponseEntity<JsonNode> getVersion(
             @PathVariable("id") String seriesID,
-            @PathVariable("versionID") String versionID) {
+            @PathVariable("versionID") String versionID,
+            @RequestParam(defaultValue = "all") String language) {
         metricsService.incrementGETCounter();
         LOG.info("GET version "+versionID+" of subset with id "+seriesID);
 
@@ -556,36 +536,36 @@ public class SubsetsControllerV2 {
             String versionNr = splitUnderscore[0];
             versionID = String.format("%s_%s", seriesID, versionNr);
         }
-        ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionID);
-        HttpStatus status = versionRE.getStatusCode();
+        ResponseEntity<JsonNode> versionByIdRE = new LDSFacade().getVersionByID(versionID);
+        HttpStatus status = versionByIdRE.getStatusCode();
         if (status.equals(NOT_FOUND))
-            return versionRE;
+            return versionByIdRE;
         if (!status.is2xxSuccessful())
-            return resolveNonOKLDSResponse("GET version of series '"+seriesID+"' from LDS by versionId '"+versionID+"' ", versionRE);
-        JsonNode versionJsonNode = versionRE.getBody();
+            return resolveNonOKLDSResponse("GET version of series '"+seriesID+"' from LDS by versionId '"+versionID+"' ", versionByIdRE);
+        ObjectNode versionJsonNode = versionByIdRE.getBody().deepCopy();
         versionJsonNode = Utils.addLinksToSubsetVersion(versionJsonNode);
+        if (!language.equals("all")) {
+            versionJsonNode = setCodeNameToSingleLanguage(versionJsonNode, language);
+        }
         return new ResponseEntity<>(versionJsonNode, OK);
     }
 
-    /**
-     * Get a subset corresponding to a given version id.
-     * @param versionUID
-     * @return
-     */
-    @GetMapping("/v2/ClassificationSubsetVersion/{id}")
-    public ResponseEntity<JsonNode> getVersion(@PathVariable("id") String versionUID) {
-        metricsService.incrementGETCounter();
-        LOG.info("GET version w id '"+versionUID+"'.");
-
-        if (!Utils.isClean(versionUID))
-            return ErrorHandler.newHttpError("Illegal characters in versionUID", BAD_REQUEST, LOG);
-
-        ResponseEntity<JsonNode> versionRE = new LDSFacade().getVersionByID(versionUID);
-        HttpStatus status = versionRE.getStatusCode();
-        if (status.equals(OK) || status.equals(NOT_FOUND))
-            return versionRE;
-        else
-            return resolveNonOKLDSResponse("GET version by id '"+versionUID+"' ", versionRE);
+    private ObjectNode setCodeNameToSingleLanguage(ObjectNode versionNode, String languageCode){
+        ObjectNode versionNodeCopy = versionNode.deepCopy();
+        ArrayNode codes = versionNodeCopy.get(Field.CODES).deepCopy();
+        for (int i = 0; i < codes.size(); i++) {
+            ObjectNode code = codes.get(i).deepCopy();
+            ArrayNode nameMLTArray = code.get(Field.NAME).deepCopy();
+            for (JsonNode nameMLT : nameMLTArray) {
+                if (nameMLT.get("languageCode").asText().equals(languageCode)){
+                    code.put(Field.NAME, nameMLT.get("languageText").asText());
+                    codes.set(i, code);
+                    break;
+                }
+            }
+        }
+        versionNodeCopy.set(Field.CODES, codes);
+        return versionNodeCopy;
     }
 
     /**
@@ -603,7 +583,8 @@ public class SubsetsControllerV2 {
                                                    @RequestParam(required = false) String from,
                                                    @RequestParam(required = false) String to,
                                                    @RequestParam(defaultValue = "false") boolean includeDrafts,
-                                                   @RequestParam(defaultValue = "false") boolean includeFuture) {
+                                                   @RequestParam(defaultValue = "false") boolean includeFuture,
+                                                   @RequestParam(defaultValue = "all") String language) {
         LOG.info("GET codes of subset with id "+id);
         metricsService.incrementGETCounter();
 
@@ -617,7 +598,7 @@ public class SubsetsControllerV2 {
 
         if (!isFromDate && !isToDate) {
             LOG.debug("getting all codes of the latest/current version of subset "+id);
-            ResponseEntity<JsonNode> versionsByIDRE = getVersions(id, includeDrafts, includeFuture);
+            ResponseEntity<JsonNode> versionsByIDRE = getVersions(id, includeDrafts, includeFuture, language);
             JsonNode responseBodyJSON = versionsByIDRE.getBody();
             if (!versionsByIDRE.getStatusCode().equals(OK))
                 return resolveNonOKLDSResponse("get versions of series with id "+id+" ", versionsByIDRE);
@@ -626,7 +607,7 @@ public class SubsetsControllerV2 {
                     return ErrorHandler.newHttpError("response body of getSubset with id " + id + " was null, so could not get codes.", INTERNAL_SERVER_ERROR, LOG);
                 }
                 String date = Utils.getNowDate();
-                ResponseEntity<JsonNode> codesAtRE = getSubsetCodesAt(id, date, includeFuture, includeDrafts);
+                ResponseEntity<JsonNode> codesAtRE = getSubsetCodesAt(id, date, includeFuture, includeDrafts, language);
                 if (!codesAtRE.getStatusCode().equals(OK))
                     return resolveNonOKLDSResponse("GET codesAt "+date+" in series with id "+id+" ", codesAtRE);
                 ArrayNode codes = (ArrayNode) codesAtRE.getBody();
@@ -635,44 +616,45 @@ public class SubsetsControllerV2 {
         }
 
         // If a date interval is specified using 'from' and 'to' query parameters
-        ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts);
-        if (!versionsResponseEntity.getStatusCode().equals(OK))
-            return versionsResponseEntity;
-        JsonNode versionsResponseBodyJson = versionsResponseEntity.getBody();
+        ResponseEntity<JsonNode> getAllVersionsRE = getVersions(id, includeFuture, includeDrafts, language);
+        if (!getAllVersionsRE.getStatusCode().equals(OK))
+            return getAllVersionsRE;
+        JsonNode allVersionsArrayNode = getAllVersionsRE.getBody();
         LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
         ObjectMapper mapper = new ObjectMapper();
         Map<String, ArrayNode> codeMap = new HashMap<>();
 
-        if (versionsResponseBodyJson == null)
+        if (allVersionsArrayNode == null)
             return ErrorHandler.newHttpError("Response body was null", INTERNAL_SERVER_ERROR, LOG);
-        if (!versionsResponseBodyJson.isArray())
+        if (!allVersionsArrayNode.isArray())
             return ErrorHandler.newHttpError("Response body was null", INTERNAL_SERVER_ERROR, LOG);
 
-        ArrayNode versionsValidInDateRange = (ArrayNode) versionsResponseBodyJson;
+        ArrayNode versionsValidInDateRange = (ArrayNode) allVersionsArrayNode;
         int nrOfVersions = versionsValidInDateRange.size();
-        LOG.debug("Nr of versions: " + nrOfVersions);
+        LOG.debug("Total nr of versions of subset series '"+id+"': " + nrOfVersions);
 
         for (int i = versionsValidInDateRange.size() - 1; i >= 0; i--) {
             JsonNode version = versionsValidInDateRange.get(i);
-            if (!includeDrafts && !version.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)) {
+            if (!includeFuture && version.get(Field.VALID_FROM).asText().compareTo(Utils.getNowDate()) > 0) {
                 versionsValidInDateRange.remove(i);
             }
-            if (isToDate && version.get(Field.VALID_FROM).asText().compareTo(to) > 0) {
+            else if (!includeDrafts && !version.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)) {
                 versionsValidInDateRange.remove(i);
             }
-            if (isFromDate && version.has(Field.VALID_UNTIL) && version.get(Field.VALID_UNTIL).asText().compareTo(from) < 0) {
+            else if (isToDate && version.get(Field.VALID_FROM).asText().compareTo(to) >= 0) {
+                versionsValidInDateRange.remove(i);
+            }
+            else if (isFromDate && version.has(Field.VALID_UNTIL) && version.get(Field.VALID_UNTIL).asText().compareTo(from) <= 0) {
                 versionsValidInDateRange.remove(i);
             }
         }
 
-        // Check if first version includes fromDate, and last version includes toDate. If not, then return an empty list.
-
         for (JsonNode subsetVersion : versionsValidInDateRange) {
-            LOG.debug("Version " + subsetVersion.get(Field.VERSION_ID) + " is valid in the interval, so codes will be added to map");
+            LOG.debug("Version " + subsetVersion.get(Field.VERSION_ID) + " is valid in the interval, so its codes will be included");
             // . . . using each code in this version as key, increment corresponding integer value in map
             JsonNode codes = subsetVersion.get(Field.CODES);
             ArrayNode codesArrayNode = (ArrayNode) codes;
-            LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
+            LOG.debug("There are " + codesArrayNode.size() + " codes in version "+subsetVersion.get(Field.VERSION_ID));
             for (JsonNode codeJsonNode : codesArrayNode) {
                 String classificationId = codeJsonNode.get(Field.CLASSIFICATION_ID).asText();
                 String code = codeJsonNode.get(Field.CODE).asText();
@@ -681,7 +663,7 @@ public class SubsetsControllerV2 {
                 String codeURN = classificationId+"_"+code+"_"+name+"_"+level;
                 ArrayNode classificationVersionsArrayNode = codeJsonNode.get(Field.CLASSIFICATION_VERSIONS).deepCopy();
                 if (codeMap.containsKey(codeURN)) {
-                    classificationVersionsArrayNode.addAll(codeMap.get(codeURN));
+                    classificationVersionsArrayNode.addAll(codeMap.get(codeURN)); //TODO: This merger might cause duplicates
                 }
                 codeMap.put(codeURN, classificationVersionsArrayNode);
             }
@@ -691,6 +673,17 @@ public class SubsetsControllerV2 {
 
         for (String s : codeMap.keySet()) {
             ArrayNode classificationVersionList = codeMap.get(s);
+
+            // Remove duplicates
+            for (int i = 0; i < classificationVersionList.size(); i++) {
+                JsonNode classificationVersion = classificationVersionList.get(i);
+                for (int i1 = i+1; i1 < classificationVersionList.size(); i1++) {
+                    if (classificationVersionList.get(i1).asText().equals(classificationVersion.asText())) {
+                        classificationVersionList.remove(i1);
+                    }
+                }
+            }
+
             ObjectNode editableCode = new ObjectMapper().createObjectNode();
             String[] splitUnderscore = s.split("_");
             String classificationId = splitUnderscore[0];
@@ -704,7 +697,7 @@ public class SubsetsControllerV2 {
             editableCode.set(Field.CLASSIFICATION_VERSIONS, classificationVersionList);
             codesInRangeArrayNode.add(editableCode);
         }
-        //TODO: return all (variations of) codes that are valid at all the the interval [from, to]
+        //TODO: We could chose to only return classification versions that are valid inside the requested interval [from, to]
         return new ResponseEntity<>(codesInRangeArrayNode, OK);
     }
 
@@ -719,7 +712,8 @@ public class SubsetsControllerV2 {
     public ResponseEntity<JsonNode> getSubsetCodesAt(@PathVariable("id") String id,
                                                      @RequestParam String date,
                                                      @RequestParam(defaultValue = "false") boolean includeFuture,
-                                                     @RequestParam(defaultValue = "false") boolean includeDrafts) {
+                                                     @RequestParam(defaultValue = "false") boolean includeDrafts,
+                                                     @RequestParam(defaultValue = "all") String language) {
         metricsService.incrementGETCounter();
         LOG.info("GET codesAt (valid at date) "+date+" for subset with id "+id);
 
@@ -739,7 +733,7 @@ public class SubsetsControllerV2 {
                     LOG);
         }
 
-        ResponseEntity<JsonNode> versionsRE = getVersions(id, includeFuture, includeDrafts);
+        ResponseEntity<JsonNode> versionsRE = getVersions(id, includeFuture, includeDrafts, language);
         if (versionsRE.getStatusCode().equals(NOT_FOUND))
             return versionsRE;
         else if (!versionsRE.getStatusCode().equals(OK))
@@ -968,7 +962,7 @@ public class SubsetsControllerV2 {
         String validUntil = editableVersion.has(Field.VALID_UNTIL) ? editableVersion.get(Field.VALID_UNTIL).asText() : null;
 
         String seriesID = editableVersion.get(Field.SUBSET_ID).asText();
-        ResponseEntity<JsonNode> getPublishedVersionsRE = getVersions(seriesID, true, false);
+        ResponseEntity<JsonNode> getPublishedVersionsRE = getVersions(seriesID, true, false, "all");
         if (getPublishedVersionsRE.getStatusCode().equals(NOT_FOUND)) {
             ObjectNode body = new ObjectMapper().createObjectNode();
             body.put("message", "Subset getVersions returned 404 NOT FOUND, which means there is no overlap");
@@ -1073,4 +1067,101 @@ public class SubsetsControllerV2 {
         return new ResponseEntity<>(body, OK);
     }
 
+
+    private ObjectNode convertCodeNamesToMultilingualText(ObjectNode editableVersion, String defaultLanguageCode) {
+        ObjectNode editableVersionCopy = editableVersion.deepCopy();
+        editableVersion = null;
+        ArrayNode codes = (ArrayNode)editableVersionCopy.get(Field.CODES);
+        for (int i = 0; i < codes.size(); i++) {
+            JsonNode codeNode = codes.get(i);
+            if (codeNode.has(Field.NAME) && codeNode.get(Field.NAME).isTextual()) {
+                ObjectNode multilingualText = new ObjectMapper().createObjectNode();
+                multilingualText.put("languageCode", defaultLanguageCode);
+                multilingualText.put("languageText", codeNode.get(Field.NAME).asText());
+                ObjectNode editableCodeNode = codeNode.deepCopy();
+                editableCodeNode.set(Field.NAME, multilingualText);
+                codes.set(i, editableCodeNode);
+            }
+        }
+        editableVersionCopy.set(Field.CODES, codes);
+        return editableVersionCopy;
+    }
+
+    private String getDefaultLanguage(JsonNode series) {
+        String defaultLanguage = "none";
+        if (series.has(Field.ADMINISTRATIVE_DETAILS)){
+            ArrayNode adminDetailsArrayNode = series.get(Field.ADMINISTRATIVE_DETAILS).deepCopy();
+            for (JsonNode adminDetail : adminDetailsArrayNode) {
+                if (adminDetail.has(Field.ADMINISTRATIVE_DETAIL_TYPE) && adminDetail.get(Field.ADMINISTRATIVE_DETAIL_TYPE).asText().equals(Field.DEFAULTLANGUAGE)){
+                    if (adminDetail.has(Field.VALUES) && adminDetail.get(Field.VALUES).isArray()){
+                        defaultLanguage = adminDetail.get(Field.VALUES).get(0).asText();
+                        break;
+                    }
+                }
+            }
+        }
+        return defaultLanguage;
+    }
+
+
+    private ResponseEntity<JsonNode> updateLatestPublishedValidUntil(ResponseEntity<JsonNode> isOverlappingValidityRE,
+                                                                     JsonNode newVersion,
+                                                                     String seriesId){
+        JsonNode isOverlapREBody = isOverlappingValidityRE.getBody();
+        if (isOverlapREBody.get("existOtherPublishedVersions").asBoolean() &&
+                isOverlapREBody.get("isNewLatestVersion").asBoolean()) {
+            LOG.debug("according to the overlap check there is a previously published version, and the new version is the new latest version");
+            ObjectNode latestPublishedVersion = isOverlapREBody.get("latestPublishedVersion").deepCopy();
+            if (latestPublishedVersion == null)
+                return ErrorHandler.newHttpError(
+                        "There is supposedly other published versions, and the posted version is the new latest version, but the old latest version returned from the overlap check was null", INTERNAL_SERVER_ERROR, LOG);
+            if ((!latestPublishedVersion.has(Field.VALID_UNTIL) || latestPublishedVersion.get(Field.VALID_UNTIL).isNull())) {
+                LOG.debug("The latestPublishedVersion did not have a validUntil date. Attempting to set it to the validFrom of the new version");
+                latestPublishedVersion.put(Field.VALID_UNTIL, newVersion.get(Field.VALID_FROM).asText());
+                latestPublishedVersion.remove(Field._LINKS);
+                LOG.debug("Attempting to PUT the previous latest version with a new validUntil that is the same as the validFrom of the new version");
+                ResponseEntity<JsonNode> putVersionRE = putSubsetVersion(
+                        seriesId,
+                        latestPublishedVersion.get(Field.VERSION_ID).asText(),
+                        false,
+                        latestPublishedVersion);
+                if (!putVersionRE.getStatusCode().is2xxSuccessful()){
+                    return ErrorHandler.newHttpError("Failed to update the validUntil of the previous last published version. PUT caused error code "+putVersionRE.getStatusCode()+" and had body "+(putVersionRE.hasBody() && putVersionRE.getBody() != null ? putVersionRE.getBody().toPrettyString().replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "") : ""), INTERNAL_SERVER_ERROR, LOG);
+                }
+            } else {
+                LOG.debug("The latestPublishedVersion already had a validUntil date");
+            }
+        } else {
+            LOG.debug("Either there are no other published versions, or the new version is not the new latest published version");
+        }
+        return new ResponseEntity<>(OK);
+    }
+
+    private ObjectNode addCodeNamesFromKlass(ObjectNode editableVersion) {
+        ObjectNode editableVersionCopy = editableVersion.deepCopy();
+        ArrayNode codes = editableVersionCopy.get(Field.CODES).deepCopy();
+        for (int i = 0; i < codes.size(); i++) {
+            ObjectNode editableCode = codes.get(i).deepCopy();
+            ArrayNode namesArray = new ObjectMapper().createArrayNode();
+            for (String languageCode : Utils.LANGUAGE_CODES) {
+                // Get code in missing language from KLASS, and add the name as MultilingualText to the namesArray
+                String classificationID = editableCode.get(Field.CLASSIFICATION_ID).asText();
+                String validFrom = editableCode.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
+                String validTo = editableCode.has(Field.VALID_TO_IN_REQUESTED_RANGE) && !editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).isNull() ? editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText(): "";
+                String code = editableCode.get(Field.CODE).asText();
+                ResponseEntity<JsonNode> getCodesFromKlassRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSCodesFromToURL(classificationID, validFrom, validTo, code));
+                System.out.println(getCodesFromKlassRE.getBody().toPrettyString());
+                ArrayNode codesFromKlassArrayNode = getCodesFromKlassRE.getBody().get(Field.CODES).deepCopy();
+                String name = codesFromKlassArrayNode.get(0).get(Field.NAME).asText();
+                ObjectNode mlT = new ObjectMapper().createObjectNode();
+                mlT.put("languageCode", languageCode);
+                mlT.put("languageText", name);
+                namesArray.add(mlT);
+            }
+            editableCode.set(Field.NAME, namesArray);
+            codes.set(i, editableCode);
+        }
+        editableVersionCopy.set(Field.CODES, codes);
+        return editableVersionCopy;
+    }
 }
