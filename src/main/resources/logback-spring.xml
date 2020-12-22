@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <appender name="ConsoleJson" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder"/>
+        <layout class="ch.qos.logback.contrib.json.classic.JsonLayout">
+            <jsonFormatter
+                    class="ch.qos.logback.contrib.jackson.JacksonJsonFormatter">
+                <prettyPrint>false</prettyPrint>
+            </jsonFormatter>
+            <appendLineSeparator>true</appendLineSeparator>
+        </layout>
+    </appender>
+
+    <logger name="org.springframework" level="WARN">
+        <appender-ref ref="ConsoleJson"/>
+    </logger>
+
+    <logger name="no.ssb." level="INFO">
+        <appender-ref ref="ConsoleJson"/>
+    </logger>
+
+    <root level="info">
+        <appender-ref ref="ConsoleJson" />
+    </root>
+
+</configuration>

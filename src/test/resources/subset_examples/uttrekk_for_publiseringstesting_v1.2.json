@@ -1,0 +1,183 @@
+{
+    "administrativeStatus": "OPEN",
+    "id": "uttrekk_for_publiseringstesting",
+    "version": "1",
+    "name": [
+        {
+            "languageText": "Uttrekk for Testing av Publisering og Endring",
+            "languageCode": "nb"
+        }
+    ],
+    "shortName": "Test av Publisering",
+    "validFrom": "2020-01-08T00:00:00.000Z",
+    "validUntil": "2020-09-09T00:00:00.000Z",
+    "createdBy": "702 - Seksjon for IT-arkitektur",
+    "administrativeDetails": [
+        {
+            "administrativeDetailType": "ANNOTATION",
+            "values": [
+                "Befolkning"
+            ]
+        },
+        {
+            "administrativeDetailType": "ORIGIN",
+            "values": [
+                "urn:ssb:klass-api:classifications:7",
+                "urn:ssb:klass-api:classifications:17",
+                "urn:ssb:klass-api:classifications:19"
+            ]
+        }
+    ],
+    "description": [
+        {
+            "languageText": "Test av publisering, endringer og versjonering",
+            "languageCode": "nb"
+        }
+    ],
+    "versionRationale": [
+        {
+            "languageText": "Prøve å endre både validFrom og versionValidFrom til senere dato selv om admin status er OPEN",
+            "languageCode": "nb"
+        }
+    ],
+    "versionValidFrom": "2020-01-08T00:00:00.000Z",
+    "versionValidUntil": "2020-09-09T00:00:00.000Z",
+    "codes": [
+        {
+            "code": "6",
+            "urn": "urn:ssb:klass-api:classifications:19:code:6",
+            "rank": 1,
+            "classificationId": "19",
+            "_links": {
+                "self": {
+                    "href": "https://data.ssb.no/api/klass/v1//classifications/19/codesAt.json?date=2020-08-10&selectCodes=6"
+                }
+            },
+            "parentCode": null,
+            "level": "1",
+            "name": "Registrert partner",
+            "shortName": "",
+            "presentationName": "",
+            "classification": "undefined - Standard for sivilstand"
+        },
+        {
+            "code": "2",
+            "urn": "urn:ssb:klass-api:classifications:19:code:2",
+            "rank": 2,
+            "classificationId": "19",
+            "_links": {
+                "self": {
+                    "href": "https://data.ssb.no/api/klass/v1//classifications/19/codesAt.json?date=2020-08-10&selectCodes=2"
+                }
+            },
+            "classification": "undefined - Standard for sivilstand",
+            "parentCode": null,
+            "level": "1",
+            "name": "Gift",
+            "shortName": "",
+            "presentationName": ""
+        },
+        {
+            "code": "3",
+            "urn": "urn:ssb:klass-api:classifications:17:code:3",
+            "rank": 3,
+            "classificationId": "17",
+            "_links": {
+                "self": {
+                    "href": "https://data.ssb.no/api/klass/v1//classifications/17/codesAt.json?date=2020-08-10&selectCodes=3"
+                }
+            },
+            "parentCode": null,
+            "level": "1",
+            "name": "Andre familier",
+            "shortName": "",
+            "presentationName": "",
+            "classification": "undefined - Standard for gruppering av familier"
+        },
+        {
+            "code": "2",
+            "urn": "urn:ssb:klass-api:classifications:17:code:2",
+            "rank": 4,
+            "classificationId": "17",
+            "_links": {
+                "self": {
+                    "href": "https://data.ssb.no/api/klass/v1//classifications/17/codesAt.json?date=2020-08-10&selectCodes=2"
+                }
+            },
+            "classification": "undefined - Standard for gruppering av familier",
+            "parentCode": null,
+            "level": "1",
+            "name": "Familier med barn (yngste barn 0-17 år)",
+            "shortName": "",
+            "presentationName": ""
+        },
+        {
+            "code": "1",
+            "urn": "urn:ssb:klass-api:classifications:17:code:1",
+            "rank": 5,
+            "classificationId": "17",
+            "_links": {
+                "self": {
+                    "href": "https://data.ssb.no/api/klass/v1//classifications/17/codesAt.json?date=2020-08-10&selectCodes=1"
+                }
+            },
+            "classification": "undefined - Standard for gruppering av familier",
+            "parentCode": null,
+            "level": "1",
+            "name": "Enpersonfamilie",
+            "shortName": "",
+            "presentationName": ""
+        },
+        {
+            "code": "0310",
+            "urn": "urn:ssb:klass-api:classifications:7:code:0310",
+            "rank": 6,
+            "classificationId": "7",
+            "_links": {
+                "self": {
+                    "href": "https://data.ssb.no/api/klass/v1//classifications/7/codesAt.json?date=2020-08-10&selectCodes=0310"
+                }
+            },
+            "classification": "undefined - Standard for yrkesklassifisering",
+            "parentCode": "031",
+            "level": "4",
+            "name": "Menige",
+            "shortName": "",
+            "presentationName": ""
+        },
+        {
+            "code": "0210",
+            "urn": "urn:ssb:klass-api:classifications:7:code:0210",
+            "rank": 7,
+            "classificationId": "7",
+            "_links": {
+                "self": {
+                    "href": "https://data.ssb.no/api/klass/v1//classifications/7/codesAt.json?date=2020-08-10&selectCodes=0210"
+                }
+            },
+            "classification": "undefined - Standard for yrkesklassifisering",
+            "parentCode": "021",
+            "level": "4",
+            "name": "Befal med sersjant grad",
+            "shortName": "",
+            "presentationName": ""
+        },
+        {
+            "code": "0110",
+            "urn": "urn:ssb:klass-api:classifications:7:code:0110",
+            "rank": 8,
+            "classificationId": "7",
+            "_links": {
+                "self": {
+                    "href": "https://data.ssb.no/api/klass/v1//classifications/7/codesAt.json?date=2020-08-10&selectCodes=0110"
+                }
+            },
+            "classification": "undefined - Standard for yrkesklassifisering",
+            "parentCode": "011",
+            "level": "4",
+            "name": "Offiserer fra fenrik og høyere grad",
+            "shortName": "",
+            "presentationName": ""
+        }
+    ]
+}
