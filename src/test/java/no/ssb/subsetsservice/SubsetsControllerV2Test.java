@@ -1303,10 +1303,6 @@ class SubsetsControllerV2Test {
         ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
         assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
 
-        JsonNode version201validUntil = readJsonFile(version_2_0_1);
-        ResponseEntity<JsonNode> postVersion1validUntilRE = instance.postSubsetVersion(seriesId, false, version201validUntil);
-        assertEquals(HttpStatus.CREATED, postVersion1validUntilRE.getStatusCode());
-
         JsonNode version202validUntil = readJsonFile(version_2_0_2);
         ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, false, version202validUntil);
         assertEquals(HttpStatus.CREATED, postVersion2validUntilRE.getStatusCode());
@@ -1322,7 +1318,34 @@ class SubsetsControllerV2Test {
         ArrayNode namesArray = getCodesREBody.get(0).get(Field.NAME).deepCopy();
         System.out.println(namesArray.toPrettyString());
         assertEquals(3, namesArray.size());
+    }
 
+    @Test
+    void getSubsetCodesTodayOneLanguageNames() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_2_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version202validUntil = readJsonFile(version_2_0_2);
+        ResponseEntity<JsonNode> postVersion2validUntilRE = instance.postSubsetVersion(seriesId, false, version202validUntil);
+        assertEquals(HttpStatus.CREATED, postVersion2validUntilRE.getStatusCode());
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        ResponseEntity<JsonNode> getCodesTodayRE = instance.getSubsetCodes(seriesId, null, null, true, true, "nb");
+        ArrayNode getCodesREBody = getCodesTodayRE.getBody().deepCopy();
+        for (JsonNode jsonNode : getCodesREBody) {
+            assertTrue(jsonNode.get(Field.NAME).isTextual());
+            String name = jsonNode.get(Field.NAME).asText();
+            System.out.println(name);
+        }
     }
 
     @Test
