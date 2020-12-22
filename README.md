@@ -36,7 +36,7 @@ At the moment we allow for complete deletion of subset series and versions, for 
 ### Subset data structure
 A description to the subset data structure is available here `GET /v2/subsets/schema`.
 
-This is an example of the contents of a valid POST to `v2/subsets`:
+This is an example of the contents of a valid POST to `/v2/subsets`:
 ```
 {
 	"id":"UID_for_dette_uttrekket_1",
