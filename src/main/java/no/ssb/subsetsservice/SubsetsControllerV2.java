@@ -616,44 +616,45 @@ public class SubsetsControllerV2 {
         }
 
         // If a date interval is specified using 'from' and 'to' query parameters
-        ResponseEntity<JsonNode> versionsResponseEntity = getVersions(id, includeFuture, includeDrafts, language);
-        if (!versionsResponseEntity.getStatusCode().equals(OK))
-            return versionsResponseEntity;
-        JsonNode versionsResponseBodyJson = versionsResponseEntity.getBody();
+        ResponseEntity<JsonNode> getAllVersionsRE = getVersions(id, includeFuture, includeDrafts, language);
+        if (!getAllVersionsRE.getStatusCode().equals(OK))
+            return getAllVersionsRE;
+        JsonNode allVersionsArrayNode = getAllVersionsRE.getBody();
         LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
         ObjectMapper mapper = new ObjectMapper();
         Map<String, ArrayNode> codeMap = new HashMap<>();
 
-        if (versionsResponseBodyJson == null)
+        if (allVersionsArrayNode == null)
             return ErrorHandler.newHttpError("Response body was null", INTERNAL_SERVER_ERROR, LOG);
-        if (!versionsResponseBodyJson.isArray())
+        if (!allVersionsArrayNode.isArray())
             return ErrorHandler.newHttpError("Response body was null", INTERNAL_SERVER_ERROR, LOG);
 
-        ArrayNode versionsValidInDateRange = (ArrayNode) versionsResponseBodyJson;
+        ArrayNode versionsValidInDateRange = (ArrayNode) allVersionsArrayNode;
         int nrOfVersions = versionsValidInDateRange.size();
-        LOG.debug("Nr of versions: " + nrOfVersions);
+        LOG.debug("Total nr of versions of subset series '"+id+"': " + nrOfVersions);
 
         for (int i = versionsValidInDateRange.size() - 1; i >= 0; i--) {
             JsonNode version = versionsValidInDateRange.get(i);
-            if (!includeDrafts && !version.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)) {
+            if (!includeFuture && version.get(Field.VALID_FROM).asText().compareTo(Utils.getNowDate()) > 0) {
                 versionsValidInDateRange.remove(i);
             }
-            if (isToDate && version.get(Field.VALID_FROM).asText().compareTo(to) > 0) {
+            else if (!includeDrafts && !version.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN)) {
                 versionsValidInDateRange.remove(i);
             }
-            if (isFromDate && version.has(Field.VALID_UNTIL) && version.get(Field.VALID_UNTIL).asText().compareTo(from) < 0) {
+            else if (isToDate && version.get(Field.VALID_FROM).asText().compareTo(to) >= 0) {
+                versionsValidInDateRange.remove(i);
+            }
+            else if (isFromDate && version.has(Field.VALID_UNTIL) && version.get(Field.VALID_UNTIL).asText().compareTo(from) <= 0) {
                 versionsValidInDateRange.remove(i);
             }
         }
 
-        // Check if first version includes fromDate, and last version includes toDate. If not, then return an empty list.
-
         for (JsonNode subsetVersion : versionsValidInDateRange) {
-            LOG.debug("Version " + subsetVersion.get(Field.VERSION_ID) + " is valid in the interval, so codes will be added to map");
+            LOG.debug("Version " + subsetVersion.get(Field.VERSION_ID) + " is valid in the interval, so its codes will be included");
             // . . . using each code in this version as key, increment corresponding integer value in map
             JsonNode codes = subsetVersion.get(Field.CODES);
             ArrayNode codesArrayNode = (ArrayNode) codes;
-            LOG.debug("There are " + codesArrayNode.size() + " codes in this version");
+            LOG.debug("There are " + codesArrayNode.size() + " codes in version "+subsetVersion.get(Field.VERSION_ID));
             for (JsonNode codeJsonNode : codesArrayNode) {
                 String classificationId = codeJsonNode.get(Field.CLASSIFICATION_ID).asText();
                 String code = codeJsonNode.get(Field.CODE).asText();
@@ -662,16 +663,29 @@ public class SubsetsControllerV2 {
                 String codeURN = classificationId+"_"+code+"_"+name+"_"+level;
                 ArrayNode classificationVersionsArrayNode = codeJsonNode.get(Field.CLASSIFICATION_VERSIONS).deepCopy();
                 if (codeMap.containsKey(codeURN)) {
-                    classificationVersionsArrayNode.addAll(codeMap.get(codeURN));
+                    classificationVersionsArrayNode.addAll(codeMap.get(codeURN)); //TODO: This merger might cause duplicates
                 }
                 codeMap.put(codeURN, classificationVersionsArrayNode);
             }
         }
 
+
+
         ArrayNode codesInRangeArrayNode = new ObjectMapper().createArrayNode();
 
         for (String s : codeMap.keySet()) {
             ArrayNode classificationVersionList = codeMap.get(s);
+
+            // Remove duplicates
+            for (int i = 0; i < classificationVersionList.size(); i++) {
+                JsonNode classificationVersion = classificationVersionList.get(i);
+                for (int i1 = i+1; i1 < classificationVersionList.size(); i1++) {
+                    if (classificationVersionList.get(i1).asText().equals(classificationVersion.asText())) {
+                        classificationVersionList.remove(i1);
+                    }
+                }
+            }
+
             ObjectNode editableCode = new ObjectMapper().createObjectNode();
             String[] splitUnderscore = s.split("_");
             String classificationId = splitUnderscore[0];
