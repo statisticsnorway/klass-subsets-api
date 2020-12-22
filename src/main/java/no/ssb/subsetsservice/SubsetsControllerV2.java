@@ -1135,7 +1135,7 @@ public class SubsetsControllerV2 {
                 // Get code in missing language from KLASS, and add the name as MultilingualText to the namesArray
                 String classificationID = editableCode.get(Field.CLASSIFICATION_ID).asText();
                 String validFrom = editableCode.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
-                String validTo = editableCode.has(Field.VALID_TO_IN_REQUESTED_RANGE) ? editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText(): "";
+                String validTo = editableCode.has(Field.VALID_TO_IN_REQUESTED_RANGE) && !editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).isNull() ? editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText(): "";
                 String code = editableCode.get(Field.CODE).asText();
                 ResponseEntity<JsonNode> getCodesFromKlassRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSCodesFromToURL(classificationID, validFrom, validTo, code));
                 System.out.println(getCodesFromKlassRE.getBody().toPrettyString());
