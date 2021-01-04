@@ -19,8 +19,7 @@ This version of the API treats the information relation to the Classification Su
 - `POST /v2/subsets` without any subset versions inside it to create a new subset series. See example of valid subset series POST/PUT requests in the "subset data structure" section below.
 - `PUT /v2/subsets/{seriesID}` to edit the series. PUT requests to the series can not edit or add versions.
 - `POST /v2/subsets/{seriesID}/versions` to add a Version to a Series. See example of valid versions in the "subset data structure" section below.
-- `PUT /v2/subsets/{seriesID}/versions/{version}`to edit a version 
-- If the UID of the subset series is `example`, then use version = `example_1` or `1` to retrieve the first version that was added to the series.
+- `PUT /v2/subsets/{seriesID}/versions/{version}`to edit a version. `{version}` is a unique identifier generated at POST time.
 - `GET /v2/subsets/{seriesID}/codes` to retrieve a list of the codes that are valid today. 
     - Optional query parameters "from" and "to" take dates on form "YYYY-MM-DD". When both are given, a list containing all codes that are valid in all versions from the "from" date to the "to" date will be returned. Example: `GET /v2/subsets/{seriesID}/codes?from=2019-11-02&to=2020-03-20`
 - `GET /v2/subsets/{seriesID}/codesAt?date=YYYY-MM-DD` to retrieve a list of the codes valid on the given date
