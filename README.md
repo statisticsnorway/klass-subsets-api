@@ -210,7 +210,7 @@ If we GET the subset version that we just created (`/v2/subsets/UID_for_dette_ut
 #### Version UID
 The version has gotten an automatically generated v4 UUID version id, stored in the field `versionId`. Combining the `subsetId` and the `versionId` number will give us a version UID. If we want to GET the version entity.
 
-#### Classificaiton versions of codes
+#### Classification versions of codes
 Observe that at this point the single code included in our version has a new field called `classificationVersions`. This field was generated when the version was POSTed. The `classificationVersions` array in each code contains a link to each classification version that was valid and had this exact name and level in the subset version's validity period at the time of creation. When a subset version has a validity period extending into the future, it might be that a new version of a classification comes out that also contains that code, or does not contain that code, or that makes edits to that code. Storing an array of versions that existed and contained the code in the validity period at the time of creation ensures our ability to detect and resolve possible conflicts and changes to the code, and to avoid including unintended versions of a code.
 
 #### Names of codes
