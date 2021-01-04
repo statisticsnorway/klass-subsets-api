@@ -77,7 +77,7 @@ public class SubsetsControllerV2 {
      * @param subsetSeriesJson
      * @return
      */
-    @PostMapping("/v2/subsets")
+    @PostMapping("/v2/auth/subsets")
     public ResponseEntity<JsonNode> postSubsetSeries(@RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode subsetSeriesJson) {
         metricsService.incrementPOSTCounter();
         LOG.info("POST subset series received. Checking body . . .");
@@ -169,7 +169,7 @@ public class SubsetsControllerV2 {
      * @param newEditionOfSeries
      * @return
      */
-    @PutMapping(value = "/v2/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/v2/auth/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> putSubsetSeries(@PathVariable("id") String seriesId, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode newEditionOfSeries) {
         metricsService.incrementPUTCounter();
         LOG.info("PUT subset series with id "+seriesId);
@@ -247,7 +247,7 @@ public class SubsetsControllerV2 {
      * @param putVersion
      * @return
      */
-    @PutMapping(value = "/v2/subsets/{seriesId}/versions/{versionUID}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/v2/auth/subsets/{seriesId}/versions/{versionUID}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("seriesId") String seriesId, @PathVariable("versionUID") String versionUID, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode putVersion) {
         LOG.info("PUT subset version of series "+seriesId+" with version id "+versionUID);
         if (!Utils.isClean(seriesId))
@@ -328,7 +328,7 @@ public class SubsetsControllerV2 {
         return editVersionRE;
     }
 
-    @PostMapping(value = "/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/v2/auth/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> postSubsetVersion(@PathVariable("seriesId") String seriesId, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode version) {
         LOG.info("POST request to create a version of series "+seriesId);
         if (!Utils.isClean(seriesId))
@@ -769,16 +769,16 @@ public class SubsetsControllerV2 {
         return new LDSFacade().getSubsetSeriesSchema();
     }
 
-    @DeleteMapping("/v2/subsets")
+    @DeleteMapping("/v2/auth/subsets")
     void deleteAllSeries(){
         new LDSFacade().deleteAllSubsetSeries();
     }
-    @DeleteMapping("/v2/subsets/{id}")
+    @DeleteMapping("/v2/auth/subsets/{id}")
     void deleteSeriesById(@PathVariable("id") String id){
         new LDSFacade().deleteSubsetSeries(id);
     }
 
-    @DeleteMapping("/v2/subsets/{id}/versions/{versionId}")
+    @DeleteMapping("/v2/auth/subsets/{id}/versions/{versionId}")
     void deleteVersionById(@PathVariable("id") String id, @PathVariable("versionId") String versionId){
         LOG.info("Deleting version "+versionId+" from series "+id);
         String[] versionIdSplitUnderscore = versionId.split("_");
@@ -902,6 +902,20 @@ public class SubsetsControllerV2 {
         ResponseEntity<JsonNode> schemaCheckRE = Utils.checkAgainstSchema(seriesDefinition, series, LOG);
         if (!schemaCheckRE.getStatusCode().is2xxSuccessful())
             return schemaCheckRE;
+        ArrayNode names = series.get(Field.NAME).deepCopy();
+        for (JsonNode nameMT : names) {
+            String languageCode = nameMT.get("languageCode").asText();
+            String languageText = nameMT.get("languageText").asText();
+            if (languageCode.equals("en")){
+                if (!languageText.startsWith("Subset for ")) {
+                    return ErrorHandler.newHttpError("English subset name must start with 'Subset for '", BAD_REQUEST, LOG);
+                }
+            } else if (languageCode.equals("nb") || languageCode.equals("nn")) {
+                if (!languageText.startsWith("Uttrekk for ")) {
+                    return ErrorHandler.newHttpError("Norwegian subset name must start with 'Uttrekk for '", BAD_REQUEST, LOG);
+                }
+            }
+        }
         return new ResponseEntity<>(OK);
     }
 
