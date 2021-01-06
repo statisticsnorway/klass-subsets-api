@@ -329,7 +329,11 @@ public class SubsetsControllerV2 {
     }
 
     @PostMapping(value = "/v2/auth/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> postSubsetVersion(@PathVariable("seriesId") String seriesId, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode version) {
+    public ResponseEntity<JsonNode> postSubsetVersion(
+            @PathVariable("seriesId") String seriesId,
+            @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields,
+            @RequestBody JsonNode version,
+            @RequestParam(defaultValue = "all") String language) {
         LOG.info("POST request to create a version of series "+seriesId);
         if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
@@ -458,6 +462,8 @@ public class SubsetsControllerV2 {
 
         if (ldsPostRE.getStatusCode().equals(CREATED)) {
             LOG.debug("Successfully POSTed version nr "+versionUUID+" of subset series "+seriesId+" to LDS");
+            //TODO: If language param is set to nb/nn/en, then return codes in that language only
+            editableVersion = setCodeNameToSingleLanguage(editableVersion, language);
             return new ResponseEntity<>(editableVersion, CREATED);
         } else
             return ldsPostRE;
