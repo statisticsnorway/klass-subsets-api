@@ -902,6 +902,20 @@ public class SubsetsControllerV2 {
         ResponseEntity<JsonNode> schemaCheckRE = Utils.checkAgainstSchema(seriesDefinition, series, LOG);
         if (!schemaCheckRE.getStatusCode().is2xxSuccessful())
             return schemaCheckRE;
+        ArrayNode names = series.get(Field.NAME).deepCopy();
+        for (JsonNode nameMT : names) {
+            String languageCode = nameMT.get("languageCode").asText();
+            String languageText = nameMT.get("languageText").asText();
+            if (languageCode.equals("en")){
+                if (!languageText.startsWith("Subset for ")) {
+                    return ErrorHandler.newHttpError("English subset name must start with 'Subset for '", BAD_REQUEST, LOG);
+                }
+            } else if (languageCode.equals("nb") || languageCode.equals("nn")) {
+                if (!languageText.startsWith("Uttrekk for ")) {
+                    return ErrorHandler.newHttpError("Norwegian subset name must start with 'Uttrekk for '", BAD_REQUEST, LOG);
+                }
+            }
+        }
         return new ResponseEntity<>(OK);
     }
 
