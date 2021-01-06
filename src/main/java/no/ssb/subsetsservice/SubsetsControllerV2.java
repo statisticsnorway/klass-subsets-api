@@ -248,7 +248,12 @@ public class SubsetsControllerV2 {
      * @return
      */
     @PutMapping(value = "/v2/subsets/{seriesId}/versions/{versionUID}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> putSubsetVersion(@PathVariable("seriesId") String seriesId, @PathVariable("versionUID") String versionUID, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode putVersion) {
+    public ResponseEntity<JsonNode> putSubsetVersion(
+            @PathVariable("seriesId") String seriesId,
+            @PathVariable("versionUID") String versionUID,
+            @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields,
+            @RequestParam(defaultValue = "all") String language,
+            @RequestBody JsonNode putVersion) {
         LOG.info("PUT subset version of series "+seriesId+" with version id "+versionUID);
         if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
@@ -323,13 +328,19 @@ public class SubsetsControllerV2 {
                 return compareFieldsRE;
         }
         ResponseEntity<JsonNode> editVersionRE = new LDSFacade().editVersion(editablePutVersion);
-        if (editVersionRE.getStatusCode().is2xxSuccessful())
+        if (editVersionRE.getStatusCode().is2xxSuccessful()) {
+            editablePutVersion = setCodeNameToSingleLanguage(editablePutVersion, language);
             return new ResponseEntity<>(editablePutVersion, OK);
+        }
         return editVersionRE;
     }
 
     @PostMapping(value = "/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> postSubsetVersion(@PathVariable("seriesId") String seriesId, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode version) {
+    public ResponseEntity<JsonNode> postSubsetVersion(
+            @PathVariable("seriesId") String seriesId,
+            @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields,
+            @RequestBody JsonNode version,
+            @RequestParam(defaultValue = "all") String language) {
         LOG.info("POST request to create a version of series "+seriesId);
         if (!Utils.isClean(seriesId))
             return ErrorHandler.illegalID(LOG);
@@ -458,6 +469,8 @@ public class SubsetsControllerV2 {
 
         if (ldsPostRE.getStatusCode().equals(CREATED)) {
             LOG.debug("Successfully POSTed version nr "+versionUUID+" of subset series "+seriesId+" to LDS");
+            //TODO: If language param is set to nb/nn/en, then return codes in that language only
+            editableVersion = setCodeNameToSingleLanguage(editableVersion, language);
             return new ResponseEntity<>(editableVersion, CREATED);
         } else
             return ldsPostRE;
@@ -1138,6 +1151,7 @@ public class SubsetsControllerV2 {
                         seriesId,
                         latestPublishedVersion.get(Field.VERSION_ID).asText(),
                         false,
+                        "all",
                         latestPublishedVersion);
                 if (!putVersionRE.getStatusCode().is2xxSuccessful()){
                     return ErrorHandler.newHttpError("Failed to update the validUntil of the previous last published version. PUT caused error code "+putVersionRE.getStatusCode()+" and had body "+(putVersionRE.hasBody() && putVersionRE.getBody() != null ? putVersionRE.getBody().toPrettyString().replaceAll("\n", "").replaceAll("\r", "").replaceAll("\t", "") : ""), INTERNAL_SERVER_ERROR, LOG);
