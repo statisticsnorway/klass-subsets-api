@@ -77,7 +77,7 @@ public class SubsetsControllerV2 {
      * @param subsetSeriesJson
      * @return
      */
-    @PostMapping("/v2/subsets")
+    @PostMapping("open/v2/subsets")
     public ResponseEntity<JsonNode> postSubsetSeries(@RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode subsetSeriesJson) {
         metricsService.incrementPOSTCounter();
         LOG.info("POST subset series received. Checking body . . .");
@@ -174,7 +174,7 @@ public class SubsetsControllerV2 {
      * @param newEditionOfSeries
      * @return
      */
-    @PutMapping(value = "/v2/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "open/v2/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> putSubsetSeries(@PathVariable("id") String seriesId, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode newEditionOfSeries) {
         metricsService.incrementPUTCounter();
         LOG.info("PUT subset series with id "+seriesId);
