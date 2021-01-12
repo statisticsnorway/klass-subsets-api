@@ -77,7 +77,7 @@ public class SubsetsControllerV2 {
      * @param subsetSeriesJson
      * @return
      */
-    @PostMapping("/v2/subsets")
+    @PostMapping("/open/v2/subsets")
     public ResponseEntity<JsonNode> postSubsetSeries(@RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode subsetSeriesJson) {
         metricsService.incrementPOSTCounter();
         LOG.info("POST subset series received. Checking body . . .");
@@ -174,7 +174,7 @@ public class SubsetsControllerV2 {
      * @param newEditionOfSeries
      * @return
      */
-    @PutMapping(value = "/v2/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/open/v2/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> putSubsetSeries(@PathVariable("id") String seriesId, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode newEditionOfSeries) {
         metricsService.incrementPUTCounter();
         LOG.info("PUT subset series with id "+seriesId);
@@ -252,7 +252,7 @@ public class SubsetsControllerV2 {
      * @param putVersion
      * @return
      */
-    @PutMapping(value = "/v2/subsets/{seriesId}/versions/{versionUID}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/open/v2/subsets/{seriesId}/versions/{versionUID}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> putSubsetVersion(
             @PathVariable("seriesId") String seriesId,
             @PathVariable("versionUID") String versionUID,
@@ -350,7 +350,7 @@ public class SubsetsControllerV2 {
         return putSubsetVersion(seriesId, versionUID, ignoreSuperfluousFields, language, putVersion);
     }
 
-    @PostMapping(value = "/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/open/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> postSubsetVersion(
             @PathVariable("seriesId") String seriesId,
             @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields,
@@ -797,16 +797,16 @@ public class SubsetsControllerV2 {
         return new LDSFacade().getSubsetSeriesSchema();
     }
 
-    @DeleteMapping("/v2/subsets")
+    @DeleteMapping("/open/v2/subsets")
     void deleteAllSeries(){
         new LDSFacade().deleteAllSubsetSeries();
     }
-    @DeleteMapping("/v2/subsets/{id}")
+    @DeleteMapping("/open/v2/subsets/{id}")
     void deleteSeriesById(@PathVariable("id") String id){
         new LDSFacade().deleteSubsetSeries(id);
     }
 
-    @DeleteMapping("/v2/subsets/{id}/versions/{versionId}")
+    @DeleteMapping("/open/v2/subsets/{id}/versions/{versionId}")
     void deleteVersionById(@PathVariable("id") String id, @PathVariable("versionId") String versionId){
         LOG.info("Deleting version "+versionId+" from series "+id);
         String[] versionIdSplitUnderscore = versionId.split("_");
