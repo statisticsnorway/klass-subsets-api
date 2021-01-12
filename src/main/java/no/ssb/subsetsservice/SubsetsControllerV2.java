@@ -77,7 +77,7 @@ public class SubsetsControllerV2 {
      * @param subsetSeriesJson
      * @return
      */
-    @PostMapping("/open/v2/subsets")
+    @PostMapping("/auth/v2/subsets")
     public ResponseEntity<JsonNode> postSubsetSeries(@RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode subsetSeriesJson) {
         metricsService.incrementPOSTCounter();
         LOG.info("POST subset series received. Checking body . . .");
@@ -131,11 +131,6 @@ public class SubsetsControllerV2 {
         return responseEntity;
     }
 
-    @PostMapping("{/auth/v2/subsets")
-    public ResponseEntity<JsonNode> postSubsetSeriesAuth(@RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode subsetSeriesJson) {
-        return postSubsetSeries(ignoreSuperfluousFields, subsetSeriesJson);
-    }
-
     @GetMapping("/v2/subsets/{id}")
     public ResponseEntity<JsonNode> getSubsetSeriesByID(@PathVariable("id") String id,
                                                         @RequestParam(defaultValue = "false") boolean includeFullVersions,
@@ -174,7 +169,7 @@ public class SubsetsControllerV2 {
      * @param newEditionOfSeries
      * @return
      */
-    @PutMapping(value = "/open/v2/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/auth/v2/subsets/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> putSubsetSeries(@PathVariable("id") String seriesId, @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields, @RequestBody JsonNode newEditionOfSeries) {
         metricsService.incrementPUTCounter();
         LOG.info("PUT subset series with id "+seriesId);
@@ -252,7 +247,7 @@ public class SubsetsControllerV2 {
      * @param putVersion
      * @return
      */
-    @PutMapping(value = "/open/v2/subsets/{seriesId}/versions/{versionUID}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/auth/v2/subsets/{seriesId}/versions/{versionUID}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> putSubsetVersion(
             @PathVariable("seriesId") String seriesId,
             @PathVariable("versionUID") String versionUID,
@@ -340,17 +335,7 @@ public class SubsetsControllerV2 {
         return editVersionRE;
     }
 
-    @PutMapping(value = "/auth/v2/subsets/{seriesId}/versions/{versionUID}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JsonNode> putSubsetVersionAuth(
-            @PathVariable("seriesId") String seriesId,
-            @PathVariable("versionUID") String versionUID,
-            @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields,
-            @RequestParam(defaultValue = "all") String language,
-            @RequestBody JsonNode putVersion) {
-        return putSubsetVersion(seriesId, versionUID, ignoreSuperfluousFields, language, putVersion);
-    }
-
-    @PostMapping(value = "/open/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/auth/v2/subsets/{seriesId}/versions", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JsonNode> postSubsetVersion(
             @PathVariable("seriesId") String seriesId,
             @RequestParam(defaultValue = "false") boolean ignoreSuperfluousFields,
@@ -791,23 +776,24 @@ public class SubsetsControllerV2 {
     }
 
     @GetMapping("/v2/subsets/schema")
-    public ResponseEntity<JsonNode> getSchema(){
+    public ResponseEntity<JsonNode> getSchema() {
         metricsService.incrementGETCounter();
         LOG.info("GET schema definition for subsets series");
         return new LDSFacade().getSubsetSeriesSchema();
     }
 
-    @DeleteMapping("/open/v2/subsets")
+    @DeleteMapping("/auth/v2/subsets")
     void deleteAllSeries(){
         new LDSFacade().deleteAllSubsetSeries();
     }
-    @DeleteMapping("/open/v2/subsets/{id}")
+
+    @DeleteMapping("/auth/v2/subsets/{id}")
     void deleteSeriesById(@PathVariable("id") String id){
         new LDSFacade().deleteSubsetSeries(id);
     }
 
-    @DeleteMapping("/open/v2/subsets/{id}/versions/{versionId}")
-    void deleteVersionById(@PathVariable("id") String id, @PathVariable("versionId") String versionId){
+    @DeleteMapping("/auth/v2/subsets/{id}/versions/{versionId}")
+    void deleteVersionById(@PathVariable("id") String id, @PathVariable("versionId") String versionId) {
         LOG.info("Deleting version "+versionId+" from series "+id);
         String[] versionIdSplitUnderscore = versionId.split("_");
         String versionUID = "";
@@ -819,7 +805,7 @@ public class SubsetsControllerV2 {
         new LDSFacade().deleteSubsetVersionFromSeriesAndFromLDS(id, versionUID);
     }
 
-    private ObjectNode removeSuperfluousSeriesFields(JsonNode version){
+    private ObjectNode removeSuperfluousSeriesFields(JsonNode version) {
         ResponseEntity<JsonNode> seriesDefinitionRE = new LDSFacade().getSubsetSeriesDefinition();
         if (!seriesDefinitionRE.getStatusCode().is2xxSuccessful())
             throw new Error("Request to get subset versions definition was unsuccessful");
@@ -829,7 +815,7 @@ public class SubsetsControllerV2 {
         return removeSuperfluousFields(version, definitionProperties);
     }
 
-    private ObjectNode removeSuperfluousVersionFields(JsonNode version){
+    private ObjectNode removeSuperfluousVersionFields(JsonNode version) {
         ResponseEntity<JsonNode> versionDefinitionRE = new LDSFacade().getSubsetVersionsDefinition();
         if (!versionDefinitionRE.getStatusCode().is2xxSuccessful())
             throw new Error("Request to get subset versions definition was unsuccessful");
