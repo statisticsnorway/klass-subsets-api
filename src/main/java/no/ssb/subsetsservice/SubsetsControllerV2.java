@@ -12,7 +12,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.awt.image.BufferedImageFilter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -331,7 +330,7 @@ public class SubsetsControllerV2 {
         }
         ResponseEntity<JsonNode> editVersionRE = new LDSFacade().editVersion(editablePutVersion);
         if (editVersionRE.getStatusCode().is2xxSuccessful()) {
-            editablePutVersion = setCodeNameToSingleLanguage(editablePutVersion, language);
+            editablePutVersion = setSingleLanguage(editablePutVersion, language);
             return new ResponseEntity<>(editablePutVersion, OK);
         }
         return editVersionRE;
@@ -473,7 +472,7 @@ public class SubsetsControllerV2 {
         if (ldsPostRE.getStatusCode().equals(CREATED)) {
             LOG.debug("Successfully POSTed version nr "+versionUUID+" of subset series "+seriesId+" to LDS");
             //TODO: If language param is set to nb/nn/en, then return codes in that language only
-            editableVersion = setCodeNameToSingleLanguage(editableVersion, language);
+            editableVersion = setSingleLanguage(editableVersion, language);
             return new ResponseEntity<>(editableVersion, CREATED);
         } else
             return ldsPostRE;
@@ -607,12 +606,12 @@ public class SubsetsControllerV2 {
         ObjectNode versionJsonNode = versionByIdRE.getBody().deepCopy();
         versionJsonNode = Utils.addLinksToSubsetVersion(versionJsonNode);
         if (!language.equals("all")) {
-            versionJsonNode = setCodeNameToSingleLanguage(versionJsonNode, language);
+            versionJsonNode = setSingleLanguage(versionJsonNode, language);
         }
         return new ResponseEntity<>(versionJsonNode, OK);
     }
 
-    private ObjectNode setCodeNameToSingleLanguage(ObjectNode versionNode, String languageCode){
+    private ObjectNode setSingleLanguage(ObjectNode versionNode, String languageCode){
         ObjectNode versionNodeCopy = versionNode.deepCopy();
         ArrayNode codes = versionNodeCopy.get(Field.CODES).deepCopy();
         for (int i = 0; i < codes.size(); i++) {
@@ -623,6 +622,16 @@ public class SubsetsControllerV2 {
                     code.put(Field.NAME, nameMLT.get("languageText").asText());
                     codes.set(i, code);
                     break;
+                }
+            }
+            if (code.has(Field.NOTES)) {
+                ArrayNode notesMLTArrayCopy = code.get(Field.NOTES).deepCopy();
+                for (JsonNode noteMLT : notesMLTArrayCopy) {
+                    if (noteMLT.get(Field.LANGUAGE_CODE).asText().equals(languageCode)) {
+                        code.put(Field.NAME, noteMLT.get(Field.LANGUAGE_TEXT).asText());
+                        codes.set(i, code);
+                        break;
+                    }
                 }
             }
         }
