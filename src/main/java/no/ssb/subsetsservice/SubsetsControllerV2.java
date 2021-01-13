@@ -279,6 +279,7 @@ public class SubsetsControllerV2 {
         editablePutVersion.set(Field.CREATED_DATE, previousEditionOfVersion.get(Field.CREATED_DATE));
         editablePutVersion = Utils.addCodeVersionsToAllCodesInVersion(editablePutVersion, LOG);
         editablePutVersion = addCodeNamesFromKlass(editablePutVersion);
+        editablePutVersion = addNotesFromKlass(editablePutVersion);
 
         if (ignoreSuperfluousFields){
             editablePutVersion = removeSuperfluousVersionFields(editablePutVersion);
@@ -380,6 +381,7 @@ public class SubsetsControllerV2 {
         editableVersion.put(Field.CREATED_DATE, Utils.getNowDate());
         editableVersion = Utils.addCodeVersionsToAllCodesInVersion(editableVersion, LOG);
         editableVersion = addCodeNamesFromKlass(editableVersion);
+        editableVersion = addNotesFromKlass(editableVersion);
 
         boolean isStatusOpen = editableVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
 
@@ -474,6 +476,46 @@ public class SubsetsControllerV2 {
             return new ResponseEntity<>(editableVersion, CREATED);
         } else
             return ldsPostRE;
+    }
+
+    private ObjectNode addNotesFromKlass(ObjectNode editableVersion) {
+        LOG.debug("Getting and adding code notes from KLASS");
+        ObjectNode editableVersionCopy = editableVersion.deepCopy();
+        ArrayNode codesArrayNode = editableVersionCopy.get(Field.CODES).deepCopy();
+        for (int i = 0; i < codesArrayNode.size(); i++) {
+            ObjectNode codeNodeEditableCopy = codesArrayNode.get(i).deepCopy();
+            codeNodeEditableCopy.set(Field.NOTES, new ObjectMapper().createArrayNode());
+            ArrayNode classificationVersionsArrayNode = codeNodeEditableCopy.get(Field.CLASSIFICATION_VERSIONS).deepCopy();
+            for (String languageCode : Utils.LANGUAGE_CODES) {
+                String latestKlassVersionURL = classificationVersionsArrayNode.get(0).asText() + ".json?language="+languageCode;
+                LOG.debug("latest klass version URL: " + latestKlassVersionURL);
+                ResponseEntity<JsonNode> latestKlassVersionRE = KlassURNResolver.getFrom(latestKlassVersionURL);
+                if (latestKlassVersionRE.getStatusCode().is2xxSuccessful()) {
+                    String codeString = codeNodeEditableCopy.get(Field.CODE).asText();
+                    if (latestKlassVersionRE.getBody().isArray()) {
+                        ArrayNode versionClassificationItemsArrayNode = latestKlassVersionRE.getBody().deepCopy();
+                        for (int i1 = 0; i1 < versionClassificationItemsArrayNode.size(); i1++) {
+                            JsonNode classificationItemJsonNode = versionClassificationItemsArrayNode.get(i1);
+                            String classificationItemCodeString = classificationItemJsonNode.get(Field.CODE).asText();
+                            if (classificationItemCodeString.equals(codeString)) {
+                                String codeNotesString = classificationItemJsonNode.get(Field.NOTES).asText();
+                                ObjectNode mlT = Utils.createMultilingualText(languageCode, codeNotesString);
+                                ArrayNode oldNotesMltArrayCopy = codeNodeEditableCopy.get(Field.NOTES).deepCopy();
+                                oldNotesMltArrayCopy.add(mlT);
+                                codeNodeEditableCopy.set(Field.NOTES, oldNotesMltArrayCopy);
+                            }
+                        }
+                    } else {
+                        LOG.error("latest klass version RE body was not array, despite being status OK 200");
+                    }
+                } else {
+                    LOG.error("latestKlassVersionRE did not return status OK 200");
+                }
+            }
+            codesArrayNode.set(i, codeNodeEditableCopy);
+        }
+        editableVersionCopy.set(Field.CODES, codesArrayNode);
+        return editableVersionCopy;
     }
 
     @GetMapping("/v2/subsets/{id}/versions")
