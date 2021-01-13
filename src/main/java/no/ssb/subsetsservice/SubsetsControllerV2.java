@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.awt.image.BufferedImageFilter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -492,21 +493,27 @@ public class SubsetsControllerV2 {
                 ResponseEntity<JsonNode> latestKlassVersionRE = KlassURNResolver.getFrom(latestKlassVersionURL);
                 if (latestKlassVersionRE.getStatusCode().is2xxSuccessful()) {
                     String codeString = codeNodeEditableCopy.get(Field.CODE).asText();
-                    if (latestKlassVersionRE.getBody().isArray()) {
-                        ArrayNode versionClassificationItemsArrayNode = latestKlassVersionRE.getBody().deepCopy();
-                        for (int i1 = 0; i1 < versionClassificationItemsArrayNode.size(); i1++) {
-                            JsonNode classificationItemJsonNode = versionClassificationItemsArrayNode.get(i1);
-                            String classificationItemCodeString = classificationItemJsonNode.get(Field.CODE).asText();
-                            if (classificationItemCodeString.equals(codeString)) {
-                                String codeNotesString = classificationItemJsonNode.get(Field.NOTES).asText();
-                                ObjectNode mlT = Utils.createMultilingualText(languageCode, codeNotesString);
-                                ArrayNode oldNotesMltArrayCopy = codeNodeEditableCopy.get(Field.NOTES).deepCopy();
-                                oldNotesMltArrayCopy.add(mlT);
-                                codeNodeEditableCopy.set(Field.NOTES, oldNotesMltArrayCopy);
+                    if (latestKlassVersionRE.getBody().has(Field.CLASSIFICATION_ITEMS)) {
+                        JsonNode classificationItems = latestKlassVersionRE.getBody().get(Field.CLASSIFICATION_ITEMS);
+                        if (classificationItems.isArray()) {
+                            ArrayNode versionClassificationItemsArrayNode = classificationItems.deepCopy();
+                            for (int i1 = 0; i1 < versionClassificationItemsArrayNode.size(); i1++) {
+                                JsonNode classificationItemJsonNode = versionClassificationItemsArrayNode.get(i1);
+                                String classificationItemCodeString = classificationItemJsonNode.get(Field.CODE).asText();
+                                if (classificationItemCodeString.equals(codeString)) {
+                                    String codeNotesString = classificationItemJsonNode.get(Field.NOTES).asText();
+                                    ObjectNode mlT = Utils.createMultilingualText(languageCode, codeNotesString);
+                                    ArrayNode oldNotesMltArrayCopy = codeNodeEditableCopy.get(Field.NOTES).deepCopy();
+                                    oldNotesMltArrayCopy.add(mlT);
+                                    codeNodeEditableCopy.set(Field.NOTES, oldNotesMltArrayCopy);
+                                    LOG.debug("Notes for codeString "+codeString+" were set to '"+codeNotesString+"' for language code "+languageCode);
+                                }
                             }
+                        } else {
+                            LOG.error("'"+Field.CLASSIFICATION_ITEMS+"' from the latest klass version RE body was not array, despite RE being status OK 200");
                         }
                     } else {
-                        LOG.error("latest klass version RE body was not array, despite being status OK 200");
+                        LOG.error("KLASS version RE Body did not contain '"+Field.CLASSIFICATION_ITEMS+"', despite being status OK 200");
                     }
                 } else {
                     LOG.error("latestKlassVersionRE did not return status OK 200");
