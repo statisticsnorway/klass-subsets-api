@@ -30,4 +30,8 @@ public class Field {
     public static final String ADMINISTRATIVE_DETAIL_TYPE = "administrativeDetailType";
     public static final String DEFAULTLANGUAGE = "DEFAULTLANGUAGE";
     public static final String VALUES = "values";
+    public static final String NOTES = "notes";
+    public static final String LANGUAGE_TEXT = "languageText";
+    public static final String LANGUAGE_CODE = "languageCode";
+    public static final String CLASSIFICATION_ITEMS = "classificationItems";
 }
