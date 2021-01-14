@@ -5,8 +5,8 @@
     {"languageCode":"en", "languageText":"2 text in english"}
   ],
   "name": [
-    {"languageCode":"nb", "languageText":"2 fullt navn på norsk bokmål"},
-    {"languageCode":"en", "languageText":"2 full name in english"}
+    {"languageCode":"nb", "languageText":"Uttrekk for test"},
+    {"languageCode":"en", "languageText":"Subset for test"}
   ],
   "administrativeDetails": [
     {"administrativeDetailType":"DEFAULTLANGUAGE", "values":["en"]}

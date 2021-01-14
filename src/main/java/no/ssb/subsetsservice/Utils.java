@@ -124,6 +124,13 @@ public class Utils {
         return String.format(URN_FORMAT, classification, code);
     }
 
+    public static ObjectNode createMultilingualText(String languageCode, String languageText) {
+        ObjectNode mlT = new ObjectMapper().createObjectNode();
+        mlT.put(Field.LANGUAGE_CODE, languageCode);
+        mlT.put(Field.LANGUAGE_TEXT, languageText);
+        return mlT;
+    }
+
     public static ObjectNode addCodeVersionsToAllCodesInVersion(JsonNode subsetVersion, Logger LOG) {
         ObjectNode editableVersion = subsetVersion.deepCopy();
         LOG.debug("Finding out what classification versions the codes in the subsetVersion are used in");
