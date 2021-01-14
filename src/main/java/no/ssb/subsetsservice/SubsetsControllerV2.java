@@ -1177,7 +1177,7 @@ public class SubsetsControllerV2 {
 
     private ResponseEntity<JsonNode> updateLatestPublishedValidUntil(ResponseEntity<JsonNode> isOverlappingValidityRE,
                                                                      JsonNode newVersion,
-                                                                     String seriesId){
+                                                                     String seriesId) {
         JsonNode isOverlapREBody = isOverlappingValidityRE.getBody();
         if (isOverlapREBody.get("existOtherPublishedVersions").asBoolean() &&
                 isOverlapREBody.get("isNewLatestVersion").asBoolean()) {
