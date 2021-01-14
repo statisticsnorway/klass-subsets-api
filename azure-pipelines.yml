@@ -83,6 +83,6 @@ jobs:
           imageName: $(imageName)
           repoName: $(repoName)
       - template: 'docker/docker-tag-for-production.yml@templates'
-          parameters:
-            tagToTag: 'master-$(fullSha)'
-            gcrImageName: $(imageName)
+        parameters:
+          tagToTag: 'master-$(fullSha)'
+          gcrImageName: $(imageName)
