@@ -1104,7 +1104,7 @@ public class SubsetsControllerV2 {
                                     "If a validUntil is not set for a posted version, it must be the new latest subset series version ",
                                     BAD_REQUEST,
                                     LOG);
-                        if (oldPublishedVersionValidUntil != null && oldPublishedVersionValidUntil.compareTo(newVersionValidFrom) >= 0)
+                        if (oldPublishedVersionValidUntil != null && oldPublishedVersionValidUntil.compareTo(newVersionValidFrom) > 0)
                             return ErrorHandler.newHttpError(
                                     "The new latest version's validFrom must be after the previous versions validUntil, if the previous version has an explicit validUntil",
                                     BAD_REQUEST,
