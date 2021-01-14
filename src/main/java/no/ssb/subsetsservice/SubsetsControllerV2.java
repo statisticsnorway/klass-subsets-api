@@ -1092,6 +1092,11 @@ public class SubsetsControllerV2 {
                                 LOG);
 
                     if (newVersionValidUntil != null) {
+                        if (newVersionValidUntil.compareTo(oldPublishedVersionValidFrom) > 0 && newVersionValidFrom.compareTo(oldPublishedVersionValidFrom) < 0)
+                            return ErrorHandler.newHttpError(
+                                    "The new version's validUntil can not be inside the range of an existing published version when the validFrom of the new version is before the validFrom of the old published subset",
+                                    BAD_REQUEST,
+                                    LOG);
                         // Check if newVersionValidUntil of the new version is within the validity range of this old version
                         if (newVersionValidUntil.compareTo(oldPublishedVersionValidFrom) > 0 && (oldPublishedVersionValidUntil != null && newVersionValidUntil.compareTo(oldPublishedVersionValidUntil) <= 0))
                             return ErrorHandler.newHttpError(
