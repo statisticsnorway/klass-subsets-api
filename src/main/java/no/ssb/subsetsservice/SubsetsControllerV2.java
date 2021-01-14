@@ -1085,7 +1085,7 @@ public class SubsetsControllerV2 {
 
                     String oldPublishedVersionValidUntil = oldPublishedSubsetVersion.has(Field.VALID_UNTIL) ? oldPublishedSubsetVersion.get(Field.VALID_UNTIL).asText() : null;
 
-                    if (newVersionValidFrom.compareTo(oldPublishedVersionValidFrom) >= 0 && (oldPublishedVersionValidUntil != null && newVersionValidFrom.compareTo(oldPublishedVersionValidUntil) <= 0))
+                    if (newVersionValidFrom.compareTo(oldPublishedVersionValidFrom) >= 0 && (oldPublishedVersionValidUntil != null && newVersionValidFrom.compareTo(oldPublishedVersionValidUntil) < 0))
                         return ErrorHandler.newHttpError(
                                 "The new version's validFrom is within the closed validity range of an existing subset version. Colliding version nr: "+oldPublishedSubsetVersion.get(Field.VERSION_ID).asText(),
                                 BAD_REQUEST,
