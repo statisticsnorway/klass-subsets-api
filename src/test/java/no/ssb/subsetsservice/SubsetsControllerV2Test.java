@@ -35,8 +35,10 @@ class SubsetsControllerV2Test {
     private final File version_1_0_1_open = new File("src/test/resources/version_examples/version_1_0_1_open.json");
     private final File version_2_0_1 = new File("src/test/resources/version_examples/version_2_0_1.json");
     private final File version_2_0_2 = new File("src/test/resources/version_examples/version_2_0_2.json");
+    private final File version_2_0_2_draft = new File("src/test/resources/version_examples/version_2_0_2_draft.json");
     private final File version_2_0_2_validUntil = new File("src/test/resources/version_examples/version_2_0_2_validUntil.json");
     private final File version_2_0_3 = new File("src/test/resources/version_examples/version_2_0_3.json");
+    private final File version_2_0_3_draft = new File("src/test/resources/version_examples/version_2_0_3_draft.json");
     private final File version_2_0_3_overlapping_date = new File("src/test/resources/version_examples/version_2_0_3_overlapping_date.json");
 
     private final File version_1_extra_field = new File("src/test/resources/version_examples/version_1_extra_field.json");
@@ -1401,5 +1403,87 @@ class SubsetsControllerV2Test {
         ResponseEntity<JsonNode> getCodesFromToRE = instance.getSubsetCodes(seriesId, "2020-01-01", "2021-01-01", true, true, "all");
         ArrayNode codesArray = getCodesFromToRE.getBody().deepCopy();
         assertEquals(1, codesArray.get(0).get(Field.CLASSIFICATION_VERSIONS).size());
+    }
+
+    @Test
+    void autoSetValidUntilOnPublish(){
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_2_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version202Draft = readJsonFile(version_2_0_2_draft);
+        ResponseEntity<JsonNode> postVersion202DraftRE = instance.postSubsetVersion(seriesId, false, version202Draft, "all");
+        assertEquals(HttpStatus.CREATED, postVersion202DraftRE.getStatusCode());
+
+        JsonNode version203Draft = readJsonFile(version_2_0_3_draft);
+        ResponseEntity<JsonNode> postVersion203DraftRE = instance.postSubsetVersion(seriesId, false, version203Draft, "all");
+        assertEquals(HttpStatus.CREATED, postVersion203DraftRE.getStatusCode());
+
+        JsonNode version202Open = readJsonFile(version_2_0_2);
+        ResponseEntity<JsonNode> postVersion202OpenRE = instance.putSubsetVersion(seriesId,
+                postVersion202DraftRE.getBody().get(Field.VERSION_ID).asText(),
+                false,
+                "all",
+                version202Open);
+        assertEquals(HttpStatus.OK, postVersion202OpenRE.getStatusCode());
+
+        JsonNode version203Open = readJsonFile(version_2_0_3);
+        ResponseEntity<JsonNode> putVersion203OpenRE = instance.putSubsetVersion(
+                seriesId,
+                postVersion203DraftRE.getBody().get(Field.VERSION_ID).asText(),
+                false,
+                "all",
+                version203Open);
+        assertEquals(HttpStatus.OK, putVersion203OpenRE.getStatusCode());
+
+        ResponseEntity<JsonNode> getVersion202RE = instance.getVersion(seriesId, postVersion202OpenRE.getBody().get(Field.VERSION_ID).asText(), "all");
+        JsonNode getVersion202REBody = getVersion202RE.getBody();
+        System.out.println(getVersion202REBody.toPrettyString());
+        assertTrue(getVersion202REBody.has(Field.VALID_UNTIL));
+        assertEquals(version203Open.get(Field.VALID_FROM), getVersion202REBody.get(Field.VALID_UNTIL));
+    }
+
+    @Test
+    void autoSetValidUntil2(){
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_2_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode version202Draft = readJsonFile(version_2_0_2_draft);
+        ResponseEntity<JsonNode> postVersion202DraftRE = instance.postSubsetVersion(seriesId, false, version202Draft, "all");
+        assertEquals(HttpStatus.CREATED, postVersion202DraftRE.getStatusCode());
+
+        JsonNode version203Draft = readJsonFile(version_2_0_3_draft);
+        ResponseEntity<JsonNode> postVersion203DraftRE = instance.postSubsetVersion(seriesId, false, version203Draft, "all");
+        assertEquals(HttpStatus.CREATED, postVersion203DraftRE.getStatusCode());
+
+        JsonNode version203Open = readJsonFile(version_2_0_3);
+        ResponseEntity<JsonNode> putVersion203OpenRE = instance.putSubsetVersion(
+                seriesId,
+                postVersion203DraftRE.getBody().get(Field.VERSION_ID).asText(),
+                false,
+                "all",
+                version203Open);
+        assertEquals(HttpStatus.OK, putVersion203OpenRE.getStatusCode());
+
+        JsonNode version202Open = readJsonFile(version_2_0_2);
+        ResponseEntity<JsonNode> putVersion202OpenRE = instance.putSubsetVersion(seriesId,
+                postVersion202DraftRE.getBody().get(Field.VERSION_ID).asText(),
+                false,
+                "all",
+                version202Open);
+        assertEquals(HttpStatus.OK, putVersion202OpenRE.getStatusCode());
+
+        ResponseEntity<JsonNode> getVersion202RE = instance.getVersion(seriesId, putVersion202OpenRE.getBody().get(Field.VERSION_ID).asText(), "all");
+        JsonNode getVersion202REBody = getVersion202RE.getBody();
+        System.out.println(getVersion202REBody.toPrettyString());
+        assertTrue(getVersion202REBody.has(Field.VALID_UNTIL));
+        assertEquals(version203Open.get(Field.VALID_FROM), getVersion202REBody.get(Field.VALID_UNTIL));
     }
 }
