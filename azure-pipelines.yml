@@ -78,7 +78,11 @@ jobs:
           testResultsFiles: '**/TEST-*.xml'
           goals: 'install'
           options: '-DskipTests=false -Dmaven.javadoc.skip=true'
-  - template: 'docker/docker-build-image-and-push-to-gcr.yml@templates'
+      - template: 'docker/docker-build-image-and-push-to-gcr.yml@templates'
+        parameters:
+          imageName: $(imageName)
+          repoName: $(repoName)
+  - template: 'docker/docker-tag-for-production.yml@templates'
     parameters:
-      imageName: $(imageName)
-      repoName: $(repoName)
+      tagToTag: 'master-$(fullSha)'
+      gcrImageName: $(imageName)
