@@ -904,7 +904,7 @@ class SubsetsControllerV2Test {
     }
 
     @Test
-    void postNewVersionThatSetsValidUntilOfPreviousVersionToOneDayBeforeValidFromOfNewVersion(){
+    void postNewVersionSetsValidUntilOfPreviousLatestVersionToSameDateAsValidFromOfNewVersion(){
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         JsonNode series = readJsonFile(series_1_0);
         String seriesId = series.get(Field.ID).asText();
@@ -1406,7 +1406,7 @@ class SubsetsControllerV2Test {
     }
 
     @Test
-    void autoSetValidUntilOnPublish(){
+    void autoSetValidUntilOnPublishingDrafts(){
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
 
         JsonNode series = readJsonFile(series_2_0);
@@ -1447,7 +1447,7 @@ class SubsetsControllerV2Test {
     }
 
     @Test
-    void autoSetValidUntil2(){
+    void doNotPublishNewFirstVersionThatDoesNotContainValidUntil(){
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
 
         JsonNode series = readJsonFile(series_2_0);
@@ -1478,12 +1478,6 @@ class SubsetsControllerV2Test {
                 false,
                 "all",
                 version202Open);
-        assertEquals(HttpStatus.OK, putVersion202OpenRE.getStatusCode());
-
-        ResponseEntity<JsonNode> getVersion202RE = instance.getVersion(seriesId, putVersion202OpenRE.getBody().get(Field.VERSION_ID).asText(), "all");
-        JsonNode getVersion202REBody = getVersion202RE.getBody();
-        System.out.println(getVersion202REBody.toPrettyString());
-        assertTrue(getVersion202REBody.has(Field.VALID_UNTIL));
-        assertEquals(version203Open.get(Field.VALID_FROM), getVersion202REBody.get(Field.VALID_UNTIL));
+        assertEquals(HttpStatus.BAD_REQUEST, putVersion202OpenRE.getStatusCode());
     }
 }
