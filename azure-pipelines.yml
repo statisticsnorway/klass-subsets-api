@@ -4,7 +4,6 @@ trigger:
   branches:
     include:
       - 'development'
-      - 'master'
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -84,5 +83,5 @@ jobs:
           repoName: $(repoName)
   - template: 'docker/docker-tag-for-production.yml@templates'
     parameters:
-      tagToTag: 'master-$(fullSha)'
+      tagToTag: 'development-$(fullSha)'
       gcrImageName: $(imageName)
