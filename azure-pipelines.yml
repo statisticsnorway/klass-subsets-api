@@ -3,7 +3,7 @@ name: $(Build.SourceBranch)-$(date:yyyyMMdd)$(rev:.r)
 trigger:
   branches:
     include:
-      - 'development'
+      - 'master'
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -83,5 +83,5 @@ jobs:
           repoName: $(repoName)
   - template: 'docker/docker-tag-for-production.yml@templates'
     parameters:
-      tagToTag: 'development-$(fullSha)'
+      tagToTag: 'master-$(fullSha)'
       gcrImageName: $(imageName)
