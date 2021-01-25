@@ -628,7 +628,7 @@ public class SubsetsControllerV2 {
                 ArrayNode notesMLTArrayCopy = code.get(Field.NOTES).deepCopy();
                 for (JsonNode noteMLT : notesMLTArrayCopy) {
                     if (noteMLT.get(Field.LANGUAGE_CODE).asText().equals(languageCode)) {
-                        code.put(Field.NAME, noteMLT.get(Field.LANGUAGE_TEXT).asText());
+                        code.put(Field.NOTES, noteMLT.get(Field.LANGUAGE_TEXT).asText());
                         codes.set(i, code);
                         break;
                     }
