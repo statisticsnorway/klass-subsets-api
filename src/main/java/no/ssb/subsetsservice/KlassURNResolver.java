@@ -24,9 +24,9 @@ public class KlassURNResolver {
         return System.getenv().getOrDefault("API_KLASS", KLASS_BASE_URL);
     }
 
-    static String makeKLASSCodesFromToURL(String classificationID, String from, String to, String codes) {
+    static String makeKLASSCodesFromToURL(String classificationID, String from, String to, String codes, String language) {
         KLASS_BASE_URL = getURL();
-        return String.format("%s%s/%s/codes.json?from=%s&to=%s&selectCodes=%s", KLASS_BASE_URL, CLASSIFICATIONS_API, classificationID, from, to, codes);
+        return String.format("%s%s/%s/codes.json?from=%s&to=%s&selectCodes=%s&language=%s", KLASS_BASE_URL, CLASSIFICATIONS_API, classificationID, from, to, codes, language);
     }
 
     static String makeKLASSClassificationURL(String classificationID) {

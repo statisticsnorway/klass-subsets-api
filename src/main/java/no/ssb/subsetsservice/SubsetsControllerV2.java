@@ -1221,7 +1221,7 @@ public class SubsetsControllerV2 {
                 String validFrom = editableCode.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
                 String validTo = editableCode.has(Field.VALID_TO_IN_REQUESTED_RANGE) && !editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).isNull() ? editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText(): "";
                 String code = editableCode.get(Field.CODE).asText();
-                ResponseEntity<JsonNode> getCodesFromKlassRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSCodesFromToURL(classificationID, validFrom, validTo, code));
+                ResponseEntity<JsonNode> getCodesFromKlassRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSCodesFromToURL(classificationID, validFrom, validTo, code, languageCode));
                 System.out.println(getCodesFromKlassRE.getBody().toPrettyString());
                 ArrayNode codesFromKlassArrayNode = getCodesFromKlassRE.getBody().get(Field.CODES).deepCopy();
                 String name = codesFromKlassArrayNode.get(0).get(Field.NAME).asText();
