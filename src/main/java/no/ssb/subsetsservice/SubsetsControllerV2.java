@@ -1039,9 +1039,11 @@ public class SubsetsControllerV2 {
         if (ldsRE.hasBody())
             body = ldsRE.getBody().asText();
         body = body.replaceAll("\n", "\\n_");
+        if (body.equals(""))
+            body = "EMPTY BODY";
         return ErrorHandler.newHttpError(
-                description+" returned status code "+ldsRE.getStatusCode().toString()+". Body: "+body,
-                INTERNAL_SERVER_ERROR,
+                description+" returned status code "+ldsRE.getStatusCode().toString()+". Response body: "+body,
+                FAILED_DEPENDENCY,
                 LOG);
     }
 
