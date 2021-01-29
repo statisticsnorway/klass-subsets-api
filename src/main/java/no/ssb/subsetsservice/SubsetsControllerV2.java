@@ -331,6 +331,7 @@ public class SubsetsControllerV2 {
         ResponseEntity<JsonNode> editVersionRE = new LDSFacade().editVersion(editablePutVersion);
         if (editVersionRE.getStatusCode().is2xxSuccessful()) {
             editablePutVersion = setSingleLanguage(editablePutVersion, language);
+            editablePutVersion = Utils.addLinksToSubsetVersion(editablePutVersion);
             return new ResponseEntity<>(editablePutVersion, OK);
         }
         return editVersionRE;
@@ -471,7 +472,7 @@ public class SubsetsControllerV2 {
 
         if (ldsPostRE.getStatusCode().equals(CREATED)) {
             LOG.debug("Successfully POSTed version nr "+versionUUID+" of subset series "+seriesId+" to LDS");
-            //TODO: If language param is set to nb/nn/en, then return codes in that language only
+            editableVersion = Utils.addLinksToSubsetVersion(editableVersion);
             editableVersion = setSingleLanguage(editableVersion, language);
             return new ResponseEntity<>(editableVersion, CREATED);
         } else
