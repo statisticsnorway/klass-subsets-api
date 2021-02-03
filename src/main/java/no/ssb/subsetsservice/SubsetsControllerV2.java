@@ -278,8 +278,9 @@ public class SubsetsControllerV2 {
         editablePutVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
         editablePutVersion.set(Field.CREATED_DATE, previousEditionOfVersion.get(Field.CREATED_DATE));
         editablePutVersion = Utils.addCodeVersionsToAllCodesInVersion(editablePutVersion, LOG);
-        editablePutVersion = addCodeNamesFromKlass(editablePutVersion);
-        editablePutVersion = addNotesFromKlass(editablePutVersion);
+        Map<String, ResponseEntity<JsonNode>> klassVersionsMap = getRelevantClassificationVersions(editablePutVersion);
+        editablePutVersion = addCodeNamesFromKlass(editablePutVersion, klassVersionsMap);
+        editablePutVersion = addNotesFromKlass(editablePutVersion, klassVersionsMap);
 
         if (ignoreSuperfluousFields){
             editablePutVersion = removeSuperfluousVersionFields(editablePutVersion);
@@ -381,8 +382,9 @@ public class SubsetsControllerV2 {
         editableVersion.put(Field.LAST_MODIFIED, Utils.getNowISO());
         editableVersion.put(Field.CREATED_DATE, Utils.getNowDate());
         editableVersion = Utils.addCodeVersionsToAllCodesInVersion(editableVersion, LOG);
-        editableVersion = addCodeNamesFromKlass(editableVersion);
-        editableVersion = addNotesFromKlass(editableVersion);
+        Map<String, ResponseEntity<JsonNode>> klassVersionsMap = getRelevantClassificationVersions(editableVersion);
+        editableVersion = addCodeNamesFromKlass(editableVersion, klassVersionsMap);
+        editableVersion = addNotesFromKlass(editableVersion, klassVersionsMap);
 
         boolean isStatusOpen = editableVersion.get(Field.ADMINISTRATIVE_STATUS).asText().equals(Field.OPEN);
 
@@ -479,7 +481,29 @@ public class SubsetsControllerV2 {
             return ldsPostRE;
     }
 
-    private ObjectNode addNotesFromKlass(ObjectNode editableVersion) {
+    private Map<String, ResponseEntity<JsonNode>> getRelevantClassificationVersions(JsonNode subsetVersion) {
+        ArrayNode codesArrayNode = subsetVersion.get(Field.CODES).deepCopy();
+        Map<String, ResponseEntity<JsonNode>> klassVersionsMap = new HashMap<>();
+        LOG.debug("GET relevant latest classification versions for (each of) the "+codesArrayNode.size()+" code(s) in the subset version, and store them in a Map");
+        for (int i = 0; i < codesArrayNode.size(); i++) {
+            LOG.debug("Getting latest classificationVersion containing code nr "+(i+1)+"/"+codesArrayNode.size()+" in subset version.");
+            ArrayNode classificationVersionsArrayNode = codesArrayNode.get(i).get(Field.CLASSIFICATION_VERSIONS).deepCopy();
+            String latestVersionAsText = classificationVersionsArrayNode.get(0).asText();
+            for (String languageCode : Utils.LANGUAGE_CODES) {
+                LOG.debug("Getting latest classificationVersion in language '"+ languageCode+"' for this code");
+                String latestKlassVersionURL = latestVersionAsText + ".json?language=" + languageCode;
+                LOG.debug("latest klass version URL for this language: " + latestKlassVersionURL);
+                if (!klassVersionsMap.containsKey(latestKlassVersionURL)) {
+                    LOG.debug(latestKlassVersionURL+" response ebtity was not present in the klass versions map, so we retrieve it . . .");
+                    ResponseEntity<JsonNode> latestKlassVersionRE = KlassURNResolver.getFrom(latestKlassVersionURL);
+                    klassVersionsMap.put(latestKlassVersionURL, latestKlassVersionRE);
+                }
+            }
+        }
+        return klassVersionsMap;
+    }
+
+    private ObjectNode addNotesFromKlass(ObjectNode editableVersion, Map<String, ResponseEntity<JsonNode>> klassVersionsMap) {
         LOG.debug("Getting and adding code notes from KLASS");
         ObjectNode editableVersionCopy = editableVersion.deepCopy();
         ArrayNode codesArrayNode = editableVersionCopy.get(Field.CODES).deepCopy();
@@ -487,10 +511,18 @@ public class SubsetsControllerV2 {
             ObjectNode codeNodeEditableCopy = codesArrayNode.get(i).deepCopy();
             codeNodeEditableCopy.set(Field.NOTES, new ObjectMapper().createArrayNode());
             ArrayNode classificationVersionsArrayNode = codeNodeEditableCopy.get(Field.CLASSIFICATION_VERSIONS).deepCopy();
+            String firstClassificationVersionAsText = classificationVersionsArrayNode.get(0).asText();
             for (String languageCode : Utils.LANGUAGE_CODES) {
-                String latestKlassVersionURL = classificationVersionsArrayNode.get(0).asText() + ".json?language="+languageCode;
+                String latestKlassVersionURL = firstClassificationVersionAsText + ".json?language="+languageCode;
                 LOG.debug("latest klass version URL: " + latestKlassVersionURL);
-                ResponseEntity<JsonNode> latestKlassVersionRE = KlassURNResolver.getFrom(latestKlassVersionURL);
+                ResponseEntity<JsonNode> latestKlassVersionRE;
+                if (klassVersionsMap.containsKey(latestKlassVersionURL)) {
+                    latestKlassVersionRE = klassVersionsMap.get(latestKlassVersionURL);
+                } else {
+                    LOG.warn("For some reason, Klass versions map did not contain "+latestKlassVersionURL+" which it should have contained at this point (adding notes from klass method). So we have to retrieve it . . .");
+                    latestKlassVersionRE = KlassURNResolver.getFrom(latestKlassVersionURL);
+                    klassVersionsMap.put(latestKlassVersionURL, latestKlassVersionRE);
+                }
                 if (latestKlassVersionRE.getStatusCode().is2xxSuccessful()) {
                     String codeString = codeNodeEditableCopy.get(Field.CODE).asText();
                     if (latestKlassVersionRE.getBody().has(Field.CLASSIFICATION_ITEMS)) {
@@ -1212,22 +1244,42 @@ public class SubsetsControllerV2 {
         return new ResponseEntity<>(OK);
     }
 
-    private ObjectNode addCodeNamesFromKlass(ObjectNode editableVersion) {
+    private ObjectNode addCodeNamesFromKlass(ObjectNode editableVersion, Map<String, ResponseEntity<JsonNode>> klassVersionsMap) {
         ObjectNode editableVersionCopy = editableVersion.deepCopy();
         ArrayNode codes = editableVersionCopy.get(Field.CODES).deepCopy();
         for (int i = 0; i < codes.size(); i++) {
             ObjectNode editableCode = codes.get(i).deepCopy();
             ArrayNode namesArray = new ObjectMapper().createArrayNode();
+            ArrayNode classificationVersionsArrayNode = editableCode.get(Field.CLASSIFICATION_VERSIONS).deepCopy();
+            String firstClassificationVersionAsText = classificationVersionsArrayNode.get(0).asText();
             for (String languageCode : Utils.LANGUAGE_CODES) {
-                // Get code in missing language from KLASS, and add the name as MultilingualText to the namesArray
-                String classificationID = editableCode.get(Field.CLASSIFICATION_ID).asText();
-                String validFrom = editableCode.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
-                String validTo = editableCode.has(Field.VALID_TO_IN_REQUESTED_RANGE) && !editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).isNull() ? editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText(): "";
+                String latestKlassVersionURL = firstClassificationVersionAsText + ".json?language="+languageCode;
                 String code = editableCode.get(Field.CODE).asText();
-                ResponseEntity<JsonNode> getCodesFromKlassRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSCodesFromToURL(classificationID, validFrom, validTo, code, languageCode));
-                System.out.println(getCodesFromKlassRE.getBody().toPrettyString());
-                ArrayNode codesFromKlassArrayNode = getCodesFromKlassRE.getBody().get(Field.CODES).deepCopy();
-                String name = codesFromKlassArrayNode.get(0).get(Field.NAME).asText();
+                String classificationID = editableCode.get(Field.CLASSIFICATION_ID).asText();
+                String name = "";
+                // Get code in missing language from KLASS, and add the name as MultilingualText to the namesArray
+                if (klassVersionsMap.containsKey(latestKlassVersionURL)) {
+                    ResponseEntity<JsonNode> latestKlassVersionRE = klassVersionsMap.get(latestKlassVersionURL);
+                    if (latestKlassVersionRE.getStatusCode().is2xxSuccessful()) {
+                        JsonNode klassVersion = latestKlassVersionRE.getBody();
+                        ArrayNode classificationItems = klassVersion.get(Field.CLASSIFICATION_ITEMS).deepCopy();
+                        for (JsonNode classificationItem : classificationItems) {
+                            if (classificationItem.get(Field.CODE).asText().equals(code)) {
+                                name = classificationItem.get(Field.NAME).asText();
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (name.equals("")) {
+                    LOG.warn("While resolving code names in all languages for code "+code+" from classification "+classificationID+", the klassVersionsMap did not contain the latest klass version url ("+latestKlassVersionURL+") like expected, so we have to get the code name with a direct call instead . . .");
+                    String validFrom = editableCode.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
+                    String validTo = editableCode.has(Field.VALID_TO_IN_REQUESTED_RANGE) && !editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).isNull() ? editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText(): "";
+                    ResponseEntity<JsonNode> getCodesFromKlassRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSCodesFromToURL(classificationID, validFrom, validTo, code, languageCode));
+                    System.out.println(getCodesFromKlassRE.getBody().toPrettyString());
+                    ArrayNode codesFromKlassArrayNode = getCodesFromKlassRE.getBody().get(Field.CODES).deepCopy();
+                    name = codesFromKlassArrayNode.get(0).get(Field.NAME).asText();
+                }
                 ObjectNode mlT = new ObjectMapper().createObjectNode();
                 mlT.put("languageCode", languageCode);
                 mlT.put("languageText", name);
