@@ -137,13 +137,13 @@ public class Utils {
         if (editableVersion.has(Field.CODES)){
             ArrayNode codesArrayNode = (ArrayNode)editableVersion.get(Field.CODES);
             for (int i = 0; i < codesArrayNode.size(); i++) {
-                LOG.debug("Resolving code "+i+"/"+codesArrayNode.size());
+                LOG.debug("Resolving classification versions of code "+(i+1)+"/"+codesArrayNode.size());
                 JsonNode code = Utils.addCodeVersions(codesArrayNode.get(i), LOG);
                 if (code.get(Field.CLASSIFICATION_VERSIONS).size() < 1)
                     LOG.error("Code "+code.get(Field.CODE)+" "+code.get(Field.NAME)+" failed to resolve any versions in validity range "+code.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText()+" - "+(code.has(Field.VALID_TO_IN_REQUESTED_RANGE) ? code.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText() : "null"));
                 codesArrayNode.set(i, code);
             }
-            LOG.debug("codesArrayNode size "+codesArrayNode.size());
+            LOG.debug("Done resolving all classification versions of all codes");
             editableVersion.set(Field.CODES, codesArrayNode);
         }
         return editableVersion;

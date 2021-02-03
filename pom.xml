@@ -10,7 +10,7 @@
     </parent>
     <groupId>no.ssb</groupId>
     <artifactId>klass-subsets-api</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.2-SNAPSHOT</version>
     <name>subsets-service</name>
     <description>klass subsets REST API</description>
 
