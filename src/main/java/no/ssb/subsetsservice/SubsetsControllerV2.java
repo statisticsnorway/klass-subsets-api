@@ -452,17 +452,7 @@ public class SubsetsControllerV2 {
         if (!versionSchemaValidationRE.getStatusCode().is2xxSuccessful())
             return versionSchemaValidationRE;
 
-        if (versionsSize == 0) {
-            LOG.debug("Since there are no versions from before, we post the new version to LDS without checking validity overlap");
-            LOG.debug("Attempting to POST version nr "+versionUUID+" of subset series "+seriesId+" to LDS");
-            ResponseEntity<JsonNode> ldsPostRE = new LDSFacade().postVersionInSeries(seriesId, versionUUID, editableVersion);
-            if (!ldsPostRE.getStatusCode().is2xxSuccessful())
-                return ldsPostRE;
-            LOG.debug("Successfully POSTed version nr "+versionUUID+" of subset series "+seriesId+" to LDS");
-            return new ResponseEntity<>(editableVersion, CREATED);
-        }
-
-        if (isStatusOpen){
+        if (isStatusOpen && versionsSize != 0){
             ResponseEntity<JsonNode> isOverlappingValidityRE = isOverlappingValidity(editableVersion);
             if (!isOverlappingValidityRE.getStatusCode().is2xxSuccessful())
                 return isOverlappingValidityRE;
