@@ -1266,14 +1266,19 @@ public class SubsetsControllerV2 {
                     String validFrom = editableCode.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
                     String validTo = editableCode.has(Field.VALID_TO_IN_REQUESTED_RANGE) && !editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).isNull() ? editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText(): "";
                     ResponseEntity<JsonNode> getCodesFromKlassRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSCodesFromToURL(classificationID, validFrom, validTo, code, languageCode));
-                    System.out.println(getCodesFromKlassRE.getBody().toPrettyString());
-                    ArrayNode codesFromKlassArrayNode = getCodesFromKlassRE.getBody().get(Field.CODES).deepCopy();
-                    name = codesFromKlassArrayNode.get(0).get(Field.NAME).asText();
+                    if (getCodesFromKlassRE.getStatusCode().is2xxSuccessful()){
+                        ArrayNode codesFromKlassArrayNode = getCodesFromKlassRE.getBody().get(Field.CODES).deepCopy();
+                        name = codesFromKlassArrayNode.get(0).get(Field.NAME).asText();
+                    } else {
+                        LOG.warn("Did not get 2xx Successful when trying to get Code '"+code+"' in language '"+languageCode+"' from Klass in order to retrieve the Name in that language");
+                    }
                 }
-                ObjectNode mlT = new ObjectMapper().createObjectNode();
-                mlT.put("languageCode", languageCode);
-                mlT.put("languageText", name);
-                namesArray.add(mlT);
+                if (!name.equals("")) {
+                    ObjectNode mlT = new ObjectMapper().createObjectNode();
+                    mlT.put("languageCode", languageCode);
+                    mlT.put("languageText", name);
+                    namesArray.add(mlT);
+                }
             }
             editableCode.set(Field.NAME, namesArray);
             codes.set(i, editableCode);
