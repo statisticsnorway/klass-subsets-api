@@ -846,7 +846,7 @@ public class SubsetsControllerV2 {
             String entryValidUntil = versionJsonNode.has(Field.VALID_UNTIL) ? versionJsonNode.get(Field.VALID_UNTIL).textValue() : null;
             String versionId = versionJsonNode.get(Field.VERSION_ID).asText();
             LOG.debug("version "+versionId+" has validFrom "+entryValidFrom+" and validUntil "+(entryValidFrom != null ? entryValidUntil : "does not exist"));
-            if (entryValidFrom.compareTo(date) <= 0 && (entryValidUntil == null || entryValidUntil.compareTo(date) >= 0)) {
+            if (entryValidFrom.compareTo(date) <= 0 && (entryValidUntil == null || entryValidUntil.compareTo(date) > 0)) {
                 LOG.debug("The date "+date+" was within the range!");
                 JsonNode codes = versionJsonNode.get(Field.CODES);
                 return new ResponseEntity<>(codes, OK);
