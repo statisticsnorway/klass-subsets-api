@@ -164,10 +164,10 @@ public class Utils {
             String classificationVersionValidFrom = classificationVersion.get(Field.VALID_FROM).asText();
             String classificationVersionValidUntil = classificationVersion.has("validTo") ? classificationVersion.get("validTo").asText() : null;
             LOG.debug("Classification version '"+classificationVersion.get(Field.NAME).asText()+" has validFrom "+classificationVersionValidFrom+" and validTo "+(classificationVersionValidUntil != null ? classificationVersionValidUntil : "null"));
-            if (validUntilInRequestedRange == null || classificationVersionValidFrom.compareTo(validUntilInRequestedRange) <= 0) {
+            if (validUntilInRequestedRange == null || classificationVersionValidFrom.compareTo(validUntilInRequestedRange) < 0) {
                 LOG.debug("Classification version '"+classificationVersion.get(Field.NAME).asText()+" had validFrom before the validUntilInRequestedRange of the code");
-                if (classificationVersionValidUntil == null || classificationVersionValidUntil.compareTo(validFromInRequestedRange) >= 0) {
-                    LOG.debug("Classification version '"+classificationVersion.get(Field.NAME).asText()+" had a classificationVersionValidUntil == null || classificationVersionValidUntil.compareTo(validFromInRequestedRange) >= 0 ");
+                if (classificationVersionValidUntil == null || classificationVersionValidUntil.compareTo(validFromInRequestedRange) > 0) {
+                    LOG.debug("Classification version '"+classificationVersion.get(Field.NAME).asText()+" had a classificationVersionValidUntil == null || classificationVersionValidUntil.compareTo(validFromInRequestedRange) > 0 ");
                     String codeVersionURL = classificationVersion.get(Field._LINKS).get(Field.SELF).get("href").asText();
                     classificationVersionLinksArrayNode.add(codeVersionURL);
                 }
