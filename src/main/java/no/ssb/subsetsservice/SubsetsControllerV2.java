@@ -709,19 +709,18 @@ public class SubsetsControllerV2 {
             }
         }
 
-        // If a date interval is specified using 'from' and 'to' query parameters
+        // If a date interval is specified using 'from' and/or 'to' query parameters
         ResponseEntity<JsonNode> getAllVersionsRE = getVersions(id, includeFuture, includeDrafts, language);
         if (!getAllVersionsRE.getStatusCode().equals(OK))
             return getAllVersionsRE;
         JsonNode allVersionsArrayNode = getAllVersionsRE.getBody();
         LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
-        ObjectMapper mapper = new ObjectMapper();
         Map<String, ArrayNode> codeMap = new HashMap<>();
 
         if (allVersionsArrayNode == null)
             return ErrorHandler.newHttpError("Response body was null", INTERNAL_SERVER_ERROR, LOG);
         if (!allVersionsArrayNode.isArray())
-            return ErrorHandler.newHttpError("Response body was null", INTERNAL_SERVER_ERROR, LOG);
+            return ErrorHandler.newHttpError("Response body was not array", INTERNAL_SERVER_ERROR, LOG);
 
         ArrayNode versionsValidInDateRange = (ArrayNode) allVersionsArrayNode;
         int nrOfVersions = versionsValidInDateRange.size();
@@ -752,7 +751,7 @@ public class SubsetsControllerV2 {
             for (JsonNode codeJsonNode : codesArrayNode) {
                 String classificationId = codeJsonNode.get(Field.CLASSIFICATION_ID).asText();
                 String code = codeJsonNode.get(Field.CODE).asText();
-                String name = codeJsonNode.get(Field.NAME).asText();
+                String name = codeJsonNode.get(Field.NAME).toString();
                 String level = codeJsonNode.get(Field.LEVEL).asText();
                 String codeURN = classificationId+"_"+code+"_"+name+"_"+level;
                 ArrayNode classificationVersionsArrayNode = codeJsonNode.get(Field.CLASSIFICATION_VERSIONS).deepCopy();
