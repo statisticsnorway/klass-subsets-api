@@ -709,6 +709,9 @@ public class SubsetsControllerV2 {
             }
         }
 
+        if (language == null || language.isEmpty())
+            language="nb";
+
         // If a date interval is specified using 'from' and/or 'to' query parameters
         ResponseEntity<JsonNode> getAllVersionsRE = getVersions(id, includeFuture, includeDrafts, language);
         if (!getAllVersionsRE.getStatusCode().equals(OK))
