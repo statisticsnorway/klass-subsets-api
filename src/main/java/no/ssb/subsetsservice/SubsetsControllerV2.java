@@ -709,8 +709,10 @@ public class SubsetsControllerV2 {
             }
         }
 
-        if (language == null || language.isEmpty())
+        if (language == null || language.isEmpty() || !Arrays.asList(Utils.LANGUAGE_CODES).contains(language)) {
+            //TODO: Set to subset series's default language, not just 'nb'
             language="nb";
+        }
 
         // If a date interval is specified using 'from' and/or 'to' query parameters
         ResponseEntity<JsonNode> getAllVersionsRE = getVersions(id, includeFuture, includeDrafts, language);
@@ -718,7 +720,6 @@ public class SubsetsControllerV2 {
             return getAllVersionsRE;
         JsonNode allVersionsArrayNode = getAllVersionsRE.getBody();
         LOG.debug(String.format("Getting valid codes of subset %s from date %s to date %s", id, from, to));
-        Map<String, ArrayNode> codeMap = new HashMap<>();
 
         if (allVersionsArrayNode == null)
             return ErrorHandler.newHttpError("Response body was null", INTERNAL_SERVER_ERROR, LOG);
@@ -745,6 +746,13 @@ public class SubsetsControllerV2 {
             }
         }
 
+        // The point of this is that no two codes with the same name, code and level should be added twice to the list
+        // AND classification versions should not be duplicated in the list
+
+
+        Map<String, Set<String>> classificationVersionsMap = new HashMap<>();
+        Map<String, JsonNode> codeNodeMap = new HashMap<>();
+
         for (JsonNode subsetVersion : versionsValidInDateRange) {
             LOG.debug("Version " + subsetVersion.get(Field.VERSION_ID) + " is valid in the interval, so its codes will be included");
             // . . . using each code in this version as key, increment corresponding integer value in map
@@ -754,31 +762,22 @@ public class SubsetsControllerV2 {
             for (JsonNode codeJsonNode : codesArrayNode) {
                 String classificationId = codeJsonNode.get(Field.CLASSIFICATION_ID).asText();
                 String code = codeJsonNode.get(Field.CODE).asText();
-                String name = codeJsonNode.get(Field.NAME).toString();
+                String name = codeJsonNode.get(Field.NAME).asText();
                 String level = codeJsonNode.get(Field.LEVEL).asText();
                 String codeURN = classificationId+"_"+code+"_"+name+"_"+level;
                 ArrayNode classificationVersionsArrayNode = codeJsonNode.get(Field.CLASSIFICATION_VERSIONS).deepCopy();
-                if (codeMap.containsKey(codeURN)) {
-                    classificationVersionsArrayNode.addAll(codeMap.get(codeURN)); //TODO: This merger might cause duplicates
-                }
-                codeMap.put(codeURN, classificationVersionsArrayNode);
+                Set<String> classificationVersionsSet = new HashSet<>();
+                classificationVersionsArrayNode.forEach(e -> classificationVersionsSet.add(e.asText()));
+                classificationVersionsMap.merge(codeURN, classificationVersionsSet, (s1, s2) -> {s1.addAll(s2); return s1;});
             }
         }
 
         ArrayNode codesInRangeArrayNode = new ObjectMapper().createArrayNode();
 
-        for (String s : codeMap.keySet()) {
-            ArrayNode classificationVersionList = codeMap.get(s);
-
-            // Remove duplicates
-            for (int i = 0; i < classificationVersionList.size(); i++) {
-                JsonNode classificationVersion = classificationVersionList.get(i);
-                for (int i1 = i+1; i1 < classificationVersionList.size(); i1++) {
-                    if (classificationVersionList.get(i1).asText().equals(classificationVersion.asText())) {
-                        classificationVersionList.remove(i1);
-                    }
-                }
-            }
+        for (String s : classificationVersionsMap.keySet()) {
+            Set<String> classificationVersionSet = classificationVersionsMap.get(s);
+            ArrayNode classificationVersionList = new ObjectMapper().createArrayNode();
+            classificationVersionSet.forEach(classificationVersionList::add); // duplicate free classificationVersionList
 
             ObjectNode editableCode = new ObjectMapper().createObjectNode();
             String[] splitUnderscore = s.split("_");
