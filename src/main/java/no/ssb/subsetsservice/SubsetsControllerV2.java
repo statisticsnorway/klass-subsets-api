@@ -772,13 +772,13 @@ public class SubsetsControllerV2 {
 
         ArrayNode codesInRangeArrayNode = new ObjectMapper().createArrayNode();
 
-        for (String s : classificationVersionsMap.keySet()) {
-            Set<String> classificationVersionSet = classificationVersionsMap.get(s);
+        for (Map.Entry<String, Set<String>> entry : classificationVersionsMap.entrySet()) {
+            Set<String> classificationVersionSet = entry.getValue();
             ArrayNode classificationVersionList = new ObjectMapper().createArrayNode();
             classificationVersionSet.forEach(classificationVersionList::add); // duplicate free classificationVersionList
 
             ObjectNode editableCode = new ObjectMapper().createObjectNode();
-            String[] splitUnderscore = s.split("_");
+            String[] splitUnderscore = entry.getKey().split("_");
             String classificationId = splitUnderscore[0];
             String code = splitUnderscore[1];
             String name = splitUnderscore[2];
