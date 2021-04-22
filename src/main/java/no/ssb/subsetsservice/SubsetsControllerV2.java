@@ -747,11 +747,9 @@ public class SubsetsControllerV2 {
         }
 
         // The point of this is that no two codes with the same name, code and level should be added twice to the list
-        // AND classification versions should not be duplicated in the list
-
+        // AND classification versions should not be duplicated in the classificationVersionList
 
         Map<String, Set<String>> classificationVersionsMap = new HashMap<>();
-        Map<String, JsonNode> codeNodeMap = new HashMap<>();
 
         for (JsonNode subsetVersion : versionsValidInDateRange) {
             LOG.debug("Version " + subsetVersion.get(Field.VERSION_ID) + " is valid in the interval, so its codes will be included");
