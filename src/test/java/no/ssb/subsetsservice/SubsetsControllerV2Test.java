@@ -1377,8 +1377,9 @@ class SubsetsControllerV2Test {
         System.out.println();
         ArrayNode getCodesFromToREBody = getCodesFromToRE.getBody().deepCopy();
         System.out.println(getCodesFromToREBody.toPrettyString());
-        assertEquals(1, getCodesFromToREBody.size());
-        assertEquals(10, getCodesFromToREBody.get(0).get(Field.CLASSIFICATION_VERSIONS).size());
+        assertEquals(2, getCodesFromToREBody.size());
+        assertEquals(7, getCodesFromToREBody.get(0).get(Field.CLASSIFICATION_VERSIONS).size());
+        assertEquals(3, getCodesFromToREBody.get(1).get(Field.CLASSIFICATION_VERSIONS).size());
     }
 
     @Test
