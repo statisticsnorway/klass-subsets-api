@@ -484,7 +484,7 @@ public class SubsetsControllerV2 {
                 String latestKlassVersionURL = latestVersionAsText + ".json?language=" + languageCode;
                 LOG.debug("latest klass version URL for this language: " + latestKlassVersionURL);
                 if (!klassVersionsMap.containsKey(latestKlassVersionURL)) {
-                    LOG.debug(latestKlassVersionURL+" response ebtity was not present in the klass versions map, so we retrieve it . . .");
+                    LOG.debug("A response entity for the request URL "+latestKlassVersionURL+" was not present in the klass versions map, so we now request it from KLASS api ...");
                     ResponseEntity<JsonNode> latestKlassVersionRE = KlassURNResolver.getFrom(latestKlassVersionURL);
                     klassVersionsMap.put(latestKlassVersionURL, latestKlassVersionRE);
                 }

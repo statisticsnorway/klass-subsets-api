@@ -135,10 +135,12 @@ public class Utils {
         ObjectNode editableVersion = subsetVersion.deepCopy();
         LOG.debug("Finding out what classification versions the codes in the subsetVersion are used in");
         if (editableVersion.has(Field.CODES)){
+
             ArrayNode codesArrayNode = (ArrayNode)editableVersion.get(Field.CODES);
+            Map<String, ResponseEntity<JsonNode>> klassClassificationsMap = new HashMap<>(codesArrayNode.size()*2);
             for (int i = 0; i < codesArrayNode.size(); i++) {
                 LOG.debug("Resolving classification versions of code "+(i+1)+"/"+codesArrayNode.size());
-                JsonNode code = Utils.addCodeVersions(codesArrayNode.get(i), LOG);
+                JsonNode code = Utils.addCodeVersions(codesArrayNode.get(i), klassClassificationsMap, LOG);
                 if (code.get(Field.CLASSIFICATION_VERSIONS).size() < 1)
                     LOG.error("Code "+code.get(Field.CODE)+" "+code.get(Field.NAME)+" failed to resolve any versions in validity range "+code.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText()+" - "+(code.has(Field.VALID_TO_IN_REQUESTED_RANGE) ? code.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText() : "null"));
                 codesArrayNode.set(i, code);
@@ -149,15 +151,24 @@ public class Utils {
         return editableVersion;
     }
 
-    public static JsonNode addCodeVersions(JsonNode code, Logger LOG) throws HttpClientErrorException {
+    public static JsonNode addCodeVersions(JsonNode code, Map<String, ResponseEntity<JsonNode>> classificationsMap, Logger LOG) throws HttpClientErrorException {
         ObjectNode editableCode = code.deepCopy();
         code = null;
         String validFromInRequestedRange = editableCode.get(Field.VALID_FROM_IN_REQUESTED_RANGE).asText();
         String validUntilInRequestedRange = editableCode.has(Field.VALID_TO_IN_REQUESTED_RANGE) ? editableCode.get(Field.VALID_TO_IN_REQUESTED_RANGE).asText() : null;
         String classificationID = editableCode.get(Field.CLASSIFICATION_ID).asText();
-        ResponseEntity<JsonNode> classificationJsonNodeRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSClassificationURL(classificationID));
-        if (!classificationJsonNodeRE.getStatusCode().is2xxSuccessful())
-            throw new HttpClientErrorException(classificationJsonNodeRE.getStatusCode(), "Did not successfully retrieve classification "+classificationID+" from klass api");
+
+        ResponseEntity<JsonNode> classificationJsonNodeRE;
+        if (!classificationsMap.containsKey(classificationID)) {
+            LOG.debug("Classification with ID "+classificationID+" was not present in the classificationsMap. Retrieving it from KLASS api...");
+            classificationJsonNodeRE = KlassURNResolver.getFrom(KlassURNResolver.makeKLASSClassificationURL(classificationID));
+            if (!classificationJsonNodeRE.getStatusCode().is2xxSuccessful())
+                throw new HttpClientErrorException(classificationJsonNodeRE.getStatusCode(), "Did not successfully retrieve classification "+classificationID+" from klass api");
+            classificationsMap.put(classificationID, classificationJsonNodeRE);
+        } else {
+            classificationJsonNodeRE = classificationsMap.get(classificationID);
+        }
+
         ArrayNode klassClassificationVersions = (ArrayNode)classificationJsonNodeRE.getBody().get(Field.VERSIONS);
         ArrayNode classificationVersionLinksArrayNode = new ObjectMapper().createArrayNode();
         for (JsonNode classificationVersion : klassClassificationVersions) {

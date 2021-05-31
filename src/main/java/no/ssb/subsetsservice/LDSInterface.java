@@ -23,6 +23,8 @@ public interface LDSInterface {
 
     ResponseEntity<JsonNode> editSeries(JsonNode newVersionOfSeries, String seriesID);
 
+    ResponseEntity<JsonNode> createSubsetSeries(JsonNode subset, String id);
+
     ResponseEntity<JsonNode> postVersionInSeries(String id, String versionID, JsonNode versionNode);
 
     ResponseEntity<JsonNode> resolveVersionLink(String versionLink);
