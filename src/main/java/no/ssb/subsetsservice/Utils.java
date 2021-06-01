@@ -230,7 +230,7 @@ public class Utils {
                         if (codes.isArray() && !codes.isEmpty()) {
                             LOG.debug("The field 'codes' of the instance is a non-empty array of size " + codes.size());
                             ArrayNode codesArray = codes.deepCopy();
-                            ResponseEntity<JsonNode> codeDefRE = new LDSFacade().getSubsetCodeDefinition();
+                            ResponseEntity<JsonNode> codeDefRE = BackendFactory.getBackend(BackendFactory.DEFAULT_BACKEND).getSubsetCodeDefinition();
                             if (!codeDefRE.getStatusCode().is2xxSuccessful())
                                 return codeDefRE;
                             JsonNode codeDefinition = codeDefRE.getBody();

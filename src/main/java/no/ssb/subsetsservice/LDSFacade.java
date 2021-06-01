@@ -8,14 +8,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.HttpClientErrorException;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.springframework.http.HttpStatus.OK;
 
-public class LDSFacade implements LDSInterface {
+public class LDSFacade implements BackendInterface {
 
     String API_LDS = "";
     String SUBSETS_API =    "/ns/ClassificationSubset";
