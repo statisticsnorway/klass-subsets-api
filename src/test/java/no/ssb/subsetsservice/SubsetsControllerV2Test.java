@@ -41,6 +41,8 @@ class SubsetsControllerV2Test {
     private final File version_2_0_3_draft = new File("src/test/resources/version_examples/version_2_0_3_draft.json");
     private final File version_2_0_3_overlapping_date = new File("src/test/resources/version_examples/version_2_0_3_overlapping_date.json");
 
+    private final File version_large_dirty_payload = new File("src/test/resources/version_examples/version_large_dirty_payload.json");
+
     private final File version_1_extra_field = new File("src/test/resources/version_examples/version_1_extra_field.json");
     private final File version_1_extra_field_in_code = new File("src/test/resources/version_examples/version_1_extra_field_in_code.json");
 
@@ -154,6 +156,23 @@ class SubsetsControllerV2Test {
 
         JsonNode versionWithExtraField = readJsonFile(version_1_extra_field);
         ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, true, versionWithExtraField, "all");
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+    }
+
+    @Test
+    void postLargeSubsetVersionWithExtraFieldExpecting200() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode versionWithExtraField = readJsonFile(version_large_dirty_payload);
+        long startTime = System.nanoTime();
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, true, versionWithExtraField, "all");
+        long endTime = System.nanoTime() - startTime;
+        System.out.println("Time to execute POST subset version: "+endTime);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
     }
 
