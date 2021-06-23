@@ -2,26 +2,52 @@ package no.ssb.subsetsservice;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 
-import com.mongodb.*;
-import com.mongodb.client.*;
-
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.model.Indexes;
-import org.bson.Document;
-import org.bson.types.ObjectId;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Spliterator;
+import java.sql.*;
 
 import static org.springframework.http.HttpStatus.OK;
 
-public class MongoFacade implements BackendInterface {
+public class PostgresFacade implements BackendInterface {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SubsetsControllerV2.class);
+    private String JDBC_PS_URL = "jdbc:postgresql://localhost:5432/postgres";
+    private String USER = "postgres";
+    private String PASSWORD = "postgres";
+
+    private static String getURLFromEnvOrDefault() {
+        return System.getenv().getOrDefault("JDBC_PS_URL", "jdbc:postgresql://localhost:5432/postgres");
+    }
+
+    private static String getUserFromEnvOrDefault() {
+        return System.getenv().getOrDefault("POSTGRES_USER", "postgres");
+    }
+
+    private static String getPasswordFromEnvOrDefault() {
+        return System.getenv().getOrDefault("PASSWORD", "postgres");
+    }
+
     @Override
     public ResponseEntity<JsonNode> initializeBackend() {
+        JDBC_PS_URL = getURLFromEnvOrDefault();
+        USER = "postgres";
+        PASSWORD = "postgres";
+
+        try (Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT VERSION()")) {
+
+            if (rs.next()) {
+                System.out.println(rs.getString(1));
+            }
+
+        } catch (SQLException ex) {
+            LOG.error(ex.getMessage(), ex);
+        }
+
+        //TODO: Send the subsetsCreate.sql query to the PostgreSQL server
         return new ResponseEntity<>(OK);
     }
 

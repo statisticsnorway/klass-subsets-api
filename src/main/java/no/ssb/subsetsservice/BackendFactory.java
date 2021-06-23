@@ -3,15 +3,16 @@ package no.ssb.subsetsservice;
 public class BackendFactory {
 
     public static final String MONGO = "MONGO";
+    public static final String POSTGRES = "POSTGRES";
     public static final String LDS = "LDS";
-    public static final String DEFAULT_BACKEND = LDS;
+    public static final String DEFAULT_BACKEND = POSTGRES;
 
     public static BackendInterface getBackend(String backendType) {
-        if (backendType.equalsIgnoreCase(LDS))
-            return new LDSFacade();
-        else if (backendType.toUpperCase().startsWith(MONGO))
-            return new MongoFacade();
-        else
-            return null;
+        switch (backendType.toUpperCase()) {
+            case LDS: return new LDSFacade();
+            case MONGO: return new MongoFacade();
+            case POSTGRES: return new PostgresFacade();
+            default: return null;
+        }
     }
 }

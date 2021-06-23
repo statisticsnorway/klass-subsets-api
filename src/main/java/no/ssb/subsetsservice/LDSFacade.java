@@ -24,6 +24,11 @@ public class LDSFacade implements BackendInterface {
         this.API_LDS = API_LDS;
     }
 
+    @Override
+    public ResponseEntity<JsonNode> initializeBackend() {
+        return new ResponseEntity<>(OK);
+    }
+
     /**
      * Get a specific subset version by its UID, without going through the subset series.
      * @param versionId is the UID for the version, unique among all versions, that is used in LDS

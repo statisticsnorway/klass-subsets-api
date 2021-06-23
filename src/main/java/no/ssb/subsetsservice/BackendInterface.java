@@ -13,6 +13,8 @@ import java.util.List;
  */
 public interface BackendInterface {
 
+    ResponseEntity<JsonNode> initializeBackend();
+
     ResponseEntity<JsonNode> getVersionByID(String versionId);
 
     ResponseEntity<JsonNode> getSubsetSeries(String id);
