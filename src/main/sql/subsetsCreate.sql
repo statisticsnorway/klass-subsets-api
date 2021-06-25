@@ -18,12 +18,12 @@ CREATE TABLE IF NOT EXISTS public.versions
         REFERENCES public.series ("seriesId") MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
-)
+);
 
 ALTER TABLE public.versions
     OWNER to postgres;
 
 CREATE INDEX IF NOT EXISTS "seriesIndex"
     ON public.versions USING btree
-    ("seriesId" varchar_ops ASC NULLS LAST)
+    ("seriesId" varchar_pattern_ops ASC NULLS LAST)
 ;
