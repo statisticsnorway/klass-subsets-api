@@ -66,6 +66,7 @@ jobs:
         env:
           API_LDS: "http://localhost:9090"
           API_KLASS: "https://data.ssb.no/api/klass"
+          JDBC_PS_URL: "jdbc:postgresql://localhost:5432/postgres"
         displayName: 'Maven install'
         inputs:
           mavenPomFile: 'pom.xml'

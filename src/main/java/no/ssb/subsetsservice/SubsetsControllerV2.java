@@ -40,6 +40,7 @@ public class SubsetsControllerV2 {
     private void init() {
         instance = this;
         BACKEND_TYPE = getBackendType();
+        LOG.debug("BACKEND TYPE: "+getBackendType());
         ResponseEntity<JsonNode> initRE = BackendFactory.getBackend(BACKEND_TYPE).initializeBackend();
         if (!initRE.getStatusCode().is2xxSuccessful())
             LOG.error("Could not initialize backend of type '"+BACKEND_TYPE+"'. Init returned status code "+initRE.getStatusCode()+" and body "+(initRE.hasBody() ? initRE.getBody().toString() : ""));
