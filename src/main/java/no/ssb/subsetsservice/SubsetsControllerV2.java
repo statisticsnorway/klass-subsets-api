@@ -496,60 +496,6 @@ public class SubsetsControllerV2 {
         return klassVersionsMap;
     }
 
-    private ObjectNode addNotesFromKlass(ObjectNode editableVersion, Map<String, ResponseEntity<JsonNode>> klassVersionsMap) {
-        LOG.debug("Getting and adding code notes from KLASS");
-        ObjectNode editableVersionCopy = editableVersion.deepCopy();
-        ArrayNode codesArrayNode = editableVersionCopy.get(Field.CODES).deepCopy();
-        for (int i = 0; i < codesArrayNode.size(); i++) {
-            ObjectNode codeNodeEditableCopy = codesArrayNode.get(i).deepCopy();
-            codeNodeEditableCopy.set(Field.NOTES, new ObjectMapper().createArrayNode());
-            ArrayNode classificationVersionsArrayNode = codeNodeEditableCopy.get(Field.CLASSIFICATION_VERSIONS).deepCopy();
-            String firstClassificationVersionAsText = classificationVersionsArrayNode.get(0).asText();
-            for (String languageCode : Utils.LANGUAGE_CODES) {
-                String latestKlassVersionURL = firstClassificationVersionAsText + ".json?language="+languageCode;
-                LOG.debug("latest klass version URL: " + latestKlassVersionURL);
-                ResponseEntity<JsonNode> latestKlassVersionRE;
-                if (klassVersionsMap.containsKey(latestKlassVersionURL)) {
-                    latestKlassVersionRE = klassVersionsMap.get(latestKlassVersionURL);
-                } else {
-                    LOG.warn("For some reason, Klass versions map did not contain "+latestKlassVersionURL+" which it should have contained at this point (adding notes from klass method). So we have to retrieve it . . .");
-                    latestKlassVersionRE = KlassURNResolver.getFrom(latestKlassVersionURL);
-                    klassVersionsMap.put(latestKlassVersionURL, latestKlassVersionRE);
-                }
-                if (latestKlassVersionRE.getStatusCode().is2xxSuccessful()) {
-                    String codeString = codeNodeEditableCopy.get(Field.CODE).asText();
-                    if (latestKlassVersionRE.getBody().has(Field.CLASSIFICATION_ITEMS)) {
-                        JsonNode classificationItems = latestKlassVersionRE.getBody().get(Field.CLASSIFICATION_ITEMS);
-                        if (classificationItems.isArray()) {
-                            ArrayNode versionClassificationItemsArrayNode = classificationItems.deepCopy();
-                            for (int i1 = 0; i1 < versionClassificationItemsArrayNode.size(); i1++) {
-                                JsonNode classificationItemJsonNode = versionClassificationItemsArrayNode.get(i1);
-                                String classificationItemCodeString = classificationItemJsonNode.get(Field.CODE).asText();
-                                if (classificationItemCodeString.equals(codeString)) {
-                                    String codeNotesString = classificationItemJsonNode.get(Field.NOTES).asText();
-                                    ObjectNode mlT = Utils.createMultilingualText(languageCode, codeNotesString);
-                                    ArrayNode oldNotesMltArrayCopy = codeNodeEditableCopy.get(Field.NOTES).deepCopy();
-                                    oldNotesMltArrayCopy.add(mlT);
-                                    codeNodeEditableCopy.set(Field.NOTES, oldNotesMltArrayCopy);
-                                    LOG.debug("Notes for codeString "+codeString+" were set to '"+codeNotesString+"' for language code "+languageCode);
-                                }
-                            }
-                        } else {
-                            LOG.error("'"+Field.CLASSIFICATION_ITEMS+"' from the latest klass version RE body was not array, despite RE being status OK 200");
-                        }
-                    } else {
-                        LOG.error("KLASS version RE Body did not contain '"+Field.CLASSIFICATION_ITEMS+"', despite being status OK 200");
-                    }
-                } else {
-                    LOG.error("latestKlassVersionRE did not return status OK 200");
-                }
-            }
-            codesArrayNode.set(i, codeNodeEditableCopy);
-        }
-        editableVersionCopy.set(Field.CODES, codesArrayNode);
-        return editableVersionCopy;
-    }
-
     @GetMapping("/v2/subsets/{id}/versions")
     public ResponseEntity<JsonNode> getVersions(
             @PathVariable("id") String id,
@@ -1234,6 +1180,60 @@ public class SubsetsControllerV2 {
             LOG.debug("Either there are no other published versions, or the new version is not the new latest published version");
         }
         return new ResponseEntity<>(OK);
+    }
+
+    private ObjectNode addNotesFromKlass(ObjectNode editableVersion, Map<String, ResponseEntity<JsonNode>> klassVersionsMap) {
+        LOG.debug("Getting and adding code notes from KLASS");
+        ObjectNode editableVersionCopy = editableVersion.deepCopy();
+        ArrayNode codesArrayNode = editableVersionCopy.get(Field.CODES).deepCopy();
+        for (int i = 0; i < codesArrayNode.size(); i++) {
+            ObjectNode codeNodeEditableCopy = codesArrayNode.get(i).deepCopy();
+            codeNodeEditableCopy.set(Field.NOTES, new ObjectMapper().createArrayNode());
+            ArrayNode classificationVersionsArrayNode = codeNodeEditableCopy.get(Field.CLASSIFICATION_VERSIONS).deepCopy();
+            String firstClassificationVersionAsText = classificationVersionsArrayNode.get(0).asText();
+            for (String languageCode : Utils.LANGUAGE_CODES) {
+                String latestKlassVersionURL = firstClassificationVersionAsText + ".json?language="+languageCode;
+                LOG.debug("latest klass version URL: " + latestKlassVersionURL);
+                ResponseEntity<JsonNode> latestKlassVersionRE;
+                if (klassVersionsMap.containsKey(latestKlassVersionURL)) {
+                    latestKlassVersionRE = klassVersionsMap.get(latestKlassVersionURL);
+                } else {
+                    LOG.warn("For some reason, Klass versions map did not contain "+latestKlassVersionURL+" which it should have contained at this point (adding notes from klass method). So we have to retrieve it . . .");
+                    latestKlassVersionRE = KlassURNResolver.getFrom(latestKlassVersionURL);
+                    klassVersionsMap.put(latestKlassVersionURL, latestKlassVersionRE);
+                }
+                if (latestKlassVersionRE.getStatusCode().is2xxSuccessful()) {
+                    String codeString = codeNodeEditableCopy.get(Field.CODE).asText();
+                    if (latestKlassVersionRE.getBody().has(Field.CLASSIFICATION_ITEMS)) {
+                        JsonNode classificationItems = latestKlassVersionRE.getBody().get(Field.CLASSIFICATION_ITEMS);
+                        if (classificationItems.isArray()) {
+                            ArrayNode versionClassificationItemsArrayNode = classificationItems.deepCopy();
+                            for (int i1 = 0; i1 < versionClassificationItemsArrayNode.size(); i1++) {
+                                JsonNode classificationItemJsonNode = versionClassificationItemsArrayNode.get(i1);
+                                String classificationItemCodeString = classificationItemJsonNode.get(Field.CODE).asText();
+                                if (classificationItemCodeString.equals(codeString)) {
+                                    String codeNotesString = classificationItemJsonNode.get(Field.NOTES).asText();
+                                    ObjectNode mlT = Utils.createMultilingualText(languageCode, codeNotesString);
+                                    ArrayNode oldNotesMltArrayCopy = codeNodeEditableCopy.get(Field.NOTES).deepCopy();
+                                    oldNotesMltArrayCopy.add(mlT);
+                                    codeNodeEditableCopy.set(Field.NOTES, oldNotesMltArrayCopy);
+                                    LOG.debug("Notes for codeString "+codeString+" were set to '"+codeNotesString+"' for language code "+languageCode);
+                                }
+                            }
+                        } else {
+                            LOG.error("'"+Field.CLASSIFICATION_ITEMS+"' from the latest klass version RE body was not array, despite RE being status OK 200");
+                        }
+                    } else {
+                        LOG.error("KLASS version RE Body did not contain '"+Field.CLASSIFICATION_ITEMS+"', despite being status OK 200");
+                    }
+                } else {
+                    LOG.error("latestKlassVersionRE did not return status OK 200");
+                }
+            }
+            codesArrayNode.set(i, codeNodeEditableCopy);
+        }
+        editableVersionCopy.set(Field.CODES, codesArrayNode);
+        return editableVersionCopy;
     }
 
     private ObjectNode addCodeNamesFromKlass(ObjectNode editableVersion, Map<String, ResponseEntity<JsonNode>> klassVersionsMap) {
