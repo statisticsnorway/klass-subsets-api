@@ -41,6 +41,10 @@ public class PostgresFacade implements BackendInterface {
         return System.getenv().getOrDefault("PASSWORD", "postgres");
     }
 
+    private static String getCloudSQLURL(String databaseName, String instanceConnectionName, String postgresqlUserName, String postgresqlUserPassword){
+        return "jdbc:postgresql:///"+databaseName+"?cloudSqlInstance="+instanceConnectionName+"&socketFactory=com.google.cloud.sql.postgres.SocketFactory&user="+postgresqlUserName+"&password="+postgresqlUserPassword;
+    }
+
     @Override
     public ResponseEntity<JsonNode> initializeBackend() {
         JDBC_PS_URL = getURLFromEnvOrDefault();
@@ -236,7 +240,7 @@ public class PostgresFacade implements BackendInterface {
     } //TODO
 
     @Override
-    public void deleteSubsetVersionFromSeriesAndFromLDS(String id, String versionUid) {
+    public void deleteSubsetVersion(String subsetId, String versionUid) {
         //TODO
     }
 

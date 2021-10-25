@@ -106,7 +106,7 @@ public class MongoFacade implements BackendInterface {
     }
 
     @Override
-    public void deleteSubsetVersionFromSeriesAndFromLDS(String id, String versionUid) {
+    public void deleteSubsetVersion(String subsetId, String versionUid) {
 
     }
 

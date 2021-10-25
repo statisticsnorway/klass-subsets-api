@@ -160,8 +160,8 @@ public class LDSFacade implements BackendInterface {
     }
 
     @Override
-    public void deleteSubsetVersionFromSeriesAndFromLDS(String seriesId, String versionUidToDelete) {
-        new LDSConsumer(API_LDS).delete(SERIES_API + "/" + seriesId + "/versions/ClassificationSubsetVersion/"+versionUidToDelete);
+    public void deleteSubsetVersion(String subsetId, String versionUidToDelete) {
+        new LDSConsumer(API_LDS).delete(SERIES_API + "/" + subsetId + "/versions/ClassificationSubsetVersion/"+versionUidToDelete);
         new LDSConsumer(API_LDS).delete(VERSIONS_API + "/" + versionUidToDelete);
     }
 

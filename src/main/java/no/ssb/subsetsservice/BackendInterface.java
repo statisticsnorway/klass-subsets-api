@@ -47,7 +47,7 @@ public interface BackendInterface {
 
     ResponseEntity<JsonNode> deleteSubsetSeries(String id);
 
-    void deleteSubsetVersionFromSeriesAndFromLDS(String id, String versionUid);
+    void deleteSubsetVersion(String subsetId, String versionUid);
 
     ResponseEntity<JsonNode> editVersion(ObjectNode editablePutVersion);
 }

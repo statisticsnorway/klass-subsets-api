@@ -896,7 +896,7 @@ public class SubsetsControllerV2 {
         else
             versionUID = id+"_"+versionId;
         LOG.debug("Version UID used in delete requests to LDS: "+versionUID);
-        BackendFactory.getBackend(BACKEND_TYPE).deleteSubsetVersionFromSeriesAndFromLDS(id, versionUID);
+        BackendFactory.getBackend(BACKEND_TYPE).deleteSubsetVersion(id, versionUID);
     }
 
     private ObjectNode removeSuperfluousSeriesFields(JsonNode version) {
