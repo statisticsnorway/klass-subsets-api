@@ -65,7 +65,7 @@ public class PostgresFacade implements BackendInterface {
 
         try {
             LOG.debug("Attempting subsets table creation...");
-            executeSql("src/main/sql/subsetsCreate.sql");
+            executeSql("src/main/resources/sql/subsetsCreate.sql");
         } catch (PSQLException e) {
             LOG.error(e.getMessage(), e);
             e.printStackTrace();
