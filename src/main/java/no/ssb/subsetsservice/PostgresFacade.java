@@ -35,6 +35,15 @@ public class PostgresFacade implements BackendInterface {
     String SELECT_SERIES_JSON = "SELECT series.series_json FROM series;";
     String UPDATE_SERIES = "UPDATE series SET series_json = ? WHERE series_id = ?";
 
+    String SELECT_VERSION_BY_ID = "SELECT versions.version_json FROM versions WHERE versions.version_id = ?";
+    String SELECT_VERSION_JSON = "SELECT versions.version_json FROM versions WHERE versions.series_id = ? AND versions.version_id = ?";
+    String UPDATE_VERSION = "UPDATE versions SET version_json = ? WHERE series_id = ? AND version_id = ?";
+
+    String DELETE_SERIES = "DELETE FROM series";
+    String DELETE_SERIES_BY_ID = "DELETE FROM series WHERE series.series_id = ?";
+    String DELETE_VERSIONS = "DELETE FROM versions";
+    String DELETE_VERSIONS_BY_ID = "DELETE FROM versions WHERE versions.series_id = ? AND versions.version_id = ?";
+
 
     private static String getURLFromEnvOrDefault() {
         return System.getenv().getOrDefault("JDBC_PS_URL", "jdbc:postgresql://localhost:5432/postgres");
@@ -101,7 +110,29 @@ public class PostgresFacade implements BackendInterface {
 
     @Override
     public ResponseEntity<JsonNode> getVersionByID(String versionId) {
-        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
+        LOG.debug("getVersionByID id "+versionId);
+        try {
+            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            PreparedStatement pstmt = con.prepareStatement(SELECT_VERSION_BY_ID);
+            pstmt.setString(1, versionId);
+            LOG.debug("pstmt: "+pstmt);
+            ResultSet rs = pstmt.executeQuery();
+            ObjectMapper om = new ObjectMapper();
+            JsonNode series;
+            boolean next = rs.next();
+            if (!next)
+                return ErrorHandler.newHttpError("Version with id "+versionId+" was not found", NOT_FOUND, LOG);
+            if (!rs.isLast())
+                LOG.error("There was more than one row in a rs from a query find a series version with id "+versionId);
+            series = om.readTree(rs.getString(1));
+            return new ResponseEntity<>(series, OK);
+        } catch (SQLException ex) {
+            LOG.error("Failed to create series", ex);
+            return ErrorHandler.newHttpError("Failed to get series version", INTERNAL_SERVER_ERROR, LOG);
+        } catch (JsonProcessingException e) {
+            LOG.error("Failed to parse json", e);
+            return ErrorHandler.newHttpError("Failed to parse json", INTERNAL_SERVER_ERROR, LOG);
+        }
     }
 
     @Override
@@ -124,7 +155,7 @@ public class PostgresFacade implements BackendInterface {
             return new ResponseEntity<>(series, OK);
         } catch (SQLException ex) {
             LOG.error("Failed to create series", ex);
-            return ErrorHandler.newHttpError("Failed to create series", INTERNAL_SERVER_ERROR, LOG);
+            return ErrorHandler.newHttpError("Failed to get series", INTERNAL_SERVER_ERROR, LOG);
         } catch (JsonProcessingException e) {
             LOG.error("Failed to parse json", e);
             return ErrorHandler.newHttpError("Failed to parse json", INTERNAL_SERVER_ERROR, LOG);
@@ -226,7 +257,7 @@ public class PostgresFacade implements BackendInterface {
         try {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
             PreparedStatement pstmt = con.prepareStatement("insert into versions values(?, ?, ?::JSON)");
-            pstmt.setString(1, versionID);
+            pstmt.setString(1, versionUID);
             pstmt.setString(2, seriesID);
             PGobject jsonObject = new PGobject();
             jsonObject.setType("json");
@@ -295,7 +326,7 @@ public class PostgresFacade implements BackendInterface {
         LOG.debug("getting definitions.ClassificationSubsetVersion");
         JsonNode definition = versionSchemaRE.getBody().get("definitions").get("ClassificationSubsetVersion");
         return new ResponseEntity<>(definition, OK);
-    } //TODO
+    }
 
     @Override
     public ResponseEntity<JsonNode> getSubsetVersionSchema() {
@@ -312,7 +343,7 @@ public class PostgresFacade implements BackendInterface {
             e.printStackTrace();
             return ErrorHandler.newHttpError("IOException on reading subset version schema file", INTERNAL_SERVER_ERROR, LOG);
         }
-    } //TODO
+    }
 
     @Override
     public ResponseEntity<JsonNode> getSubsetCodeDefinition() {
@@ -326,29 +357,77 @@ public class PostgresFacade implements BackendInterface {
         LOG.debug("getting definitions.ClassificationSubsetVersion");
         JsonNode definition = versionSchemaRE.getBody().get("definitions").get("ClassificationSubsetCode");
         return new ResponseEntity<>(definition, OK);
-    } //TODO
+    }
 
     @Override
     public ResponseEntity<JsonNode> deleteAllSubsetSeries() {
-
-        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
-    } //TODO
+        try {
+            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            PreparedStatement pstmt = con.prepareStatement(DELETE_SERIES);
+            LOG.debug("pstmt: "+pstmt);
+            ResultSet rs = pstmt.executeQuery();
+            return new ResponseEntity<>(OK);
+        } catch (SQLException ex) {
+            LOG.error("Failed to delete all series", ex);
+            return ErrorHandler.newHttpError("Failed to delete all series", INTERNAL_SERVER_ERROR, LOG);
+        }
+    }
 
     @Override
     public ResponseEntity<JsonNode> deleteSubsetSeries(String id) {
-
-        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
-    } //TODO
+        try {
+            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            PreparedStatement pstmt = con.prepareStatement(DELETE_SERIES_BY_ID);
+            pstmt.setString(1, id);
+            LOG.debug("pstmt: "+pstmt);
+            ResultSet rs = pstmt.executeQuery();
+            return new ResponseEntity<>(OK);
+        } catch (SQLException ex) {
+            LOG.error("Failed to delete all series", ex);
+            return ErrorHandler.newHttpError("Failed to delete all series", INTERNAL_SERVER_ERROR, LOG);
+        }
+    }
 
     @Override
     public void deleteSubsetVersion(String subsetId, String versionUid) {
-        throw new Error("DELETE subset version not implemented!");
-    } //TODO
+        try {
+            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS_BY_ID);
+            pstmt.setString(1, subsetId);
+            pstmt.setString(2, versionUid);
+            LOG.debug("pstmt: "+pstmt);
+            ResultSet rs = pstmt.executeQuery();
+        } catch (SQLException ex) {
+            LOG.error("Failed to delete version of series "+subsetId+" with versionUid"+versionUid, ex);
+        }
+    }
 
     @Override
     public ResponseEntity<JsonNode> editVersion(ObjectNode editablePutVersion) {
-        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
-    } //TODO
+        String seriesID = editablePutVersion.get(Field.SUBSET_ID).asText();
+        String versionNr = editablePutVersion.get(Field.VERSION_ID).asText();
+        String versionUid = seriesID+"_"+versionNr;
+        LOG.debug("editVersion "+versionUid);
+        try {
+            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            PreparedStatement pstmt = con.prepareStatement(UPDATE_VERSION);
+            pstmt.setString(2, seriesID);
+            pstmt.setString(3, versionUid);
+            PGobject jsonObject = new PGobject();
+            jsonObject.setType("json");
+            jsonObject.setValue(editablePutVersion.toString());
+            pstmt.setObject(1, jsonObject);
+            int affectedRows = pstmt.executeUpdate();
+            if (affectedRows > 0) {
+                LOG.debug("edit version affected "+affectedRows+" rows");
+                return new ResponseEntity<>(CREATED);
+            }
+            return ErrorHandler.newHttpError("No rows were affected", INTERNAL_SERVER_ERROR, LOG);
+        } catch (SQLException ex) {
+            LOG.error("Failed to edit version", ex);
+            return ErrorHandler.newHttpError("Failed to edit version", INTERNAL_SERVER_ERROR, LOG);
+        }
+    }
 
     private void executeSql(String sqlFilePath) throws PSQLException {
         final class SqlExecutor extends SQLExec {
