@@ -1,12 +1,10 @@
 package no.ssb.subsetsservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.swagger.v3.core.util.Json;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.SQLExec;
 import org.postgresql.util.PGobject;
@@ -32,11 +30,11 @@ public class PostgresFacade implements BackendInterface {
 
 
     String SELECT_SERIES_BY_ID = "SELECT series.series_json FROM series WHERE series.series_id = ?;";
-    String SELECT_SERIES_JSON = "SELECT series.series_json FROM series;";
+    String SELECT_ALL_SERIES = "SELECT series.series_json FROM series;";
     String UPDATE_SERIES = "UPDATE series SET series_json = ? WHERE series_id = ?";
 
-    String SELECT_VERSION_BY_ID = "SELECT versions.version_json FROM versions WHERE versions.version_id = ?";
-    String SELECT_VERSION_JSON = "SELECT versions.version_json FROM versions WHERE versions.series_id = ? AND versions.version_id = ?";
+    String SELECT_VERSION_BY_ID = "SELECT versions.version_json FROM versions WHERE versions.series_id = ? AND versions.version_id = ?";
+    String SELECT_VERSIONS_BY_SERIES = "SELECT versions.version_json FROM versions WHERE versions.series_id = ?";
     String UPDATE_VERSION = "UPDATE versions SET version_json = ? WHERE series_id = ? AND version_id = ?";
 
     String DELETE_SERIES = "DELETE FROM series";
@@ -166,7 +164,7 @@ public class PostgresFacade implements BackendInterface {
     public ResponseEntity<JsonNode> getAllSubsetSeries() {
         try {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
-            PreparedStatement pstmt = con.prepareStatement(SELECT_SERIES_JSON);
+            PreparedStatement pstmt = con.prepareStatement(SELECT_ALL_SERIES);
             ResultSet rs = pstmt.executeQuery();
             ObjectMapper om = new ObjectMapper();
             ArrayNode allSeriesArrayNode = om.createArrayNode();
