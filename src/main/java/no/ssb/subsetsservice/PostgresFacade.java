@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.swagger.v3.core.util.Json;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.SQLExec;
 import org.postgresql.util.PGobject;
@@ -16,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.*;
 
 import static org.springframework.http.HttpStatus.*;
@@ -27,6 +29,9 @@ public class PostgresFacade implements BackendInterface {
     private String USER = "postgres";
     private String PASSWORD = "postgres";
     private boolean initialized = false;
+
+
+    String SELECT_SERIES_BY_ID = "SELECT 'seriesJSON' FROM series WHERE 'seriesId'=?;";
 
 
     private static String getURLFromEnvOrDefault() {
@@ -94,14 +99,14 @@ public class PostgresFacade implements BackendInterface {
 
     @Override
     public ResponseEntity<JsonNode> getVersionByID(String versionId) {
-        return null;
+        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
     }
 
     @Override
     public ResponseEntity<JsonNode> getSubsetSeries(String id) {
         try {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
-            PreparedStatement pstmt = con.prepareStatement("SELECT 'seriesJSON' FROM series WHERE 'seriesId'=?;");
+            PreparedStatement pstmt = con.prepareStatement(SELECT_SERIES_BY_ID);
             pstmt.setString(1, id);
             ResultSet rs = pstmt.executeQuery();
             ObjectMapper om = new ObjectMapper();
@@ -126,14 +131,17 @@ public class PostgresFacade implements BackendInterface {
     public ResponseEntity<JsonNode> getAllSubsetSeries() {
         try {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
-            PreparedStatement pstmt = con.prepareStatement("SELECT 'seriesJSON' FROM series;");
+            PreparedStatement pstmt = con.prepareStatement("SELECT \"seriesJSON\" FROM series;");
             ResultSet rs = pstmt.executeQuery();
             ObjectMapper om = new ObjectMapper();
-            ArrayNode series = om.createArrayNode();
+            ArrayNode allSeriesArrayNode = om.createArrayNode();
+            LOG.debug("rs get fetch size "+rs.getFetchSize());
             while (rs.next()) {
-                series.add(om.readTree(rs.getString(1)));
+                String rsGETString = rs.getString(1);
+                LOG.debug("rs get string: "+rsGETString);
+                allSeriesArrayNode.add(om.readTree(rsGETString));
             }
-            return new ResponseEntity<>(series, OK);
+            return new ResponseEntity<>(allSeriesArrayNode, OK);
         } catch (SQLException ex) {
             LOG.error("Failed to create series", ex);
             return ErrorHandler.newHttpError("Failed to create series", INTERNAL_SERVER_ERROR, LOG);
@@ -163,11 +171,12 @@ public class PostgresFacade implements BackendInterface {
     @Override
     public ResponseEntity<JsonNode> editSeries(JsonNode newVersionOfSeries, String seriesID) {
         //TODO
-        return null;
+        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
     }
 
     @Override
     public ResponseEntity<JsonNode> createSubsetSeries(JsonNode subset, String id) {
+        LOG.debug("createSubsetSeries with id "+id);
         try {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
             PreparedStatement pstmt = con.prepareStatement("insert into series values(?, ?::JSON)");
@@ -191,62 +200,95 @@ public class PostgresFacade implements BackendInterface {
     @Override
     public ResponseEntity<JsonNode> postVersionInSeries(String id, String versionID, JsonNode versionNode) {
         //TODO
-        return null;
+        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
     }
 
     @Override
     public ResponseEntity<JsonNode> resolveVersionLink(String versionLink) {
-        return null;
+
+        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
     }
 
     @Override
     public boolean existsSubsetSeriesWithID(String id) {
-        return false;
-    } //TODO
+        LOG.debug("existsSubsetSeriesWithID "+id);
+        ResponseEntity<JsonNode> getSeriesRE = getSubsetSeries(id);
+        return getSeriesRE.getStatusCode() == HttpStatus.OK;
+    }
 
     @Override
     public ResponseEntity<JsonNode> getSubsetSeriesDefinition() {
-        return null;
-    } //TODO
+        LOG.debug("getSubsetSeriesDefinition()");
+        ResponseEntity<JsonNode> versionSchemaRE = getSubsetSeriesSchema();
+        if (!versionSchemaRE.getStatusCode().is2xxSuccessful()){
+            return versionSchemaRE;
+        }
+        JsonNode definition = versionSchemaRE.getBody().get("definitions").get("ClassificationSubsetSeries");
+        return new ResponseEntity<>(definition, OK);
+    }
 
     @Override
     public ResponseEntity<JsonNode> getSubsetSeriesSchema() {
-        return null;
-    } //TODO
+        File schemaFile = new File("src/main/resources/definitions/series.json");
+        ObjectMapper om = new ObjectMapper();
+        try {
+            JsonNode seriesSchema = om.readTree(schemaFile);
+            return new ResponseEntity<>(seriesSchema, OK);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ErrorHandler.newHttpError("IOException on reading subset series schema file", INTERNAL_SERVER_ERROR, LOG);
+        }
+    }
 
     @Override
     public ResponseEntity<JsonNode> getSubsetVersionsDefinition() {
-        return null;
+        ResponseEntity<JsonNode> versionSchemaRE = getSubsetSeriesSchema();
+        if (!versionSchemaRE.getStatusCode().is2xxSuccessful()){
+            return versionSchemaRE;
+        }
+        JsonNode definition = versionSchemaRE.getBody().get("definitions").get("ClassificationSubsetVersion");
+        return new ResponseEntity<>(definition, OK);
     } //TODO
 
     @Override
     public ResponseEntity<JsonNode> getSubsetVersionSchema() {
-        return null;
+        File schemaFile = new File("src/main/resources/definitions/version.json");
+        ObjectMapper om = new ObjectMapper();
+        try {
+            JsonNode seriesSchema = om.readTree(schemaFile);
+            return new ResponseEntity<>(seriesSchema, OK);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ErrorHandler.newHttpError("IOException on reading subset version schema file", INTERNAL_SERVER_ERROR, LOG);
+        }
     } //TODO
 
     @Override
     public ResponseEntity<JsonNode> getSubsetCodeDefinition() {
-        return null;
+
+        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
     } //TODO
 
     @Override
     public ResponseEntity<JsonNode> deleteAllSubsetSeries() {
-        return null;
+
+        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
     } //TODO
 
     @Override
     public ResponseEntity<JsonNode> deleteSubsetSeries(String id) {
-        return null;
+
+        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
     } //TODO
 
     @Override
     public void deleteSubsetVersion(String subsetId, String versionUid) {
-        //TODO
-    }
+        throw new Error("DELETE subset version not implemented!");
+    } //TODO
 
     @Override
     public ResponseEntity<JsonNode> editVersion(ObjectNode editablePutVersion) {
-        return null;
+        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
     } //TODO
 
     private void executeSql(String sqlFilePath) throws PSQLException {

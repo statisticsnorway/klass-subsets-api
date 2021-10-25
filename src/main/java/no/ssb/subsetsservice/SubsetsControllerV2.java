@@ -111,8 +111,8 @@ public class SubsetsControllerV2 {
 
         if (!Utils.isClean(id))
             return ErrorHandler.illegalID(LOG);
-
-        boolean subsetExists = BackendFactory.getBackend(BACKEND_TYPE).existsSubsetSeriesWithID(id);
+        BackendInterface backend = BackendFactory.getBackend(BACKEND_TYPE);
+        boolean subsetExists = backend.existsSubsetSeriesWithID(id);
         if (subsetExists)
             return ErrorHandler.newHttpError(
                     "POST: Can not create subset. ID already in use",
