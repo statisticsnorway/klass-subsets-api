@@ -156,7 +156,7 @@ public class SubsetsControllerV2 {
 
         ResponseEntity<JsonNode> subsetSeriesByIDRE = BackendFactory.getBackend(BACKEND_TYPE).getSubsetSeries(id);
         HttpStatus status = subsetSeriesByIDRE.getStatusCode();
-        LOG.debug("Call to LDSFacade to get a subset series with id "+id+" returned "+status.toString());
+        LOG.debug("Call to backend to get a subset series with id "+id+" returned "+status);
         if (status.equals(OK)) {
             ObjectNode series = addLinksToSeries(subsetSeriesByIDRE.getBody());
             if (includeFullVersions){
@@ -436,7 +436,7 @@ public class SubsetsControllerV2 {
         ArrayNode versionStatisticalUnitsArrayNode = new ObjectMapper().createArrayNode();
         statisticalUnitMap.forEach((k,v) -> versionStatisticalUnitsArrayNode.add(k));
         editableVersion.set(Field.STATISTICAL_UNITS, versionStatisticalUnitsArrayNode);
-        System.out.println("statistical units array node of the new version of subset series "+seriesId+": "+versionStatisticalUnitsArrayNode.toString());
+        LOG.debug("statistical units array node of the new version of subset series "+seriesId+": "+versionStatisticalUnitsArrayNode.toString());
 
         // If status open, also edit the statisticalUnits of the series.
         if (series.has(Field.STATISTICAL_UNITS)){
@@ -446,7 +446,7 @@ public class SubsetsControllerV2 {
 
         ArrayNode newSeriesStatisticalUnitsArrayNode = new ObjectMapper().createArrayNode();
         statisticalUnitMap.forEach((k,v) -> newSeriesStatisticalUnitsArrayNode.add(k));
-        System.out.println("statistical units array node of the subset series "+seriesId+" after the new version is added: "+newSeriesStatisticalUnitsArrayNode.toString());
+        LOG.debug("statistical units array node of the subset series "+seriesId+" after the new version is added: "+newSeriesStatisticalUnitsArrayNode.toString());
         ObjectNode editableSeries = series.deepCopy();
         series = null;
         editableSeries.set(Field.STATISTICAL_UNITS, newSeriesStatisticalUnitsArrayNode);
@@ -910,6 +910,7 @@ public class SubsetsControllerV2 {
     }
 
     private ObjectNode removeSuperfluousVersionFields(JsonNode version) {
+        LOG.debug("removeSuperfluousVersionFields");
         ResponseEntity<JsonNode> versionDefinitionRE = BackendFactory.getBackend(BACKEND_TYPE).getSubsetVersionsDefinition();
         if (!versionDefinitionRE.getStatusCode().is2xxSuccessful())
             throw new Error("Request to get subset versions definition was unsuccessful");

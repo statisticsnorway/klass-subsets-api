@@ -31,7 +31,9 @@ public class PostgresFacade implements BackendInterface {
     private boolean initialized = false;
 
 
-    String SELECT_SERIES_BY_ID = "SELECT 'seriesJSON' FROM series WHERE 'seriesId'=?;";
+    String SELECT_SERIES_BY_ID = "SELECT series.series_json FROM series WHERE series.series_id = ?;";
+    String SELECT_SERIES_JSON = "SELECT series.series_json FROM series;";
+    String UPDATE_SERIES = "UPDATE series SET series_json = ? WHERE series_id = ?";
 
 
     private static String getURLFromEnvOrDefault() {
@@ -104,13 +106,15 @@ public class PostgresFacade implements BackendInterface {
 
     @Override
     public ResponseEntity<JsonNode> getSubsetSeries(String id) {
+        LOG.debug("getSubsetSeries id "+id);
         try {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
             PreparedStatement pstmt = con.prepareStatement(SELECT_SERIES_BY_ID);
             pstmt.setString(1, id);
+            LOG.debug("pstmt: "+pstmt);
             ResultSet rs = pstmt.executeQuery();
             ObjectMapper om = new ObjectMapper();
-            JsonNode series = om.createObjectNode();
+            JsonNode series;
             boolean next = rs.next();
             if (!next)
                 return ErrorHandler.newHttpError("Series with id"+id+" was not found", NOT_FOUND, LOG);
@@ -131,7 +135,7 @@ public class PostgresFacade implements BackendInterface {
     public ResponseEntity<JsonNode> getAllSubsetSeries() {
         try {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
-            PreparedStatement pstmt = con.prepareStatement("SELECT \"seriesJSON\" FROM series;");
+            PreparedStatement pstmt = con.prepareStatement(SELECT_SERIES_JSON);
             ResultSet rs = pstmt.executeQuery();
             ObjectMapper om = new ObjectMapper();
             ArrayNode allSeriesArrayNode = om.createArrayNode();
@@ -170,8 +174,25 @@ public class PostgresFacade implements BackendInterface {
 
     @Override
     public ResponseEntity<JsonNode> editSeries(JsonNode newVersionOfSeries, String seriesID) {
-        //TODO
-        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
+        LOG.debug("editSeries with id "+seriesID);
+        try {
+            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            PreparedStatement pstmt = con.prepareStatement(UPDATE_SERIES);
+            pstmt.setString(2, seriesID);
+            PGobject jsonObject = new PGobject();
+            jsonObject.setType("json");
+            jsonObject.setValue(newVersionOfSeries.toString());
+            pstmt.setObject(1, jsonObject);
+            int affectedRows = pstmt.executeUpdate();
+            if (affectedRows > 0) {
+                LOG.debug("edit series affected "+affectedRows+" rows");
+                return new ResponseEntity<>(CREATED);
+            }
+            return ErrorHandler.newHttpError("No rows were affected", INTERNAL_SERVER_ERROR, LOG);
+        } catch (SQLException ex) {
+            LOG.error("Failed to edit series", ex);
+            return ErrorHandler.newHttpError("Failed to edit series", INTERNAL_SERVER_ERROR, LOG);
+        }
     }
 
     @Override
@@ -198,9 +219,29 @@ public class PostgresFacade implements BackendInterface {
     }
 
     @Override
-    public ResponseEntity<JsonNode> postVersionInSeries(String id, String versionID, JsonNode versionNode) {
-        //TODO
-        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
+    public ResponseEntity<JsonNode> postVersionInSeries(String seriesID, String versionID, JsonNode versionNode) {
+        String versionUID = seriesID+"_"+versionID;
+        LOG.debug("Attempting to insert version with UID "+versionUID+" to POSTGRES");
+
+        try {
+            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            PreparedStatement pstmt = con.prepareStatement("insert into versions values(?, ?, ?::JSON)");
+            pstmt.setString(1, versionID);
+            pstmt.setString(2, seriesID);
+            PGobject jsonObject = new PGobject();
+            jsonObject.setType("json");
+            jsonObject.setValue(versionNode.toString());
+            pstmt.setObject(3, jsonObject);
+            int affectedRows = pstmt.executeUpdate();
+            if (affectedRows > 0) {
+                LOG.debug("insert into series affected "+affectedRows+" rows");
+                return new ResponseEntity<>(CREATED);
+            }
+            return ErrorHandler.newHttpError("No rows were affected", INTERNAL_SERVER_ERROR, LOG);
+        } catch (SQLException ex) {
+            LOG.error("Failed to create series", ex);
+            return ErrorHandler.newHttpError("Failed to create version", INTERNAL_SERVER_ERROR, LOG);
+        }
     }
 
     @Override
@@ -230,6 +271,8 @@ public class PostgresFacade implements BackendInterface {
     @Override
     public ResponseEntity<JsonNode> getSubsetSeriesSchema() {
         File schemaFile = new File("src/main/resources/definitions/series.json");
+        if (!schemaFile.exists())
+            LOG.error("schemaFile does not exist!");
         ObjectMapper om = new ObjectMapper();
         try {
             JsonNode seriesSchema = om.readTree(schemaFile);
@@ -242,19 +285,27 @@ public class PostgresFacade implements BackendInterface {
 
     @Override
     public ResponseEntity<JsonNode> getSubsetVersionsDefinition() {
-        ResponseEntity<JsonNode> versionSchemaRE = getSubsetSeriesSchema();
+        LOG.debug("getSubsetVersionsDefinition");
+        ResponseEntity<JsonNode> versionSchemaRE = getSubsetVersionSchema();
+        LOG.debug("");
         if (!versionSchemaRE.getStatusCode().is2xxSuccessful()){
+            LOG.error("versionSchemaRE was not successful, status code was "+versionSchemaRE.getStatusCode());
             return versionSchemaRE;
         }
+        LOG.debug("getting definitions.ClassificationSubsetVersion");
         JsonNode definition = versionSchemaRE.getBody().get("definitions").get("ClassificationSubsetVersion");
         return new ResponseEntity<>(definition, OK);
     } //TODO
 
     @Override
     public ResponseEntity<JsonNode> getSubsetVersionSchema() {
+        LOG.debug("getSubsetVersionSchema");
         File schemaFile = new File("src/main/resources/definitions/version.json");
+        if (!schemaFile.exists())
+            LOG.error("schemaFile does not exist!");
         ObjectMapper om = new ObjectMapper();
         try {
+            LOG.debug("reading tree of schema file");
             JsonNode seriesSchema = om.readTree(schemaFile);
             return new ResponseEntity<>(seriesSchema, OK);
         } catch (IOException e) {
@@ -265,8 +316,16 @@ public class PostgresFacade implements BackendInterface {
 
     @Override
     public ResponseEntity<JsonNode> getSubsetCodeDefinition() {
-
-        return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
+        LOG.debug("getSubsetCodeDefinition");
+        ResponseEntity<JsonNode> versionSchemaRE = getSubsetVersionSchema();
+        LOG.debug("");
+        if (!versionSchemaRE.getStatusCode().is2xxSuccessful()){
+            LOG.error("versionSchemaRE was not successful, status code was "+versionSchemaRE.getStatusCode());
+            return versionSchemaRE;
+        }
+        LOG.debug("getting definitions.ClassificationSubsetVersion");
+        JsonNode definition = versionSchemaRE.getBody().get("definitions").get("ClassificationSubsetCode");
+        return new ResponseEntity<>(definition, OK);
     } //TODO
 
     @Override

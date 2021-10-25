@@ -1,8 +1,8 @@
 CREATE TABLE IF NOT EXISTS public.series
 (
-    "seriesId" character varying(128) NOT NULL,
-    "seriesJSON" jsonb NOT NULL,
-    CONSTRAINT series_pkey PRIMARY KEY ("seriesId")
+    "series_id" character varying(128) NOT NULL,
+    "series_json" jsonb NOT NULL,
+    CONSTRAINT series_pkey PRIMARY KEY ("series_id")
 );
 
 ALTER TABLE public.series
@@ -10,12 +10,12 @@ ALTER TABLE public.series
 
 CREATE TABLE IF NOT EXISTS public.versions
 (
-    "versionId" character varying(128) COLLATE pg_catalog."default" NOT NULL,
-    "seriesId" character varying(128) COLLATE pg_catalog."default" NOT NULL,
-    "versionJSON" jsonb NOT NULL,
-    CONSTRAINT versions_pkey PRIMARY KEY ("versionId"),
-    CONSTRAINT "seriesIdFk" FOREIGN KEY ("seriesId")
-        REFERENCES public.series ("seriesId") MATCH SIMPLE
+    "version_id" character varying(128) COLLATE pg_catalog."default" NOT NULL,
+    "series_id" character varying(128) COLLATE pg_catalog."default" NOT NULL,
+    "version_json" jsonb NOT NULL,
+    CONSTRAINT versions_pkey PRIMARY KEY ("version_id"),
+    CONSTRAINT "seriesIdFk" FOREIGN KEY ("series_id")
+        REFERENCES public.series ("series_id") MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 );
@@ -25,5 +25,5 @@ ALTER TABLE public.versions
 
 CREATE INDEX IF NOT EXISTS "seriesIndex"
     ON public.versions USING btree
-    ("seriesId" varchar_pattern_ops ASC NULLS LAST)
+    ("series_id" varchar_pattern_ops ASC NULLS LAST)
 ;
