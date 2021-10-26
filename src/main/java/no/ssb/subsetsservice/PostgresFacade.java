@@ -32,6 +32,7 @@ public class PostgresFacade implements BackendInterface {
     String SELECT_SERIES_BY_ID = "SELECT series.series_json FROM series WHERE series.series_id = ?;";
     String SELECT_ALL_SERIES = "SELECT series.series_json FROM series;";
     String UPDATE_SERIES = "UPDATE series SET series_json = ? WHERE series_id = ?;";
+    String ADD_VERSION_TO_SERIES = "UPDATE series SET series_json = jsonb_set(series_json, '{versions,99999}'::text[], to_jsonb(?::text), true);";
 
     String SELECT_VERSION_BY_ID = "SELECT versions.version_json FROM versions WHERE versions.version_id = ?;";
     String SELECT_VERSIONS_BY_SERIES = "SELECT versions.version_json FROM versions WHERE versions.series_id = ?;";
@@ -260,7 +261,7 @@ public class PostgresFacade implements BackendInterface {
     @Override
     public ResponseEntity<JsonNode> saveVersionInSeries(String seriesID, String versionID, JsonNode versionNode) {
         String versionUID = seriesID+"_"+versionID;
-        LOG.debug("Attempting to insert version with UID "+versionUID+" to POSTGRES");
+        LOG.debug("Attempting to insert version with UID "+versionUID+" to POSTGRES and update series to point to version");
 
         try {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
@@ -272,21 +273,32 @@ public class PostgresFacade implements BackendInterface {
             jsonObject.setValue(versionNode.toString());
             pstmt.setObject(3, jsonObject);
             int affectedRows = pstmt.executeUpdate();
-            con.close();
             if (affectedRows > 0) {
-                LOG.debug("insert into series affected "+affectedRows+" rows");
-                return new ResponseEntity<>(CREATED);
+                LOG.debug("insert into versions affected "+affectedRows+" rows");
+            } else {
+                return ErrorHandler.newHttpError("No rows were affected by insert into versions", INTERNAL_SERVER_ERROR, LOG);
             }
-            return ErrorHandler.newHttpError("No rows were affected", INTERNAL_SERVER_ERROR, LOG);
+            LOG.debug("preparing statement to add version to series");
+            pstmt = con.prepareStatement(ADD_VERSION_TO_SERIES);
+            pstmt.setString(1, versionUID);
+            LOG.debug("pstmt: "+pstmt);
+            int affectedRowsUpdateSeries = pstmt.executeUpdate();
+            con.close();
+            if (affectedRowsUpdateSeries > 0) {
+                LOG.debug("update series with version affected "+affectedRows+" rows");
+            } else {
+                return ErrorHandler.newHttpError("No rows were affected by update into series", INTERNAL_SERVER_ERROR, LOG);
+            }
+            return new ResponseEntity<>(CREATED);
         } catch (SQLException ex) {
-            LOG.error("Failed to create series", ex);
-            return ErrorHandler.newHttpError("Failed to create version", INTERNAL_SERVER_ERROR, LOG);
+            ex.printStackTrace();
+            LOG.error("Failed to create version or insert version into series", ex);
+            return ErrorHandler.newHttpError("Failed to create version or insert version into series", INTERNAL_SERVER_ERROR, LOG);
         }
     }
 
     @Override
     public ResponseEntity<JsonNode> resolveVersionLink(String versionLink) {
-
         return ErrorHandler.newHttpError("Method Not Implemented", NOT_IMPLEMENTED, LOG);
     }
 

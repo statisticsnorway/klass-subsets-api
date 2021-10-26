@@ -470,7 +470,7 @@ public class SubsetsControllerV2 {
             if (!isOverlappingValidityRE.getStatusCode().is2xxSuccessful())
                 return isOverlappingValidityRE;
             ResponseEntity<JsonNode> updateLatestPublishedValidUntilRE = updateLatestPublishedValidUntil(isOverlappingValidityRE, editableVersion, seriesId);
-            //TODO: Check this respone entity?
+            //TODO: Check this response entity?
         }
 
         LOG.debug("Attempting to save version nr "+versionUUID+" of subset series "+seriesId+" to the database");
@@ -1054,9 +1054,14 @@ public class SubsetsControllerV2 {
             JsonNode version = subsetVersionsLinksArrayNode.get(i);
             String versionPath = version.asText(); // should be "/ClassificationSubsetVersion/{version_id}", since this is how LDS links a resource of a different type
             String[] splitBySlash = versionPath.split("/");
-            assert splitBySlash[0].isBlank() : "Index 0 in the array that splits the versionPath by '/' is not blank";
-            assert splitBySlash[1].equals("ClassificationSubsetVersion") : "Index 1 in the array that splits the versionPath by '/' is not 'ClassificationSubsetVersion'"; //TODO: these checks could be removed later when i know it works
-            String versionUID = splitBySlash[2];
+            String versionUID;
+            if (splitBySlash.length > 1) {
+                assert splitBySlash[0].isBlank() : "Index 0 in the array that splits the versionPath by '/' is not blank";
+                assert splitBySlash[1].equals("ClassificationSubsetVersion") : "Index 1 in the array that splits the versionPath by '/' is not 'ClassificationSubsetVersion'"; //TODO: these checks could be removed later when i know it works
+                versionUID = splitBySlash[2];
+            } else {
+                versionUID = versionPath;
+            }
             newVersionsLinkArrayNode.add(Utils.getVersionLink(seriesUID, versionUID));
         }
         editableSeries.set(Field.VERSIONS, newVersionsLinkArrayNode);
