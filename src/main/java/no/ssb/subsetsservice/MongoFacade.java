@@ -56,7 +56,7 @@ public class MongoFacade implements BackendInterface {
     }
 
     @Override
-    public ResponseEntity<JsonNode> postVersionInSeries(String id, String versionID, JsonNode versionNode) {
+    public ResponseEntity<JsonNode> saveVersionInSeries(String id, String versionID, JsonNode versionNode) {
         return null;
     }
 

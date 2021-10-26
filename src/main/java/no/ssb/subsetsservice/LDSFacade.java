@@ -62,7 +62,7 @@ public class LDSFacade implements BackendInterface {
         return new LDSConsumer(API_LDS).putTo(SERIES_API+"/" + id, series);
     }
 
-    public ResponseEntity<JsonNode> postVersionInSeries(String seriesID, String versionNr, JsonNode versionJsonNode) {
+    public ResponseEntity<JsonNode> saveVersionInSeries(String seriesID, String versionNr, JsonNode versionJsonNode) {
         Logger logger = LoggerFactory.getLogger(LDSFacade.class);
         String versionUID = seriesID+"_"+versionNr;
         logger.debug("Attempting to POST version with UID "+versionUID+" to LDS");

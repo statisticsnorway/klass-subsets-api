@@ -27,7 +27,7 @@ public interface BackendInterface {
 
     ResponseEntity<JsonNode> createSubsetSeries(JsonNode subset, String id);
 
-    ResponseEntity<JsonNode> postVersionInSeries(String id, String versionID, JsonNode versionNode);
+    ResponseEntity<JsonNode> saveVersionInSeries(String id, String versionID, JsonNode versionNode);
 
     ResponseEntity<JsonNode> resolveVersionLink(String versionLink);
 

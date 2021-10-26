@@ -31,16 +31,17 @@ public class PostgresFacade implements BackendInterface {
 
     String SELECT_SERIES_BY_ID = "SELECT series.series_json FROM series WHERE series.series_id = ?;";
     String SELECT_ALL_SERIES = "SELECT series.series_json FROM series;";
-    String UPDATE_SERIES = "UPDATE series SET series_json = ? WHERE series_id = ?";
+    String UPDATE_SERIES = "UPDATE series SET series_json = ? WHERE series_id = ?;";
 
-    String SELECT_VERSION_BY_ID = "SELECT versions.version_json FROM versions WHERE versions.series_id = ? AND versions.version_id = ?";
-    String SELECT_VERSIONS_BY_SERIES = "SELECT versions.version_json FROM versions WHERE versions.series_id = ?";
-    String UPDATE_VERSION = "UPDATE versions SET version_json = ? WHERE series_id = ? AND version_id = ?";
+    String SELECT_VERSION_BY_ID = "SELECT versions.version_json FROM versions WHERE versions.version_id = ?;";
+    String SELECT_VERSIONS_BY_SERIES = "SELECT versions.version_json FROM versions WHERE versions.series_id = ?;";
+    String UPDATE_VERSION = "UPDATE versions SET version_json = ? WHERE series_id = ? AND version_id = ?;";
 
-    String DELETE_SERIES = "DELETE FROM series";
-    String DELETE_SERIES_BY_ID = "DELETE FROM series WHERE series.series_id = ?";
-    String DELETE_VERSIONS = "DELETE FROM versions";
-    String DELETE_VERSIONS_BY_ID = "DELETE FROM versions WHERE versions.series_id = ? AND versions.version_id = ?";
+    String DELETE_SERIES = "DELETE FROM series;";
+    String DELETE_SERIES_BY_ID = "DELETE FROM series WHERE series.series_id = ?;";
+    String DELETE_VERSIONS_IN_SERIES = "DELETE FROM versions WHERE versions.series_id = ?;";
+    String DELETE_VERSIONS = "DELETE FROM versions;";
+    String DELETE_VERSIONS_BY_ID = "DELETE FROM versions WHERE versions.series_id = ? AND versions.version_id = ?;";
 
 
     private static String getURLFromEnvOrDefault() {
@@ -107,21 +108,21 @@ public class PostgresFacade implements BackendInterface {
     }
 
     @Override
-    public ResponseEntity<JsonNode> getVersionByID(String versionId) {
-        LOG.debug("getVersionByID id "+versionId);
+    public ResponseEntity<JsonNode> getVersionByID(String versionUid) {
+        LOG.debug("getVersionByID uid "+versionUid);
         try {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
             PreparedStatement pstmt = con.prepareStatement(SELECT_VERSION_BY_ID);
-            pstmt.setString(1, versionId);
+            pstmt.setString(1, versionUid);
             LOG.debug("pstmt: "+pstmt);
             ResultSet rs = pstmt.executeQuery();
             ObjectMapper om = new ObjectMapper();
             JsonNode series;
             boolean next = rs.next();
             if (!next)
-                return ErrorHandler.newHttpError("Version with id "+versionId+" was not found", NOT_FOUND, LOG);
+                return ErrorHandler.newHttpError("Version with id "+versionUid+" was not found", NOT_FOUND, LOG);
             if (!rs.isLast())
-                LOG.error("There was more than one row in a rs from a query find a series version with id "+versionId);
+                LOG.error("There was more than one row in a rs from a query find a series version with id "+versionUid);
             series = om.readTree(rs.getString(1));
             return new ResponseEntity<>(series, OK);
         } catch (SQLException ex) {
@@ -146,7 +147,7 @@ public class PostgresFacade implements BackendInterface {
             JsonNode series;
             boolean next = rs.next();
             if (!next)
-                return ErrorHandler.newHttpError("Series with id"+id+" was not found", NOT_FOUND, LOG);
+                return ErrorHandler.newHttpError("Series with id "+id+" was not found", NOT_FOUND, LOG);
             if (!rs.isLast())
                 LOG.error("There was more than one row in a rs from a query find a series with id "+id);
             series = om.readTree(rs.getString(1));
@@ -248,7 +249,7 @@ public class PostgresFacade implements BackendInterface {
     }
 
     @Override
-    public ResponseEntity<JsonNode> postVersionInSeries(String seriesID, String versionID, JsonNode versionNode) {
+    public ResponseEntity<JsonNode> saveVersionInSeries(String seriesID, String versionID, JsonNode versionNode) {
         String versionUID = seriesID+"_"+versionID;
         LOG.debug("Attempting to insert version with UID "+versionUID+" to POSTGRES");
 
@@ -361,13 +362,25 @@ public class PostgresFacade implements BackendInterface {
     public ResponseEntity<JsonNode> deleteAllSubsetSeries() {
         try {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
-            PreparedStatement pstmt = con.prepareStatement(DELETE_SERIES);
+            PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS);
             LOG.debug("pstmt: "+pstmt);
-            ResultSet rs = pstmt.executeQuery();
+            try {
+                ResultSet rs = pstmt.executeQuery();
+            } catch (SQLException ex) {
+                LOG.warn("SQLEx: " + ex.getMessage());
+            }
+
+            pstmt = con.prepareStatement(DELETE_SERIES);
+            LOG.debug("pstmt: "+pstmt);
+            try {
+                ResultSet rs = pstmt.executeQuery();
+            } catch (SQLException ex) {
+                LOG.warn("SQLEx: " + ex.getMessage());
+            }
             return new ResponseEntity<>(OK);
         } catch (SQLException ex) {
-            LOG.error("Failed to delete all series", ex);
-            return ErrorHandler.newHttpError("Failed to delete all series", INTERNAL_SERVER_ERROR, LOG);
+            LOG.error("Failed to delete all versions and series", ex);
+            return ErrorHandler.newHttpError("Failed to delete all versions and series", INTERNAL_SERVER_ERROR, LOG);
         }
     }
 
@@ -375,10 +388,23 @@ public class PostgresFacade implements BackendInterface {
     public ResponseEntity<JsonNode> deleteSubsetSeries(String id) {
         try {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
-            PreparedStatement pstmt = con.prepareStatement(DELETE_SERIES_BY_ID);
+            PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS_IN_SERIES);
             pstmt.setString(1, id);
             LOG.debug("pstmt: "+pstmt);
-            ResultSet rs = pstmt.executeQuery();
+            try {
+                ResultSet rs = pstmt.executeQuery();
+            } catch (SQLException ex) {
+                LOG.warn("SQLEx: " + ex.getMessage());
+            }
+
+            pstmt = con.prepareStatement(DELETE_SERIES_BY_ID);
+            pstmt.setString(1, id);
+            LOG.debug("pstmt: "+pstmt);
+            try {
+                ResultSet rs = pstmt.executeQuery();
+            } catch (SQLException ex) {
+                LOG.warn("SQLEx: " + ex.getMessage());
+            }
             return new ResponseEntity<>(OK);
         } catch (SQLException ex) {
             LOG.error("Failed to delete all series", ex);
@@ -396,6 +422,7 @@ public class PostgresFacade implements BackendInterface {
             LOG.debug("pstmt: "+pstmt);
             ResultSet rs = pstmt.executeQuery();
         } catch (SQLException ex) {
+            LOG.warn("SQLEx: " + ex.getMessage());
             LOG.error("Failed to delete version of series "+subsetId+" with versionUid"+versionUid, ex);
         }
     }
