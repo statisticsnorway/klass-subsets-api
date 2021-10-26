@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -46,7 +47,7 @@ class SubsetsControllerV2Test {
     private final File version_1_extra_field = new File("src/test/resources/version_examples/version_1_extra_field.json");
     private final File version_1_extra_field_in_code = new File("src/test/resources/version_examples/version_1_extra_field_in_code.json");
 
-    public JsonNode readJsonFile(File file){
+    public JsonNode readJsonFile(File file) {
         assert file.exists() : "File "+file.getAbsolutePath()+" did not exist";
         ObjectMapper mapper = new ObjectMapper();
         try {
@@ -57,9 +58,18 @@ class SubsetsControllerV2Test {
         return null;
     }
 
+    /*
     @AfterAll
     public static void cleanUp() {
-        System.out.println("After All cleanUp() method called");
+        System.out.println("After Each cleanUp() method called");
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+        instance.deleteAllSeries();
+    }
+     */
+
+    @AfterEach
+    void cleanUp() {
+        System.out.println("After Each cleanUp() method called");
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         instance.deleteAllSeries();
     }
@@ -341,7 +351,7 @@ class SubsetsControllerV2Test {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
+        //FIXME: After change to postgres versions are not linked in series?
         ResponseEntity<JsonNode> getVersionsRE = instance.getVersions(seriesId, true, true, "all");
         assertEquals(getVersionsRE.getBody().size(), 1);
     }

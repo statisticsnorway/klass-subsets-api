@@ -70,6 +70,7 @@ public class PostgresFacade implements BackendInterface {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
             Statement st = con.createStatement();
             ResultSet rs = st.executeQuery("SELECT VERSION()");
+            con.close();
             if (rs.next()) {
                 LOG.debug("'SELECT VERSION()' result : "+rs.getString(1));
             }
@@ -92,6 +93,7 @@ public class PostgresFacade implements BackendInterface {
             String getTablesQuery = "SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'";
             LOG.debug("Executing query: '"+getTablesQuery+"'");
             ResultSet rs = st.executeQuery("SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'");
+            con.close();
             LOG.debug("Printing SQL table(name)s retrieved with query:");
             int columnIndex = 1;
             while (rs.next()) {
@@ -116,6 +118,7 @@ public class PostgresFacade implements BackendInterface {
             pstmt.setString(1, versionUid);
             LOG.debug("pstmt: "+pstmt);
             ResultSet rs = pstmt.executeQuery();
+            con.close();
             ObjectMapper om = new ObjectMapper();
             JsonNode series;
             boolean next = rs.next();
@@ -143,6 +146,7 @@ public class PostgresFacade implements BackendInterface {
             pstmt.setString(1, id);
             LOG.debug("pstmt: "+pstmt);
             ResultSet rs = pstmt.executeQuery();
+            con.close();
             ObjectMapper om = new ObjectMapper();
             JsonNode series;
             boolean next = rs.next();
@@ -167,6 +171,7 @@ public class PostgresFacade implements BackendInterface {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
             PreparedStatement pstmt = con.prepareStatement(SELECT_ALL_SERIES);
             ResultSet rs = pstmt.executeQuery();
+            con.close();
             ObjectMapper om = new ObjectMapper();
             ArrayNode allSeriesArrayNode = om.createArrayNode();
             LOG.debug("rs get fetch size "+rs.getFetchSize());
@@ -191,6 +196,7 @@ public class PostgresFacade implements BackendInterface {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
             Statement st = con.createStatement();
             ResultSet rs = st.executeQuery("SELECT VERSION()");
+            con.close();
             if (rs.next()) {
                 LOG.debug("'SELECT VERSION()' result : "+rs.getString(1));
                 return true;
@@ -214,6 +220,7 @@ public class PostgresFacade implements BackendInterface {
             jsonObject.setValue(newVersionOfSeries.toString());
             pstmt.setObject(1, jsonObject);
             int affectedRows = pstmt.executeUpdate();
+            con.close();
             if (affectedRows > 0) {
                 LOG.debug("edit series affected "+affectedRows+" rows");
                 return new ResponseEntity<>(CREATED);
@@ -237,12 +244,14 @@ public class PostgresFacade implements BackendInterface {
             jsonObject.setValue(subset.toString());
             pstmt.setObject(2, jsonObject);
             int affectedRows = pstmt.executeUpdate();
+            con.close();
             if (affectedRows > 0) {
                 LOG.debug("insert into series affected "+affectedRows+" rows");
                 return new ResponseEntity<>(CREATED);
             }
             return ErrorHandler.newHttpError("No rows were affected", INTERNAL_SERVER_ERROR, LOG);
         } catch (SQLException ex) {
+            ex.printStackTrace();
             LOG.error("Failed to create series", ex);
             return ErrorHandler.newHttpError("Failed to create series", INTERNAL_SERVER_ERROR, LOG);
         }
@@ -263,6 +272,7 @@ public class PostgresFacade implements BackendInterface {
             jsonObject.setValue(versionNode.toString());
             pstmt.setObject(3, jsonObject);
             int affectedRows = pstmt.executeUpdate();
+            con.close();
             if (affectedRows > 0) {
                 LOG.debug("insert into series affected "+affectedRows+" rows");
                 return new ResponseEntity<>(CREATED);
@@ -377,6 +387,7 @@ public class PostgresFacade implements BackendInterface {
             } catch (SQLException ex) {
                 LOG.warn("SQLEx: " + ex.getMessage());
             }
+            con.close();
             return new ResponseEntity<>(OK);
         } catch (SQLException ex) {
             LOG.error("Failed to delete all versions and series", ex);
@@ -405,6 +416,7 @@ public class PostgresFacade implements BackendInterface {
             } catch (SQLException ex) {
                 LOG.warn("SQLEx: " + ex.getMessage());
             }
+            con.close();
             return new ResponseEntity<>(OK);
         } catch (SQLException ex) {
             LOG.error("Failed to delete all series", ex);
@@ -421,6 +433,7 @@ public class PostgresFacade implements BackendInterface {
             pstmt.setString(2, versionUid);
             LOG.debug("pstmt: "+pstmt);
             ResultSet rs = pstmt.executeQuery();
+            con.close();
         } catch (SQLException ex) {
             LOG.warn("SQLEx: " + ex.getMessage());
             LOG.error("Failed to delete version of series "+subsetId+" with versionUid"+versionUid, ex);
@@ -443,6 +456,7 @@ public class PostgresFacade implements BackendInterface {
             jsonObject.setValue(editablePutVersion.toString());
             pstmt.setObject(1, jsonObject);
             int affectedRows = pstmt.executeUpdate();
+            con.close();
             if (affectedRows > 0) {
                 LOG.debug("edit version affected "+affectedRows+" rows");
                 return new ResponseEntity<>(CREATED);
