@@ -31,18 +31,16 @@ public class PostgresFacade implements BackendInterface {
 
     String SELECT_SERIES_BY_ID = "SELECT series.series_json FROM series WHERE series.series_id = ?;";
     String SELECT_ALL_SERIES = "SELECT series.series_json FROM series;";
-    String UPDATE_SERIES = "UPDATE series SET series_json = ? WHERE series_id = ?;";
-    String ADD_VERSION_TO_SERIES = "UPDATE series SET series_json = jsonb_set(series_json, '{versions,99999}'::text[], to_jsonb(?::text), true);";
+    String UPDATE_SERIES = "UPDATE series SET series_json = ? WHERE series_id = ?";
 
-    String SELECT_VERSION_BY_ID = "SELECT versions.version_json FROM versions WHERE versions.version_id = ?;";
-    String SELECT_VERSIONS_BY_SERIES = "SELECT versions.version_json FROM versions WHERE versions.series_id = ?;";
-    String UPDATE_VERSION = "UPDATE versions SET version_json = ? WHERE series_id = ? AND version_id = ?;";
+    String SELECT_VERSION_BY_ID = "SELECT versions.version_json FROM versions WHERE versions.series_id = ? AND versions.version_id = ?";
+    String SELECT_VERSIONS_BY_SERIES = "SELECT versions.version_json FROM versions WHERE versions.series_id = ?";
+    String UPDATE_VERSION = "UPDATE versions SET version_json = ? WHERE series_id = ? AND version_id = ?";
 
-    String DELETE_SERIES = "DELETE FROM series;";
-    String DELETE_SERIES_BY_ID = "DELETE FROM series WHERE series.series_id = ?;";
-    String DELETE_VERSIONS_IN_SERIES = "DELETE FROM versions WHERE versions.series_id = ?;";
-    String DELETE_VERSIONS = "DELETE FROM versions;";
-    String DELETE_VERSIONS_BY_ID = "DELETE FROM versions WHERE versions.series_id = ? AND versions.version_id = ?;";
+    String DELETE_SERIES = "DELETE FROM series";
+    String DELETE_SERIES_BY_ID = "DELETE FROM series WHERE series.series_id = ?";
+    String DELETE_VERSIONS = "DELETE FROM versions";
+    String DELETE_VERSIONS_BY_ID = "DELETE FROM versions WHERE versions.series_id = ? AND versions.version_id = ?";
 
 
     private static String getURLFromEnvOrDefault() {
@@ -71,7 +69,6 @@ public class PostgresFacade implements BackendInterface {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
             Statement st = con.createStatement();
             ResultSet rs = st.executeQuery("SELECT VERSION()");
-            con.close();
             if (rs.next()) {
                 LOG.debug("'SELECT VERSION()' result : "+rs.getString(1));
             }
@@ -94,7 +91,6 @@ public class PostgresFacade implements BackendInterface {
             String getTablesQuery = "SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'";
             LOG.debug("Executing query: '"+getTablesQuery+"'");
             ResultSet rs = st.executeQuery("SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'");
-            con.close();
             LOG.debug("Printing SQL table(name)s retrieved with query:");
             int columnIndex = 1;
             while (rs.next()) {
@@ -445,9 +441,7 @@ public class PostgresFacade implements BackendInterface {
             pstmt.setString(2, versionUid);
             LOG.debug("pstmt: "+pstmt);
             ResultSet rs = pstmt.executeQuery();
-            con.close();
         } catch (SQLException ex) {
-            LOG.warn("SQLEx: " + ex.getMessage());
             LOG.error("Failed to delete version of series "+subsetId+" with versionUid"+versionUid, ex);
         }
     }
@@ -468,7 +462,6 @@ public class PostgresFacade implements BackendInterface {
             jsonObject.setValue(editablePutVersion.toString());
             pstmt.setObject(1, jsonObject);
             int affectedRows = pstmt.executeUpdate();
-            con.close();
             if (affectedRows > 0) {
                 LOG.debug("edit version affected "+affectedRows+" rows");
                 return new ResponseEntity<>(CREATED);
