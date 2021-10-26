@@ -31,27 +31,25 @@ import static org.springframework.http.HttpStatus.*;
 @Service
 public class PostgresFacade implements BackendInterface {
 
-
-
     private static final Logger LOG = LoggerFactory.getLogger(SubsetsControllerV2.class);
-    private String JDBC_PS_URL = "jdbc:postgresql://localhost:5432/postgres";
-    private String USER = "postgres";
-    private String PASSWORD = "postgres";
+    private static final String LOCAL_JDBC_PS_URL = "jdbc:postgresql://localhost:5432/postgres_klass";
+    private static final String LOCAL_PS_USER = "postgres_klass";
+    private static final String LOCAL_PS_PW = "postgres";
+    private String JDBC_PS_URL = LOCAL_JDBC_PS_URL;
+    private String USER = LOCAL_PS_USER;
+    private String PASSWORD = LOCAL_PS_PW;
     private boolean initialized = false;
 
-
-
-
     private static String getURLFromEnvOrDefault() {
-        return System.getenv().getOrDefault("JDBC_PS_URL", "jdbc:postgresql://localhost:5432/postgres");
+        return System.getenv().getOrDefault("JDBC_PS_URL", LOCAL_JDBC_PS_URL);
     }
 
     private static String getUserFromEnvOrDefault() {
-        return System.getenv().getOrDefault("POSTGRES_USER", "postgres");
+        return System.getenv().getOrDefault("POSTGRES_USER", LOCAL_PS_USER);
     }
 
     private static String getPasswordFromEnvOrDefault() {
-        return System.getenv().getOrDefault("PASSWORD", "postgres");
+        return System.getenv().getOrDefault("PASSWORD", LOCAL_PS_PW);
     }
 
     @Override
