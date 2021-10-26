@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import no.ssb.subsetsservice.config.PostgresDBConfig;
 import no.ssb.subsetsservice.controller.ErrorHandler;
 import no.ssb.subsetsservice.controller.SubsetsControllerV2;
 import no.ssb.subsetsservice.entity.Field;
@@ -15,16 +16,22 @@ import org.postgresql.util.PGobject;
 import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
 import java.sql.*;
 
+import static no.ssb.subsetsservice.entity.SQL.*;
 import static org.springframework.http.HttpStatus.*;
 
+@Service
 public class PostgresFacade implements BackendInterface {
+
+
 
     private static final Logger LOG = LoggerFactory.getLogger(SubsetsControllerV2.class);
     private String JDBC_PS_URL = "jdbc:postgresql://localhost:5432/postgres";
@@ -33,18 +40,6 @@ public class PostgresFacade implements BackendInterface {
     private boolean initialized = false;
 
 
-    String SELECT_SERIES_BY_ID = "SELECT series.series_json FROM series WHERE series.series_id = ?;";
-    String SELECT_ALL_SERIES = "SELECT series.series_json FROM series;";
-    String UPDATE_SERIES = "UPDATE series SET series_json = ? WHERE series_id = ?";
-
-    String SELECT_VERSION_BY_ID = "SELECT versions.version_json FROM versions WHERE versions.series_id = ? AND versions.version_id = ?";
-    String SELECT_VERSIONS_BY_SERIES = "SELECT versions.version_json FROM versions WHERE versions.series_id = ?";
-    String UPDATE_VERSION = "UPDATE versions SET version_json = ? WHERE series_id = ? AND version_id = ?";
-
-    String DELETE_SERIES = "DELETE FROM series";
-    String DELETE_SERIES_BY_ID = "DELETE FROM series WHERE series.series_id = ?";
-    String DELETE_VERSIONS = "DELETE FROM versions";
-    String DELETE_VERSIONS_BY_ID = "DELETE FROM versions WHERE versions.series_id = ? AND versions.version_id = ?";
 
 
     private static String getURLFromEnvOrDefault() {
@@ -57,10 +52,6 @@ public class PostgresFacade implements BackendInterface {
 
     private static String getPasswordFromEnvOrDefault() {
         return System.getenv().getOrDefault("PASSWORD", "postgres");
-    }
-
-    private static String getCloudSQLURL(String databaseName, String instanceConnectionName, String postgresqlUserName, String postgresqlUserPassword){
-        return "jdbc:postgresql:///"+databaseName+"?cloudSqlInstance="+instanceConnectionName+"&socketFactory=com.google.cloud.sql.postgres.SocketFactory&user="+postgresqlUserName+"&password="+postgresqlUserPassword;
     }
 
     @Override

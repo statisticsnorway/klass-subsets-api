@@ -25,17 +25,17 @@ public class KlassURNResolver {
         return System.getenv().getOrDefault("API_KLASS", KLASS_BASE_URL);
     }
 
-    static String makeKLASSCodesFromToURL(String classificationID, String from, String to, String codes, String language) {
+    public static String makeKLASSCodesFromToURL(String classificationID, String from, String to, String codes, String language) {
         KLASS_BASE_URL = getURL();
         return String.format("%s%s/%s/codes.json?from=%s&to=%s&selectCodes=%s&language=%s", KLASS_BASE_URL, CLASSIFICATIONS_API, classificationID, from, to, codes, language);
     }
 
-    static String makeKLASSClassificationURL(String classificationID) {
+    public static String makeKLASSClassificationURL(String classificationID) {
         KLASS_BASE_URL = getURL();
         return String.format("%s%s/%s.json", KLASS_BASE_URL, CLASSIFICATIONS_API, classificationID);
     }
 
-    static ResponseEntity<JsonNode> getFrom(String url) {
+    public static ResponseEntity<JsonNode> getFrom(String url) {
         LOG.info("KLASS Attempting to GET JsonNode from "+url);
         try {
             ResponseEntity<JsonNode> re = new RestTemplate().getForEntity(url, JsonNode.class);

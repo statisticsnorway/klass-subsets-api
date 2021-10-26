@@ -3,27 +3,31 @@ package no.ssb.subsetsservice.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import no.ssb.subsetsservice.SubsetsServiceApplicationTests;
 import no.ssb.subsetsservice.controller.SubsetsControllerV2;
 import no.ssb.subsetsservice.entity.Field;
+import no.ssb.subsetsservice.service.MetricsService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ContextConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-class SubsetsControllerV2Test {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SubsetsServiceApplicationTests.class);
+public class SubsetsControllerV2Test {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SubsetsControllerV2Test.class);
     private final File series_1_0 = new File("src/test/resources/series_examples/series_1_0.json");
 
     private final File series_1_extra_field = new File("src/test/resources/series_examples/series_1_extra_field.json");
@@ -69,6 +73,8 @@ class SubsetsControllerV2Test {
     }
      */
 
+    private
+
     @AfterEach
     void cleanUp() {
         System.out.println("After Each cleanUp() method called");
@@ -78,6 +84,9 @@ class SubsetsControllerV2Test {
 
     @BeforeEach
     public void deleteAllSeries() {
+
+        MetricsService metricService = Mockito.mock(MetricsService.class);
+        Mockito.when(metricService.getPostCounter()).thenReturn(new AtomicInteger(1));
         SubsetsControllerV2.getInstance().deleteAllSeries();
     }
 

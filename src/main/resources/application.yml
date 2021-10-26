@@ -61,7 +61,7 @@ spring:
     banner-mode: off
   datasource:
     platform: postgres
-    url: jdbc:postgresql://localhost:5432/postgres
+    url: jdbc:postgresql://localhost:5432/postgres_klass
     username: postgres
     password: postgres
   jpa:

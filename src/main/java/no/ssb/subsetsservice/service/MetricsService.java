@@ -16,6 +16,21 @@ public class MetricsService {
     AtomicInteger postCounter;
     AtomicInteger testCounter;
 
+    public AtomicInteger getGetCounter() {
+        return getCounter;
+    }
+
+    public AtomicInteger getPutCounter() {
+        return putCounter;
+    }
+
+    public AtomicInteger getPostCounter() {
+        return postCounter;
+    }
+
+    public AtomicInteger getTestCounter() {
+        return testCounter;
+    }
 
     @Autowired
     public MetricsService(MeterRegistry meterRegistry){
@@ -30,19 +45,19 @@ public class MetricsService {
         testCounter = new AtomicInteger(0);
     }
 
-    int incrementGETCounter(){
+    public int incrementGETCounter(){
         return getCounter.incrementAndGet();
     }
 
-    int incrementPUTCounter(){
+    public int incrementPUTCounter(){
         return putCounter.incrementAndGet();
     }
 
-    int incrementPOSTCounter(){
+    public int incrementPOSTCounter(){
         return postCounter.incrementAndGet();
     }
 
-    int incrementTestCounter(){
+    public int incrementTestCounter(){
         return testCounter.incrementAndGet();
     }
 }

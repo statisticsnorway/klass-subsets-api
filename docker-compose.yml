@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: postgres
     volumes:
       - postgresdb:/var/lib/postgresql/data
-#      - ${SQL_INIT_PATH}:/docker-entrypoint-initdb.d/init.sql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
   postgresdb:

@@ -25,9 +25,9 @@ public class MetricController {
     @GetMapping("/customMetrics")
     public ResponseEntity<JsonNode> getMetrics() {
         ObjectNode metricsNode = new ObjectMapper().createObjectNode();
-        metricsNode.put("GET counter", metricsService.getCounter.intValue());
-        metricsNode.put("PUT counter", metricsService.putCounter.intValue());
-        metricsNode.put("POST counter", metricsService.postCounter.intValue());
+        metricsNode.put("GET counter", metricsService.getGetCounter().intValue());
+        metricsNode.put("PUT counter", metricsService.getPutCounter().intValue());
+        metricsNode.put("POST counter", metricsService.getPostCounter().intValue());
         metricsNode.put("test counter", metricsService.incrementTestCounter());
         JsonNode body = metricsNode.deepCopy();
         return new ResponseEntity<>(body, HttpStatus.OK);
