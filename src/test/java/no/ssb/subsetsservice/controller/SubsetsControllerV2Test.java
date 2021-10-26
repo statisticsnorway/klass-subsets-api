@@ -3,23 +3,18 @@ package no.ssb.subsetsservice.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import no.ssb.subsetsservice.controller.SubsetsControllerV2;
 import no.ssb.subsetsservice.entity.Field;
-import no.ssb.subsetsservice.service.MetricsService;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.ContextConfiguration;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -73,20 +68,15 @@ public class SubsetsControllerV2Test {
     }
      */
 
-    private
-
-    @AfterEach
-    void cleanUp() {
-        System.out.println("After Each cleanUp() method called");
+    @AfterAll
+    static void cleanUp() {
+        System.out.println("@AfterAll cleanUp() method called");
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         instance.deleteAllSeries();
     }
 
     @BeforeEach
     public void deleteAllSeries() {
-
-        MetricsService metricService = Mockito.mock(MetricsService.class);
-        Mockito.when(metricService.getPostCounter()).thenReturn(new AtomicInteger(1));
         SubsetsControllerV2.getInstance().deleteAllSeries();
     }
 

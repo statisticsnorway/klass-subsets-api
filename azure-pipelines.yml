@@ -27,6 +27,7 @@ resources:
 
 jobs:
   - job: buildTestAndRunTest
+    timeoutInMinutes: 120
     displayName: 'Test/build app and Dockerimage'
     steps:
       - task: DownloadSecureFile@1
