@@ -1,9 +1,15 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import no.ssb.subsetsservice.entity.Field;
+import no.ssb.subsetsservice.service.BackendFactory;
+import no.ssb.subsetsservice.service.BackendInterface;
+import no.ssb.subsetsservice.service.MetricsService;
+import no.ssb.subsetsservice.util.KlassURNResolver;
+import no.ssb.subsetsservice.util.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

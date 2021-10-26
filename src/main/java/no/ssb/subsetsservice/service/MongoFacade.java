@@ -1,21 +1,9 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import no.ssb.subsetsservice.service.BackendInterface;
 import org.springframework.http.ResponseEntity;
-
-import com.mongodb.*;
-import com.mongodb.client.*;
-
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.model.Indexes;
-import org.bson.Document;
-import org.bson.types.ObjectId;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Spliterator;
 
 import static org.springframework.http.HttpStatus.OK;
 

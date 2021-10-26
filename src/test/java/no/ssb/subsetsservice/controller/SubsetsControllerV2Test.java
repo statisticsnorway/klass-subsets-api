@@ -1,9 +1,11 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import org.junit.jupiter.api.AfterAll;
+import no.ssb.subsetsservice.SubsetsServiceApplicationTests;
+import no.ssb.subsetsservice.controller.SubsetsControllerV2;
+import no.ssb.subsetsservice.entity.Field;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

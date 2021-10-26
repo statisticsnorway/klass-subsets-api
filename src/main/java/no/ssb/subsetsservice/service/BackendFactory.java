@@ -1,4 +1,4 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.service;
 
 public class BackendFactory {
 

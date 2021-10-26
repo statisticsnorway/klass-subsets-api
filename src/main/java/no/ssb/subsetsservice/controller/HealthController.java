@@ -1,5 +1,8 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.controller;
 
+import no.ssb.subsetsservice.service.BackendFactory;
+import no.ssb.subsetsservice.service.BackendInterface;
+import no.ssb.subsetsservice.util.KlassURNResolver;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -1,4 +1,4 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.service;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Autowired;

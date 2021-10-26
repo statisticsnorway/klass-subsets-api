@@ -1,5 +1,6 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.controller;
 
+import no.ssb.subsetsservice.controller.HealthController;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;

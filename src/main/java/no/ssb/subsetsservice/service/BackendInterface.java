@@ -1,4 +1,4 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;

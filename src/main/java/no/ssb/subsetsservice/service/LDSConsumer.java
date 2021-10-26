@@ -1,7 +1,8 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import no.ssb.subsetsservice.controller.ErrorHandler;
 import okhttp3.*;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;

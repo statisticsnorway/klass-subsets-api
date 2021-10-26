@@ -1,10 +1,14 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import no.ssb.subsetsservice.controller.ErrorHandler;
+import no.ssb.subsetsservice.controller.SubsetsControllerV2;
+import no.ssb.subsetsservice.entity.Field;
+import no.ssb.subsetsservice.service.BackendInterface;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.SQLExec;
 import org.postgresql.util.PGobject;

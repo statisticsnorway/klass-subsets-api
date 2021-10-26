@@ -1,8 +1,9 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import no.ssb.subsetsservice.service.MetricsService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Autowired;
