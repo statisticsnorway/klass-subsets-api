@@ -35,10 +35,14 @@ public class PostgresFacade implements BackendInterface {
     private static final String LOCAL_JDBC_PS_URL = "jdbc:postgresql://localhost:5432/postgres_klass";
     private static final String LOCAL_PS_USER = "postgres_klass";
     private static final String LOCAL_PS_PW = "postgres";
+    private static final String LOCAL_DB_NAME = "postgres_klass";
     private String JDBC_PS_URL = LOCAL_JDBC_PS_URL;
     private String USER = LOCAL_PS_USER;
     private String PASSWORD = LOCAL_PS_PW;
+    private String DB_NAME = LOCAL_DB_NAME;
     private boolean initialized = false;
+
+    ConnectionPool connectionPool;
 
     private static String getURLFromEnvOrDefault() {
         return System.getenv().getOrDefault("JDBC_PS_URL", LOCAL_JDBC_PS_URL);
