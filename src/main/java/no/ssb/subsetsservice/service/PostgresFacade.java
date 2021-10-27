@@ -61,11 +61,11 @@ public class PostgresFacade implements BackendInterface {
         JDBC_PS_URL = getURLFromEnvOrDefault();
         USER = getUserFromEnvOrDefault();
         PASSWORD = getPasswordFromEnvOrDefault();
-
         try {
             Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
             Statement st = con.createStatement();
             ResultSet rs = st.executeQuery("SELECT VERSION()");
+            con.close();
             if (rs.next()) {
                 LOG.debug("'SELECT VERSION()' result : "+rs.getString(1));
             }
@@ -88,6 +88,7 @@ public class PostgresFacade implements BackendInterface {
             String getTablesQuery = "SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'";
             LOG.debug("Executing query: '"+getTablesQuery+"'");
             ResultSet rs = st.executeQuery("SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'");
+            con.close();
             LOG.debug("Printing SQL table(name)s retrieved with query:");
             int columnIndex = 1;
             while (rs.next()) {
