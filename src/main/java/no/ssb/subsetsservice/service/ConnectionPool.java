@@ -3,14 +3,8 @@ package no.ssb.subsetsservice.service;
 import com.google.cloud.sql.postgres.SocketFactory;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.*;
 import java.util.Properties;
 
@@ -82,25 +76,5 @@ public class ConnectionPool {
             return connectionPool.getConnection();
         else
             return DriverManager.getConnection(LOCAL_JDBC_PS_URL, LOCAL_PS_USER, LOCAL_PS_PW);
-    }
-
-
-    private void executeSql(String sqlFilePath) throws PSQLException {
-        Path path = Paths.get(sqlFilePath);
-        try {
-            String sqlString = Files.readString(path);
-            try {
-                Connection con = getConnection();
-                PreparedStatement preparedStatement = con.prepareStatement(sqlString); // I think this only work with single statement files?
-                LOG.debug("Executing SQL in file: "+sqlFilePath+" which resolves to absolute path "+path.toAbsolutePath());
-                preparedStatement.executeQuery();
-                con.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        } catch (IOException e) {
-            LOG.error("Failed to read sql file from path string "+sqlFilePath+" with absolute path "+path.toAbsolutePath());
-            e.printStackTrace();
-        }
     }
 }

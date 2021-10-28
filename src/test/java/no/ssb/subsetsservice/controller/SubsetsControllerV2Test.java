@@ -60,15 +60,6 @@ public class SubsetsControllerV2Test {
         return null;
     }
 
-    /*
-    @AfterAll
-    public static void cleanUp() {
-        System.out.println("After Each cleanUp() method called");
-        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
-        instance.deleteAllSeries();
-    }
-     */
-
     @AfterAll
     static void cleanUp() {
         System.out.println("@AfterAll cleanUp() method called");
