@@ -1,31 +1,18 @@
 package no.ssb.subsetsservice.service;
 
-import javax.sql.DataSource;
-
 import com.google.cloud.sql.postgres.SocketFactory;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import no.ssb.subsetsservice.controller.ErrorHandler;
-import no.ssb.subsetsservice.controller.SubsetsControllerV2;
-import no.ssb.subsetsservice.entity.SQL;
-import org.apache.tools.ant.Project;
-import org.apache.tools.ant.taskdefs.SQLExec;
 import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.*;
 import java.util.Properties;
-
-import static org.postgresql.jdbc.EscapedFunctions.USER;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-import static org.springframework.http.HttpStatus.OK;
 
 public class ConnectionPool {
 
