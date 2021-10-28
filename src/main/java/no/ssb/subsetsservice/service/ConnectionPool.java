@@ -2,7 +2,6 @@ package no.ssb.subsetsservice.service;
 
 import javax.sql.DataSource;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.sql.postgres.SocketFactory;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
