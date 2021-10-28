@@ -11,9 +11,9 @@ import java.util.List;
  * This interface presents some operations that can be made against a connection
  * to an instance of Linked Data Store
  */
-public interface BackendInterface {
+public interface DatabaseInterface {
 
-    ResponseEntity<JsonNode> initializeBackend();
+    ResponseEntity<JsonNode> initializeDatabase();
 
     ResponseEntity<JsonNode> getVersionByID(String versionId);
 

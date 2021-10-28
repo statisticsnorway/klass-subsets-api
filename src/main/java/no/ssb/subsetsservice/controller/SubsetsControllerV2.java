@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import no.ssb.subsetsservice.entity.Field;
-import no.ssb.subsetsservice.service.BackendFactory;
-import no.ssb.subsetsservice.service.BackendInterface;
+import no.ssb.subsetsservice.service.DatabaseFactory;
+import no.ssb.subsetsservice.service.DatabaseInterface;
 import no.ssb.subsetsservice.service.MetricsService;
 import no.ssb.subsetsservice.util.KlassURNResolver;
 import no.ssb.subsetsservice.util.Utils;
@@ -47,7 +47,7 @@ public class SubsetsControllerV2 {
         instance = this;
         BACKEND_TYPE = getBackendType();
         LOG.debug("BACKEND TYPE: "+getBackendType());
-        ResponseEntity<JsonNode> initRE = BackendFactory.getBackend(BACKEND_TYPE).initializeBackend();
+        ResponseEntity<JsonNode> initRE = DatabaseFactory.getDatabase(BACKEND_TYPE).initializeDatabase();
         if (!initRE.getStatusCode().is2xxSuccessful())
             LOG.error("Could not initialize backend of type '"+BACKEND_TYPE+"'. Init returned status code "+initRE.getStatusCode()+" and body "+(initRE.hasBody() ? initRE.getBody().toString() : ""));
     }
@@ -57,7 +57,7 @@ public class SubsetsControllerV2 {
     }
 
     private static String getBackendType() {
-        return System.getenv().getOrDefault("BACKEND_TYPE", BackendFactory.DEFAULT_BACKEND);
+        return System.getenv().getOrDefault("BACKEND_TYPE", DatabaseFactory.DEFAULT_DATABASE);
     }
 
     @GetMapping("/v2/subsets")
@@ -68,7 +68,7 @@ public class SubsetsControllerV2 {
         metricsService.incrementGETCounter();
 
         LOG.info("GET all subsets includeDrafts="+includeDrafts+" includeFuture="+includeFuture+" includeExpired="+includeExpired);
-        ResponseEntity<JsonNode> subsetSeriesRE = BackendFactory.getBackend(BACKEND_TYPE).getAllSubsetSeries();
+        ResponseEntity<JsonNode> subsetSeriesRE = DatabaseFactory.getDatabase(BACKEND_TYPE).getAllSubsetSeries();
         ArrayNode subsetSeriesArray = subsetSeriesRE.getBody().deepCopy();
         String nowDate = Utils.getNowDate();
         for (int i = 0; i < subsetSeriesArray.size(); i++) {
@@ -117,7 +117,7 @@ public class SubsetsControllerV2 {
 
         if (!Utils.isClean(id))
             return ErrorHandler.illegalID(LOG);
-        BackendInterface backend = BackendFactory.getBackend(BACKEND_TYPE);
+        DatabaseInterface backend = DatabaseFactory.getDatabase(BACKEND_TYPE);
         boolean subsetExists = backend.existsSubsetSeriesWithID(id);
         if (subsetExists)
             return ErrorHandler.newHttpError(
@@ -140,7 +140,7 @@ public class SubsetsControllerV2 {
             return seriesSchemaValidationRE;
 
         LOG.debug("POSTING subset series with id "+id+" to database");
-        ResponseEntity<JsonNode> responseEntity = BackendFactory.getBackend(BACKEND_TYPE).createSubsetSeries(editableSubsetSeries, id);
+        ResponseEntity<JsonNode> responseEntity = DatabaseFactory.getDatabase(BACKEND_TYPE).createSubsetSeries(editableSubsetSeries, id);
         if (responseEntity.getStatusCode().equals(CREATED)){
             LOG.info("Series with id "+id+" was successfully created in databsse");
             responseEntity = new ResponseEntity<>(editableSubsetSeries, CREATED);
@@ -160,7 +160,7 @@ public class SubsetsControllerV2 {
         if (!Utils.isClean(id))
             return ErrorHandler.illegalID(LOG);
 
-        ResponseEntity<JsonNode> subsetSeriesByIDRE = BackendFactory.getBackend(BACKEND_TYPE).getSubsetSeries(id);
+        ResponseEntity<JsonNode> subsetSeriesByIDRE = DatabaseFactory.getDatabase(BACKEND_TYPE).getSubsetSeries(id);
         HttpStatus status = subsetSeriesByIDRE.getStatusCode();
         LOG.debug("Call to backend to get a subset series with id "+id+" returned "+status);
         if (status.equals(OK)) {
@@ -199,7 +199,7 @@ public class SubsetsControllerV2 {
         if (newEditionOfSeries.isNull() || newEditionOfSeries.isEmpty() || newEditionOfSeries.isArray())
             return ErrorHandler.newHttpError("PUT body must be a non-empty object representing a single subset series", BAD_REQUEST, LOG);
 
-        ResponseEntity<JsonNode> getSeriesRE = BackendFactory.getBackend(BACKEND_TYPE).getSubsetSeries(seriesId);
+        ResponseEntity<JsonNode> getSeriesRE = DatabaseFactory.getDatabase(BACKEND_TYPE).getSubsetSeries(seriesId);
 
         if (getSeriesRE.getStatusCode().equals(NOT_FOUND))
             return ErrorHandler.newHttpError(
@@ -251,7 +251,7 @@ public class SubsetsControllerV2 {
                     LOG);
         }
 
-        ResponseEntity<JsonNode> responseEntity = BackendFactory.getBackend(BACKEND_TYPE).editSeries(editableNewEditionOfSeries, seriesId);
+        ResponseEntity<JsonNode> responseEntity = DatabaseFactory.getDatabase(BACKEND_TYPE).editSeries(editableNewEditionOfSeries, seriesId);
         if (responseEntity.getStatusCode().is2xxSuccessful()){
             responseEntity = new ResponseEntity<>(editableNewEditionOfSeries, OK);
         }
@@ -348,7 +348,7 @@ public class SubsetsControllerV2 {
             if (!compareFieldsRE.getStatusCode().is2xxSuccessful())
                 return compareFieldsRE;
         }
-        ResponseEntity<JsonNode> editVersionRE = BackendFactory.getBackend(BACKEND_TYPE).editVersion(editablePutVersion);
+        ResponseEntity<JsonNode> editVersionRE = DatabaseFactory.getDatabase(BACKEND_TYPE).editVersion(editablePutVersion);
         if (editVersionRE.getStatusCode().is2xxSuccessful()) {
             editablePutVersion = setSingleLanguage(editablePutVersion, language);
             editablePutVersion = Utils.addLinksToSubsetVersion(editablePutVersion);
@@ -480,7 +480,7 @@ public class SubsetsControllerV2 {
         }
 
         LOG.debug("Attempting to save version nr "+versionUUID+" of subset series "+seriesId+" to the database");
-        ResponseEntity<JsonNode> saveVersionInSeriesRE = BackendFactory.getBackend(BACKEND_TYPE).saveVersionInSeries(seriesId, versionUUID, editableVersion);
+        ResponseEntity<JsonNode> saveVersionInSeriesRE = DatabaseFactory.getDatabase(BACKEND_TYPE).saveVersionInSeries(seriesId, versionUUID, editableVersion);
 
         if (saveVersionInSeriesRE.getStatusCode().equals(CREATED)) {
             LOG.debug("Successfully saved version nr "+versionUUID+" of subset series "+seriesId+" to the database");
@@ -640,7 +640,7 @@ public class SubsetsControllerV2 {
             String versionNr = splitUnderscore[0];
             versionID = String.format("%s_%s", seriesID, versionNr);
         }
-        ResponseEntity<JsonNode> versionByIdRE = BackendFactory.getBackend(BACKEND_TYPE).getVersionByID(versionID);
+        ResponseEntity<JsonNode> versionByIdRE = DatabaseFactory.getDatabase(BACKEND_TYPE).getVersionByID(versionID);
         HttpStatus status = versionByIdRE.getStatusCode();
         if (status.equals(NOT_FOUND))
             return versionByIdRE;
@@ -880,17 +880,17 @@ public class SubsetsControllerV2 {
     public ResponseEntity<JsonNode> getSchema() {
         metricsService.incrementGETCounter();
         LOG.info("GET schema definition for subsets series");
-        return BackendFactory.getBackend(BACKEND_TYPE).getSubsetSeriesSchema();
+        return DatabaseFactory.getDatabase(BACKEND_TYPE).getSubsetSeriesSchema();
     }
 
     @DeleteMapping("/auth/v2/subsets")
     void deleteAllSeries(){
-        BackendFactory.getBackend(BACKEND_TYPE).deleteAllSubsetSeries();
+        DatabaseFactory.getDatabase(BACKEND_TYPE).deleteAllSubsetSeries();
     }
 
     @DeleteMapping("/auth/v2/subsets/{id}")
     void deleteSeriesById(@PathVariable("id") String id){
-        BackendFactory.getBackend(BACKEND_TYPE).deleteSubsetSeries(id);
+        DatabaseFactory.getDatabase(BACKEND_TYPE).deleteSubsetSeries(id);
     }
 
     @DeleteMapping("/auth/v2/subsets/{id}/versions/{versionId}")
@@ -903,11 +903,11 @@ public class SubsetsControllerV2 {
         else
             versionUID = id+"_"+versionId;
         LOG.debug("Version UID used in delete requests to database: "+versionUID);
-        BackendFactory.getBackend(BACKEND_TYPE).deleteSubsetVersion(id, versionUID);
+        DatabaseFactory.getDatabase(BACKEND_TYPE).deleteSubsetVersion(id, versionUID);
     }
 
     private ObjectNode removeSuperfluousSeriesFields(JsonNode version) {
-        ResponseEntity<JsonNode> seriesDefinitionRE = BackendFactory.getBackend(BACKEND_TYPE).getSubsetSeriesDefinition();
+        ResponseEntity<JsonNode> seriesDefinitionRE = DatabaseFactory.getDatabase(BACKEND_TYPE).getSubsetSeriesDefinition();
         if (!seriesDefinitionRE.getStatusCode().is2xxSuccessful())
             throw new Error("Request to get subset versions definition was unsuccessful");
         JsonNode versionsDefinition = seriesDefinitionRE.getBody();
@@ -918,7 +918,7 @@ public class SubsetsControllerV2 {
 
     private ObjectNode removeSuperfluousVersionFields(JsonNode version) {
         LOG.debug("removeSuperfluousVersionFields");
-        ResponseEntity<JsonNode> versionDefinitionRE = BackendFactory.getBackend(BACKEND_TYPE).getSubsetVersionsDefinition();
+        ResponseEntity<JsonNode> versionDefinitionRE = DatabaseFactory.getDatabase(BACKEND_TYPE).getSubsetVersionsDefinition();
         if (!versionDefinitionRE.getStatusCode().is2xxSuccessful())
             throw new Error("Request to get subset versions definition was unsuccessful");
         JsonNode versionsDefinition = versionDefinitionRE.getBody();
@@ -954,7 +954,7 @@ public class SubsetsControllerV2 {
                         JsonNode codes = editableVersion.get(Field.CODES);
                         if (codes.isArray() && !codes.isEmpty()) {
                             ArrayNode codesArray = codes.deepCopy();
-                            ResponseEntity<JsonNode> codeDefRE = BackendFactory.getBackend(BACKEND_TYPE).getSubsetCodeDefinition();
+                            ResponseEntity<JsonNode> codeDefRE = DatabaseFactory.getDatabase(BACKEND_TYPE).getSubsetCodeDefinition();
                             if (!codeDefRE.getStatusCode().is2xxSuccessful())
                                 throw new Error("Request to get subset code definition was unsuccessful");
                             JsonNode codeDefinition = codeDefRE.getBody();
@@ -997,7 +997,7 @@ public class SubsetsControllerV2 {
         String seriesID = version.has(Field.SUBSET_ID) ? version.get(Field.SUBSET_ID).asText() : "";
         String versionUID = seriesID+"_"+versionNr;
         LOG.debug("Validating version "+versionUID+" ");
-        ResponseEntity<JsonNode> versionSchemaRE = BackendFactory.getBackend(BACKEND_TYPE).getSubsetVersionsDefinition();
+        ResponseEntity<JsonNode> versionSchemaRE = DatabaseFactory.getDatabase(BACKEND_TYPE).getSubsetVersionsDefinition();
         if (!versionSchemaRE.getStatusCode().is2xxSuccessful())
             return resolveNonOKDatabaseResponse("Request for subset versions definition ", versionSchemaRE);
         JsonNode versionsDefinition = versionSchemaRE.getBody();
@@ -1010,7 +1010,7 @@ public class SubsetsControllerV2 {
     ResponseEntity<JsonNode> validateSeries(JsonNode series) {
         String id = series.has(Field.ID) ? series.get(Field.ID).asText() : " with no field 'id'";
         LOG.debug("Validating series "+id+" . . .");
-        ResponseEntity<JsonNode> seriesDefinitionRE = BackendFactory.getBackend(BACKEND_TYPE).getSubsetSeriesDefinition();
+        ResponseEntity<JsonNode> seriesDefinitionRE = DatabaseFactory.getDatabase(BACKEND_TYPE).getSubsetSeriesDefinition();
         if (!seriesDefinitionRE.getStatusCode().is2xxSuccessful())
             return resolveNonOKDatabaseResponse("Request for subset series definition ", seriesDefinitionRE);
         JsonNode seriesDefinition = seriesDefinitionRE.getBody();

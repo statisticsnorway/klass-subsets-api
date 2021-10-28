@@ -26,18 +26,18 @@ import static no.ssb.subsetsservice.entity.SQL.*;
 import static org.springframework.http.HttpStatus.*;
 
 @Service
-public class PostgresFacade implements BackendInterface {
+public class PostgresFacade implements DatabaseInterface {
 
     private static final Logger LOG = LoggerFactory.getLogger(PostgresFacade.class);
 
     ConnectionPool connectionPool;
 
     public PostgresFacade(){
-        ResponseEntity<JsonNode> initBackendRE = initializeBackend();
+        ResponseEntity<JsonNode> initBackendRE = initializeDatabase();
     }
 
     @Override
-    public ResponseEntity<JsonNode> initializeBackend() {
+    public ResponseEntity<JsonNode> initializeDatabase() {
         LOG.debug("initializeBackend in PostgresFacade");
         connectionPool = ConnectionPool.getInstance();
         try {
