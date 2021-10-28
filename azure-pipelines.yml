@@ -60,7 +60,7 @@ jobs:
       - task: Maven@3
         env:
           API_KLASS: "https://data.ssb.no/api/klass"
-          JDBC_PS_URL: "jdbc:postgresql://localhost:5432/postgres_klass"
+          JDBC_PS_URL: "jdbc:postgresql://localhost:5432/subsets"
         displayName: 'Maven install'
         inputs:
           mavenPomFile: 'pom.xml'
