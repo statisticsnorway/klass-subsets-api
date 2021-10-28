@@ -30,6 +30,7 @@ public class HealthController {
     public ResponseEntity<String> ready() {
         boolean klassReady = new KlassURNResolver().pingKLASSClassifications();
         BackendInterface backend = BackendFactory.getBackend(BackendFactory.DEFAULT_BACKEND);
+        backend.initializeBackend();
         boolean backendReady = backend.healthReady();
         boolean schemaPresent = backend.getSubsetSeriesSchema().getStatusCode().equals(HttpStatus.OK);
         if (klassReady && backendReady && schemaPresent)

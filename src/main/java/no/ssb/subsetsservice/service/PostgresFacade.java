@@ -9,6 +9,7 @@ import no.ssb.subsetsservice.config.PostgresDBConfig;
 import no.ssb.subsetsservice.controller.ErrorHandler;
 import no.ssb.subsetsservice.controller.SubsetsControllerV2;
 import no.ssb.subsetsservice.entity.Field;
+import no.ssb.subsetsservice.entity.SQL;
 import no.ssb.subsetsservice.service.BackendInterface;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.SQLExec;
@@ -32,37 +33,19 @@ import static org.springframework.http.HttpStatus.*;
 public class PostgresFacade implements BackendInterface {
 
     private static final Logger LOG = LoggerFactory.getLogger(SubsetsControllerV2.class);
-    private static final String LOCAL_JDBC_PS_URL = "jdbc:postgresql://localhost:5432/postgres_klass";
-    private static final String LOCAL_PS_USER = "postgres_klass";
-    private static final String LOCAL_PS_PW = "postgres";
-    private static final String LOCAL_DB_NAME = "postgres_klass";
-    private String JDBC_PS_URL = LOCAL_JDBC_PS_URL;
-    private String USER = LOCAL_PS_USER;
-    private String PASSWORD = LOCAL_PS_PW;
-    private String DB_NAME = LOCAL_DB_NAME;
-    private boolean initialized = false;
 
     ConnectionPool connectionPool;
 
-    private static String getURLFromEnvOrDefault() {
-        return System.getenv().getOrDefault("JDBC_PS_URL", LOCAL_JDBC_PS_URL);
-    }
-
-    private static String getUserFromEnvOrDefault() {
-        return System.getenv().getOrDefault("POSTGRES_USER", LOCAL_PS_USER);
-    }
-
-    private static String getPasswordFromEnvOrDefault() {
-        return System.getenv().getOrDefault("PASSWORD", LOCAL_PS_PW);
+    public PostgresFacade(){
+        ResponseEntity<JsonNode> initBackendRE = initializeBackend();
     }
 
     @Override
     public ResponseEntity<JsonNode> initializeBackend() {
-        JDBC_PS_URL = getURLFromEnvOrDefault();
-        USER = getUserFromEnvOrDefault();
-        PASSWORD = getPasswordFromEnvOrDefault();
+        LOG.debug("initializeBackend in PostgresFacade");
+        connectionPool = ConnectionPool.getInstance();
         try {
-            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            Connection con = connectionPool.getConnection();
             Statement st = con.createStatement();
             ResultSet rs = st.executeQuery("SELECT VERSION()");
             con.close();
@@ -75,19 +58,67 @@ public class PostgresFacade implements BackendInterface {
         }
 
         try {
-            LOG.debug("Attempting subsets table creation...");
-            executeSql("src/main/resources/sql/subsetsCreate.sql");
-        } catch (PSQLException e) {
+            LOG.debug("Attempting subsets table and index creation...");
+            Connection con = connectionPool.getConnection();
+            PreparedStatement preparedStatement = con.prepareStatement(SQL.CREATE_SERIES);
+            LOG.debug("Crete series table");
+            preparedStatement.executeUpdate();
+            con.close();
+        } catch (SQLException e) {
             LOG.error(e.getMessage(), e);
             e.printStackTrace();
         }
 
         try {
-            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            Connection con = connectionPool.getConnection();
+            PreparedStatement preparedStatement = con.prepareStatement(SQL.SET_OWNER_SERIES);
+            LOG.debug("Set owner of series table");
+            preparedStatement.executeUpdate();
+            con.close();
+        } catch (SQLException e) {
+            LOG.error(e.getMessage(), e);
+            e.printStackTrace();
+        }
+        try {
+            Connection con = connectionPool.getConnection();
+            PreparedStatement preparedStatement = con.prepareStatement(SQL.CREATE_VERSIONS);
+            LOG.debug("create versions table");
+            preparedStatement.executeUpdate();
+            con.close();
+        } catch (SQLException e) {
+            LOG.error(e.getMessage(), e);
+            e.printStackTrace();
+        }
+
+        try {
+            Connection con = connectionPool.getConnection();
+            PreparedStatement preparedStatement = con.prepareStatement(SQL.SET_OWNER_VERSIONS);
+            LOG.debug("set owner of versions table");
+            preparedStatement.executeUpdate();
+            con.close();
+        } catch (SQLException e) {
+            LOG.error(e.getMessage(), e);
+            e.printStackTrace();
+        }
+
+        try {
+            Connection con = connectionPool.getConnection();
+            PreparedStatement preparedStatement = con.prepareStatement(SQL.CREATE_INDEX);
+            LOG.debug("create index");
+            preparedStatement.executeUpdate();
+            con.close();
+            LOG.debug("connection closed");
+        } catch (SQLException e) {
+            LOG.error(e.getMessage(), e);
+            e.printStackTrace();
+        }
+
+        try {
+            Connection con = connectionPool.getConnection();
             Statement st = con.createStatement();
             String getTablesQuery = "SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'";
             LOG.debug("Executing query: '"+getTablesQuery+"'");
-            ResultSet rs = st.executeQuery("SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'");
+            ResultSet rs = st.executeQuery(getTablesQuery);
             con.close();
             LOG.debug("Printing SQL table(name)s retrieved with query:");
             int columnIndex = 1;
@@ -96,7 +127,6 @@ public class PostgresFacade implements BackendInterface {
                 LOG.debug("'rs.getString("+columnIndex+"): "+table);
                 columnIndex++;
             }
-            initialized = true;
             return new ResponseEntity<>(OK);
         } catch (SQLException ex) {
             LOG.error(ex.getMessage(), ex);
@@ -108,7 +138,7 @@ public class PostgresFacade implements BackendInterface {
     public ResponseEntity<JsonNode> getVersionByID(String versionUid) {
         LOG.debug("getVersionByID uid "+versionUid);
         try {
-            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            Connection con = connectionPool.getConnection();
             PreparedStatement pstmt = con.prepareStatement(SELECT_VERSION_BY_ID);
             pstmt.setString(1, versionUid);
             LOG.debug("pstmt: "+pstmt);
@@ -136,7 +166,7 @@ public class PostgresFacade implements BackendInterface {
     public ResponseEntity<JsonNode> getSubsetSeries(String id) {
         LOG.debug("getSubsetSeries id "+id);
         try {
-            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            Connection con = connectionPool.getConnection();
             PreparedStatement pstmt = con.prepareStatement(SELECT_SERIES_BY_ID);
             pstmt.setString(1, id);
             LOG.debug("pstmt: "+pstmt);
@@ -163,7 +193,7 @@ public class PostgresFacade implements BackendInterface {
     @Override
     public ResponseEntity<JsonNode> getAllSubsetSeries() {
         try {
-            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            Connection con = connectionPool.getConnection();
             PreparedStatement pstmt = con.prepareStatement(SELECT_ALL_SERIES);
             ResultSet rs = pstmt.executeQuery();
             con.close();
@@ -188,7 +218,7 @@ public class PostgresFacade implements BackendInterface {
     @Override
     public boolean healthReady() {
         try {
-            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            Connection con = connectionPool.getConnection();
             Statement st = con.createStatement();
             ResultSet rs = st.executeQuery("SELECT VERSION()");
             con.close();
@@ -207,7 +237,7 @@ public class PostgresFacade implements BackendInterface {
     public ResponseEntity<JsonNode> editSeries(JsonNode newVersionOfSeries, String seriesID) {
         LOG.debug("editSeries with id "+seriesID);
         try {
-            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            Connection con = connectionPool.getConnection();
             PreparedStatement pstmt = con.prepareStatement(UPDATE_SERIES);
             pstmt.setString(2, seriesID);
             PGobject jsonObject = new PGobject();
@@ -231,7 +261,7 @@ public class PostgresFacade implements BackendInterface {
     public ResponseEntity<JsonNode> createSubsetSeries(JsonNode subset, String id) {
         LOG.debug("createSubsetSeries with id "+id);
         try {
-            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            Connection con = connectionPool.getConnection();
             PreparedStatement pstmt = con.prepareStatement("insert into series values(?, ?::JSON)");
             pstmt.setString(1, id);
             PGobject jsonObject = new PGobject();
@@ -258,7 +288,7 @@ public class PostgresFacade implements BackendInterface {
         LOG.debug("Attempting to insert version with UID "+versionUID+" to POSTGRES and update series to point to version");
 
         try {
-            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            Connection con = connectionPool.getConnection();
             PreparedStatement pstmt = con.prepareStatement("insert into versions values(?, ?, ?::JSON)");
             pstmt.setString(1, versionUID);
             pstmt.setString(2, seriesID);
@@ -377,7 +407,7 @@ public class PostgresFacade implements BackendInterface {
     @Override
     public ResponseEntity<JsonNode> deleteAllSubsetSeries() {
         try {
-            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            Connection con = connectionPool.getConnection();
             PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS);
             LOG.debug("pstmt: "+pstmt);
             try {
@@ -404,7 +434,7 @@ public class PostgresFacade implements BackendInterface {
     @Override
     public ResponseEntity<JsonNode> deleteSubsetSeries(String id) {
         try {
-            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            Connection con = connectionPool.getConnection();
             PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS_IN_SERIES);
             pstmt.setString(1, id);
             LOG.debug("pstmt: "+pstmt);
@@ -433,7 +463,7 @@ public class PostgresFacade implements BackendInterface {
     @Override
     public void deleteSubsetVersion(String subsetId, String versionUid) {
         try {
-            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            Connection con = connectionPool.getConnection();
             PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS_BY_ID);
             pstmt.setString(1, subsetId);
             pstmt.setString(2, versionUid);
@@ -451,7 +481,7 @@ public class PostgresFacade implements BackendInterface {
         String versionUid = seriesID+"_"+versionNr;
         LOG.debug("editVersion "+versionUid);
         try {
-            Connection con = DriverManager.getConnection(JDBC_PS_URL, USER, PASSWORD);
+            Connection con = connectionPool.getConnection();
             PreparedStatement pstmt = con.prepareStatement(UPDATE_VERSION);
             pstmt.setString(2, seriesID);
             pstmt.setString(3, versionUid);
@@ -471,7 +501,7 @@ public class PostgresFacade implements BackendInterface {
         }
     }
 
-    private void executeSql(String sqlFilePath) throws PSQLException {
+    private void executeSql(String sqlFilePath, String password, String user, String jdbc_ps_ulr) throws PSQLException {
         final class SqlExecutor extends SQLExec {
             public SqlExecutor() {
                 Project project = new Project();
@@ -489,9 +519,9 @@ public class PostgresFacade implements BackendInterface {
             throw new Error("SQL file does not exist at given path! "+sqlFile.getAbsolutePath());
         executor.setSrc(new File(sqlFilePath));
         executor.setDriver("org.postgresql.Driver");
-        executor.setPassword(PASSWORD);
-        executor.setUserid(USER);
-        executor.setUrl(JDBC_PS_URL);
+        executor.setPassword(password);
+        executor.setUserid(user);
+        executor.setUrl(jdbc_ps_ulr);
         LOG.debug("Executing SQL in file: "+sqlFilePath+" which resolves to absolute path "+sqlFile.getAbsolutePath());
         executor.execute();
     }

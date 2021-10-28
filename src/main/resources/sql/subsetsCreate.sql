@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.series
 );
 
 ALTER TABLE public.series
-    OWNER to postgres_klass;
+    OWNER to klass_subsets;
 
 CREATE TABLE IF NOT EXISTS public.versions
 (
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.versions
 );
 
 ALTER TABLE public.versions
-    OWNER to postgres_klass;
+    OWNER to klass_subsets;
 
 CREATE INDEX IF NOT EXISTS "seriesIndex"
     ON public.versions USING btree

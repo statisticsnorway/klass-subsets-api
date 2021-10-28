@@ -24,6 +24,7 @@ class HealthControllerTest {
 
     @Test
     void ready() {
+        SubsetsControllerV2 subsetsControllerV2 = SubsetsControllerV2.getInstance();
         HealthController instance = HealthController.getInstance();
         ResponseEntity<String> re = instance.ready();
         assertEquals(HttpStatus.OK, re.getStatusCode());
