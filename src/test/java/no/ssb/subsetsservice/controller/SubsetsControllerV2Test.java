@@ -353,7 +353,7 @@ public class SubsetsControllerV2Test {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        //FIXME: After change to postgres versions are not linked in series?
+
         ResponseEntity<JsonNode> getVersionsRE = instance.getVersions(seriesId, true, true, "all");
         assertEquals(getVersionsRE.getBody().size(), 1);
     }

@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * This interface presents some operations that can be made against a connection
- * to an instance of Linked Data Store
+ * to an instance of the database
  */
 public interface DatabaseInterface {
 
