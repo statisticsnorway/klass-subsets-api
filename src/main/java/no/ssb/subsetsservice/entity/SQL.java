@@ -9,7 +9,7 @@ public class SQL {
             "    CONSTRAINT series_pkey PRIMARY KEY (\"series_id\")\n" +
             ");";
     public static String SET_OWNER_SERIES = "ALTER TABLE public.series\n" +
-            "    OWNER to klass_subsets;";
+            "    OWNER to subsets;";
     public static String CREATE_VERSIONS = "CREATE TABLE IF NOT EXISTS public.versions\n" +
             "(\n" +
             "    \"version_id\" character varying(128) COLLATE pg_catalog.\"default\" NOT NULL,\n" +
@@ -22,7 +22,7 @@ public class SQL {
             "        ON DELETE NO ACTION\n" +
             ");";
     public static String SET_OWNER_VERSIONS = "ALTER TABLE public.versions\n" +
-            "    OWNER to klass_subsets;";
+            "    OWNER to subsets;";
     public static String CREATE_INDEX = "CREATE INDEX IF NOT EXISTS \"seriesIndex\"\n" +
             "    ON public.versions USING btree\n" +
             "    (\"series_id\" varchar_pattern_ops ASC NULLS LAST)\n" +

@@ -39,9 +39,9 @@ public class ConnectionPool {
     private static final String ENV_DB_PASSWORD = "POSTGRES_PASSWORD"; // The ENV var containing the users password
     private static final String ENV_DB_CONNECTION_NAME = "POSTGRES_CONNECTION_NAME"; // The ENV var containing the cloud SQL instance name
 
-    private static final String LOCAL_PS_USER = "klass_subsets";
+    private static final String LOCAL_PS_USER = "subsets";
     private static final String LOCAL_PS_PW = "postgres";
-    private static final String LOCAL_DB_NAME = "klass_subsets";
+    private static final String LOCAL_DB_NAME = "subsets";
     private static final String LOCAL_JDBC_PS_URL = "jdbc:postgresql://localhost:5432/"+LOCAL_DB_NAME;
 
     private String db_name;
