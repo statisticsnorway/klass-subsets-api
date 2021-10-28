@@ -31,7 +31,7 @@ import static org.springframework.http.HttpStatus.*;
 @Service
 public class PostgresFacade implements BackendInterface {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SubsetsControllerV2.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PostgresFacade.class);
 
     ConnectionPool connectionPool;
 
