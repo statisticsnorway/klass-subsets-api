@@ -1,9 +1,3 @@
-webserver:
-  host: 0.0.0.0
-  port: 10900
-  access-log:
-    format: "%h %u %t %r %s %b %{Referer}i %T"
-
 # Metrics related configurations
 management:
   endpoints:
@@ -16,34 +10,6 @@ management:
     enabled-by-default: true
 
 
-tracing:
-  enabled: true
-  service: klass-subsets-api
-  sampler-type: const
-  sampler-param: 1
-  propagation: b3
-  protocol: http
-  host: localhost
-  port: 14268
-  path: /api/traces
-  paths:
-    - path: "/favicon.ico"
-      enabled: false
-    - path: "/metrics"
-      enabled: false
-    - path: "/metrics/vendor"
-      enabled: false
-    - path: "/metrics/base"
-      enabled: false
-    - path: "/metrics/application"
-      enabled: false
-    - path: "/health"
-      enabled: false
-    - path: "/health/alive"
-      enabled: false
-    - path: "/health/ready"
-      enabled: false
-
 springdoc:
   api-docs:
     path: /api-docs
@@ -55,23 +21,4 @@ logging.level.no.ssb.subsetsservice: DEBUG
 # postgrsql connection configuration
 
 
-spring:
-  # Don't print the Spring logo banner at startup (We want only JSON logs printed to stdout)
-  main:
-    banner-mode: off
-  datasource:
-    platform: postgres
-    url: jdbc:postgresql://localhost:5432/postgres_klass
-    username: postgres
-    password: postgres
-  jpa:
-    database: POSTGRESQL
-    show-sql: true
-    open-in-view: false
-    hibernate:
-      ddl-auto: update
-
-
-server:
-  port: 8080
 
