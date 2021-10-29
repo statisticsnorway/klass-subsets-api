@@ -1,9 +1,11 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import no.ssb.subsetsservice.entity.Field;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -18,9 +20,10 @@ import java.io.IOException;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-class SubsetsControllerV2Test {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SubsetsServiceApplicationTests.class);
+public class SubsetsControllerV2Test {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SubsetsControllerV2Test.class);
     private final File series_1_0 = new File("src/test/resources/series_examples/series_1_0.json");
 
     private final File series_1_extra_field = new File("src/test/resources/series_examples/series_1_extra_field.json");
@@ -46,7 +49,7 @@ class SubsetsControllerV2Test {
     private final File version_1_extra_field = new File("src/test/resources/version_examples/version_1_extra_field.json");
     private final File version_1_extra_field_in_code = new File("src/test/resources/version_examples/version_1_extra_field_in_code.json");
 
-    public JsonNode readJsonFile(File file){
+    public JsonNode readJsonFile(File file) {
         assert file.exists() : "File "+file.getAbsolutePath()+" did not exist";
         ObjectMapper mapper = new ObjectMapper();
         try {
@@ -58,8 +61,8 @@ class SubsetsControllerV2Test {
     }
 
     @AfterAll
-    public static void cleanUp() {
-        System.out.println("After All cleanUp() method called");
+    static void cleanUp() {
+        System.out.println("@AfterAll cleanUp() method called");
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         instance.deleteAllSeries();
     }

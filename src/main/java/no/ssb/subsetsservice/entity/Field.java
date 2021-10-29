@@ -1,4 +1,4 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.entity;
 
 public class Field {
     public static final String VALID_FROM = "validFrom";

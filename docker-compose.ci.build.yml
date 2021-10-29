@@ -1,0 +1,15 @@
+version: '3.7'
+
+services:
+  postgresdb-subsets:
+    image: postgres:alpine
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgresdb:/var/lib/postgresql/data
+      - ${SQL_INIT_PATH}:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  postgresdb:
