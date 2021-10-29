@@ -496,29 +496,4 @@ public class PostgresFacade implements DatabaseInterface {
             return ErrorHandler.newHttpError("Failed to edit version", INTERNAL_SERVER_ERROR, LOG);
         }
     }
-
-    private void executeSql(String sqlFilePath, String password, String user, String jdbc_ps_ulr) throws PSQLException {
-        final class SqlExecutor extends SQLExec {
-            public SqlExecutor() {
-                Project project = new Project();
-                project.init();
-                setProject(project);
-                setTaskType("sql");
-                setTaskName("sql");
-            }
-        }
-
-        SqlExecutor executor = new SqlExecutor();
-        File sqlFile = new File(sqlFilePath);
-        LOG.debug("SQL file absolute path: "+sqlFile.getAbsolutePath());
-        if (!sqlFile.exists())
-            throw new Error("SQL file does not exist at given path! "+sqlFile.getAbsolutePath());
-        executor.setSrc(new File(sqlFilePath));
-        executor.setDriver("org.postgresql.Driver");
-        executor.setPassword(password);
-        executor.setUserid(user);
-        executor.setUrl(jdbc_ps_ulr);
-        LOG.debug("Executing SQL in file: "+sqlFilePath+" which resolves to absolute path "+sqlFile.getAbsolutePath());
-        executor.execute();
-    }
 }
