@@ -1,10 +1,12 @@
 package no.ssb.subsetsservice.service;
 
-import com.google.cloud.sql.postgres.SocketFactory;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+
+import javax.sql.DataSource;
 import java.sql.*;
 import java.util.Properties;
 
@@ -15,9 +17,10 @@ public class ConnectionPool {
     private static final Logger LOG = LoggerFactory.getLogger(ConnectionPool.class);
 
     private static final String ENV_DB_NAME = "POSTGRES_DB_NAME"; // The ENV var containing the database name
-    private static final String ENV_DB_USERNAME = "POSTGRES_USER"; // The ENV var containing the database user
-    private static final String ENV_DB_PASSWORD = "POSTGRES_PASSWORD"; // The ENV var containing the users password
+    private static final String ENV_DB_USERNAME = "SPRING_DATASOURCE_USERNAME"; // The ENV var containing the database user
+    private static final String ENV_DB_PASSWORD = "SPRING_DATASOURCE_PASSWORD"; // The ENV var containing the users password
     private static final String ENV_DB_CONNECTION_NAME = "POSTGRES_CONNECTION_NAME"; // The ENV var containing the cloud SQL instance name
+    private static final String ENV_JDBC_URL = "SPRING_DATASOURCE_URL";
 
     private static final String LOCAL_PS_USER = "subsets";
     private static final String LOCAL_PS_PW = "postgres";
@@ -28,8 +31,9 @@ public class ConnectionPool {
     private String user;
     private String password;
     private String cloudSqlInstance;
+    private String jdbcUrl;
 
-    private HikariDataSource connectionPool;
+    private DataSource dataSource;
 
     public static ConnectionPool getInstance(){
         if (instance == null)
@@ -41,16 +45,29 @@ public class ConnectionPool {
         db_name = System.getenv().getOrDefault(ENV_DB_NAME, LOCAL_DB_NAME);
         user = System.getenv().getOrDefault(ENV_DB_USERNAME, LOCAL_PS_USER);
         password = System.getenv().getOrDefault(ENV_DB_PASSWORD, LOCAL_PS_PW);
+        jdbcUrl = System.getenv().getOrDefault(ENV_JDBC_URL, LOCAL_JDBC_PS_URL);
         cloudSqlInstance = System.getenv(ENV_DB_CONNECTION_NAME);
         if (cloudSqlInstance == null) {
             LOG.warn(ENV_DB_CONNECTION_NAME+" env variable was not found. Connection to a local postgres instance will be attempted.");
+            dataSource = getDataSource(jdbcUrl, user, password);
         } else {
-            connectionPool = createConnectionPool(db_name, user, password, cloudSqlInstance);
+            LOG.debug("Connection to an external data source will be attempted.");
+            dataSource = getExternalDataSource(db_name, user, password, cloudSqlInstance);
         }
     }
 
+    public DataSource getDataSource(String jdbcUrl, String username, String password)
+    {
+        DataSourceBuilder<?> dataSourceBuilder = DataSourceBuilder.create();
+        dataSourceBuilder.url(jdbcUrl);
+        dataSourceBuilder.username(username);
+        dataSourceBuilder.password(password);
+        dataSourceBuilder.driverClassName("org.postgresql.Driver");
+        return dataSourceBuilder.build();
+    }
 
-    private static HikariDataSource createConnectionPool(String db_name, String user, String password, String cloudSqlInstance){
+
+    private static HikariDataSource getExternalDataSource(String db_name, String user, String password, String cloudSqlInstance){
         LOG.debug("createConnectionPool - db: "+db_name+" user: "+user+" cloudSqlInstance: "+cloudSqlInstance);
         // Set up URL parameters
         String jdbcURL = String.format("jdbc:postgresql:///%s", db_name);
@@ -72,9 +89,9 @@ public class ConnectionPool {
     }
 
     public Connection getConnection() throws SQLException {
-        if (connectionPool != null)
-            return connectionPool.getConnection();
+        if (dataSource != null)
+            return dataSource.getConnection();
         else
-            return DriverManager.getConnection(LOCAL_JDBC_PS_URL, LOCAL_PS_USER, LOCAL_PS_PW);
+            return DriverManager.getConnection(jdbcUrl, user, password);
     }
 }
