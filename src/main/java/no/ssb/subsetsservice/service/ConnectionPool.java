@@ -42,6 +42,7 @@ public class ConnectionPool {
     };
 
     private ConnectionPool(){
+        LOG.debug("ConnectionPool constructor");
         db_name = System.getenv().getOrDefault(ENV_DB_NAME, LOCAL_DB_NAME);
         user = System.getenv().getOrDefault(ENV_DB_USERNAME, LOCAL_PS_USER);
         password = System.getenv().getOrDefault(ENV_DB_PASSWORD, LOCAL_PS_PW);
@@ -49,7 +50,7 @@ public class ConnectionPool {
         cloudSqlInstance = System.getenv(ENV_DB_CONNECTION_NAME);
         if (cloudSqlInstance == null) {
             LOG.warn(ENV_DB_CONNECTION_NAME+" env variable was not found. Connection to a local postgres instance will be attempted.");
-            dataSource = getDataSource(jdbcUrl, user, password);
+            //dataSource = getDataSource(jdbcUrl, user, password);
         } else {
             LOG.debug("Connection to an external data source will be attempted.");
             dataSource = getExternalDataSource(db_name, user, password, cloudSqlInstance);
@@ -58,14 +59,15 @@ public class ConnectionPool {
 
     public DataSource getDataSource(String jdbcUrl, String username, String password)
     {
-        DataSourceBuilder<?> dataSourceBuilder = DataSourceBuilder.create();
+        LOG.debug("getDataSource");
+        DataSourceBuilder dataSourceBuilder = DataSourceBuilder.create();
         dataSourceBuilder.url(jdbcUrl);
         dataSourceBuilder.username(username);
         dataSourceBuilder.password(password);
         dataSourceBuilder.driverClassName("org.postgresql.Driver");
+        LOG.debug("Building data source");
         return dataSourceBuilder.build();
     }
-
 
     private static HikariDataSource getExternalDataSource(String db_name, String user, String password, String cloudSqlInstance){
         LOG.debug("createConnectionPool - db: "+db_name+" user: "+user+" cloudSqlInstance: "+cloudSqlInstance);

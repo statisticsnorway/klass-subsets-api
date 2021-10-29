@@ -44,6 +44,7 @@ public class SubsetsControllerV2 {
     }
 
     private void init() {
+        LOG.debug("SubsetsControllerV2 init()");
         instance = this;
         BACKEND_TYPE = getBackendType();
         LOG.debug("BACKEND TYPE: "+getBackendType());

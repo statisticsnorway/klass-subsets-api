@@ -38,7 +38,7 @@ public class PostgresFacade implements DatabaseInterface {
 
     @Override
     public ResponseEntity<JsonNode> initializeDatabase() {
-        LOG.debug("initializeBackend in PostgresFacade");
+        LOG.debug("initializeDatabase in PostgresFacade");
         connectionPool = ConnectionPool.getInstance();
         try {
             Connection con = connectionPool.getConnection();
