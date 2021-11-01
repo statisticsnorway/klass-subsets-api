@@ -22,7 +22,7 @@ public class ConnectionPool {
     private static final String ENV_JDBC_URL = "SPRING_DATASOURCE_URL";
 
     private static final String LOCAL_PS_USER = "subsets";
-    private static final String LOCAL_PS_PW = "postgres";
+    private static final String LOCAL_PS_PW = "subsets";
     private static final String LOCAL_DB_NAME = "subsets";
     private static final String LOCAL_JDBC_PS_URL = "jdbc:postgresql://localhost:5432/"+LOCAL_DB_NAME;
 

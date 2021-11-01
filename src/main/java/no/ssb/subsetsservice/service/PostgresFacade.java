@@ -90,62 +90,6 @@ public class PostgresFacade implements DatabaseInterface {
         }
 
         try {
-            LOG.debug("Attempting subsets table and index creation...");
-            Connection con = connectionPool.getConnection();
-            PreparedStatement preparedStatement = con.prepareStatement(SQL.CREATE_SERIES);
-            LOG.debug("Crete series table");
-            preparedStatement.executeUpdate();
-            con.close();
-        } catch (SQLException e) {
-            LOG.error(e.getMessage(), e);
-            e.printStackTrace();
-        }
-
-        try {
-            Connection con = connectionPool.getConnection();
-            PreparedStatement preparedStatement = con.prepareStatement(SQL.SET_OWNER_SERIES);
-            LOG.debug("Set owner of series table");
-            preparedStatement.executeUpdate();
-            con.close();
-        } catch (SQLException e) {
-            LOG.error(e.getMessage(), e);
-            e.printStackTrace();
-        }
-        try {
-            Connection con = connectionPool.getConnection();
-            PreparedStatement preparedStatement = con.prepareStatement(SQL.CREATE_VERSIONS);
-            LOG.debug("create versions table");
-            preparedStatement.executeUpdate();
-            con.close();
-        } catch (SQLException e) {
-            LOG.error(e.getMessage(), e);
-            e.printStackTrace();
-        }
-
-        try {
-            Connection con = connectionPool.getConnection();
-            PreparedStatement preparedStatement = con.prepareStatement(SQL.SET_OWNER_VERSIONS);
-            LOG.debug("set owner of versions table");
-            preparedStatement.executeUpdate();
-            con.close();
-        } catch (SQLException e) {
-            LOG.error(e.getMessage(), e);
-            e.printStackTrace();
-        }
-
-        try {
-            Connection con = connectionPool.getConnection();
-            PreparedStatement preparedStatement = con.prepareStatement(SQL.CREATE_INDEX);
-            LOG.debug("create index");
-            preparedStatement.executeUpdate();
-            con.close();
-            LOG.debug("connection closed");
-        } catch (SQLException e) {
-            LOG.error(e.getMessage(), e);
-            e.printStackTrace();
-        }
-
-        try {
             Connection con = connectionPool.getConnection();
             Statement st = con.createStatement();
             String getTablesQuery = "SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'";
