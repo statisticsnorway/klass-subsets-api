@@ -32,12 +32,48 @@ public class PostgresFacade implements DatabaseInterface {
 
     ConnectionPool connectionPool;
 
+    private static final String LOCAL_SUBSETS_SCHEMA_DIR = "src/main/resources/definitions/";
+    private static final String DOCKER_SUBSETS_SCHEMA_DIR = "/usr/share/klass-subsets-api/";
+
+    private static final String VERSION_SCHEMA_FILENAME = "version.json";
+    private static final String SERIES_SCHEMA_FILENAME = "series.json";
+
+    private String SUBSETS_SCHEMA_DIR = LOCAL_SUBSETS_SCHEMA_DIR;
+    private String VERSION_SCHEMA_PATH = LOCAL_SUBSETS_SCHEMA_DIR+VERSION_SCHEMA_FILENAME;
+    private String SERIES_SCHEMA_PATH = LOCAL_SUBSETS_SCHEMA_DIR+SERIES_SCHEMA_FILENAME;
+
     public PostgresFacade(){
         ResponseEntity<JsonNode> initBackendRE = initializeDatabase();
     }
 
     @Override
     public ResponseEntity<JsonNode> initializeDatabase() {
+        LOG.debug("Finding schema");
+        String versionSchemaJsonPath = LOCAL_SUBSETS_SCHEMA_DIR+VERSION_SCHEMA_FILENAME;
+        //String seriesSchemaJsonPath = LOCAL_SUBSETS_SCHEMA_DIR+SERIES_SCHEMA_FILENAME;
+        File versionJsonFile = new File(versionSchemaJsonPath);
+        //File seriesJsonFile = new File(seriesSchemaJsonPath);
+        if (versionJsonFile.exists() && versionJsonFile.isFile()) {
+            LOG.debug("version schema file "+versionJsonFile.getPath()+" exists and is a file!");
+            LOG.debug("Setting schema directory to "+LOCAL_SUBSETS_SCHEMA_DIR);
+            SUBSETS_SCHEMA_DIR = LOCAL_SUBSETS_SCHEMA_DIR;
+        }
+        else {
+            versionSchemaJsonPath = DOCKER_SUBSETS_SCHEMA_DIR+VERSION_SCHEMA_FILENAME;
+            versionJsonFile = new File(versionSchemaJsonPath);
+            if (versionJsonFile.exists() && versionJsonFile.isFile()) {
+                LOG.debug(versionJsonFile.getPath()+" exists and is a file!");
+                LOG.debug("Setting schema directory to "+DOCKER_SUBSETS_SCHEMA_DIR);
+                SUBSETS_SCHEMA_DIR = DOCKER_SUBSETS_SCHEMA_DIR;
+            } else {
+                String schemaErrorString = "Could not locate versions.json schema file in "+DOCKER_SUBSETS_SCHEMA_DIR+" which is the docker default, or "+LOCAL_SUBSETS_SCHEMA_DIR+" which is the local testing location.";
+                LOG.error(schemaErrorString);
+                throw new Error(schemaErrorString);
+            }
+        }
+        VERSION_SCHEMA_PATH = SUBSETS_SCHEMA_DIR+VERSION_SCHEMA_FILENAME;
+        SERIES_SCHEMA_PATH = SUBSETS_SCHEMA_DIR+SERIES_SCHEMA_FILENAME;
+
         LOG.debug("initializeDatabase in PostgresFacade");
         connectionPool = ConnectionPool.getInstance();
         try {
@@ -342,7 +378,7 @@ public class PostgresFacade implements DatabaseInterface {
 
     @Override
     public ResponseEntity<JsonNode> getSubsetSeriesSchema() {
-        File schemaFile = new File("src/main/resources/definitions/series.json");
+        File schemaFile = new File(SERIES_SCHEMA_PATH);
         if (!schemaFile.exists())
             LOG.error("schemaFile does not exist!");
         ObjectMapper om = new ObjectMapper();
@@ -372,7 +408,7 @@ public class PostgresFacade implements DatabaseInterface {
     @Override
     public ResponseEntity<JsonNode> getSubsetVersionSchema() {
         LOG.debug("getSubsetVersionSchema");
-        File schemaFile = new File("src/main/resources/definitions/version.json");
+        File schemaFile = new File(VERSION_SCHEMA_PATH);
         if (!schemaFile.exists())
             LOG.error("schemaFile does not exist!");
         ObjectMapper om = new ObjectMapper();
