@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import no.ssb.subsetsservice.entity.Field;
-import no.ssb.subsetsservice.entity.SQL;
 import no.ssb.subsetsservice.service.ConnectionPool;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -70,24 +69,24 @@ public class SubsetsControllerV2Test {
         try {
             Connection con = ConnectionPool.getInstance().getConnection();
             LOG.debug("Attempting subsets table and index creation...");
-            PreparedStatement preparedStatement = con.prepareStatement(SQL.CREATE_SERIES);
+            PreparedStatement preparedStatement = con.prepareStatement(Scripts.CREATE_SERIES);
             LOG.debug("Crete series table");
             preparedStatement.executeUpdate();
 
 
-            PreparedStatement preparedStatement1 = con.prepareStatement(SQL.SET_OWNER_SERIES);
+            PreparedStatement preparedStatement1 = con.prepareStatement(Scripts.SET_OWNER_SERIES);
             LOG.debug("Set owner of series table");
             preparedStatement1.executeUpdate();
 
-            PreparedStatement preparedStatement2 = con.prepareStatement(SQL.CREATE_VERSIONS);
+            PreparedStatement preparedStatement2 = con.prepareStatement(Scripts.CREATE_VERSIONS);
             LOG.debug("create versions table");
             preparedStatement2.executeUpdate();
 
-            PreparedStatement preparedStatement3 = con.prepareStatement(SQL.SET_OWNER_VERSIONS);
+            PreparedStatement preparedStatement3 = con.prepareStatement(Scripts.SET_OWNER_VERSIONS);
             LOG.debug("set owner of versions table");
             preparedStatement3.executeUpdate();
 
-            PreparedStatement preparedStatement4 = con.prepareStatement(SQL.CREATE_INDEX);
+            PreparedStatement preparedStatement4 = con.prepareStatement(Scripts.CREATE_INDEX);
             LOG.debug("create index");
             preparedStatement4.executeUpdate();
             LOG.debug("connection closed");
