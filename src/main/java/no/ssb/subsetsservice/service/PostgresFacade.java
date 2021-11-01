@@ -337,6 +337,7 @@ public class PostgresFacade implements DatabaseInterface {
             LOG.debug("preparing statement to add version to series");
             pstmt = con.prepareStatement(ADD_VERSION_TO_SERIES);
             pstmt.setString(1, versionUID);
+            pstmt.setString(2, seriesID);
             LOG.debug("pstmt: "+pstmt);
             int affectedRowsUpdateSeries = pstmt.executeUpdate();
             con.close();
