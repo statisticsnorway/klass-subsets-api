@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import no.ssb.subsetsservice.entity.Field;
-import no.ssb.subsetsservice.service.ConnectionPool;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,9 +16,6 @@ import org.springframework.http.ResponseEntity;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -62,41 +58,6 @@ public class SubsetsControllerV2Test {
             e.printStackTrace();
         }
         return null;
-    }
-
-    @BeforeAll
-    static void CreateTables() {
-        try {
-            Connection con = ConnectionPool.getInstance().getConnection();
-            LOG.debug("Attempting subsets table and index creation...");
-            PreparedStatement preparedStatement = con.prepareStatement(Scripts.CREATE_SERIES);
-            LOG.debug("Crete series table");
-            preparedStatement.executeUpdate();
-
-
-            PreparedStatement preparedStatement1 = con.prepareStatement(Scripts.SET_OWNER_SERIES);
-            LOG.debug("Set owner of series table");
-            preparedStatement1.executeUpdate();
-
-            PreparedStatement preparedStatement2 = con.prepareStatement(Scripts.CREATE_VERSIONS);
-            LOG.debug("create versions table");
-            preparedStatement2.executeUpdate();
-
-            PreparedStatement preparedStatement3 = con.prepareStatement(Scripts.SET_OWNER_VERSIONS);
-            LOG.debug("set owner of versions table");
-            preparedStatement3.executeUpdate();
-
-            PreparedStatement preparedStatement4 = con.prepareStatement(Scripts.CREATE_INDEX);
-            LOG.debug("create index");
-            preparedStatement4.executeUpdate();
-            LOG.debug("connection closed");
-
-            con.close();
-        } catch (SQLException e) {
-
-            LOG.error(e.getMessage(), e);
-            e.printStackTrace();
-        }
     }
 
     @AfterAll
