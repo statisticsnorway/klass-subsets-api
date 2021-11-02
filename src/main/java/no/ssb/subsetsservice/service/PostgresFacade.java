@@ -112,30 +112,7 @@ public class PostgresFacade implements DatabaseInterface {
 
     @Override
     public ResponseEntity<JsonNode> getVersionByID(String versionUid) {
-        LOG.debug("getVersionByID uid "+versionUid);
-        try {
-            Connection con = connectionPool.getConnection();
-            PreparedStatement pstmt = con.prepareStatement(SELECT_VERSION_BY_ID);
-            pstmt.setString(1, versionUid);
-            LOG.debug("pstmt: "+pstmt);
-            ResultSet rs = pstmt.executeQuery();
-            con.close();
-            ObjectMapper om = new ObjectMapper();
-            JsonNode series;
-            boolean next = rs.next();
-            if (!next)
-                return ErrorHandler.newHttpError("Version with id "+versionUid+" was not found", NOT_FOUND, LOG);
-            if (!rs.isLast())
-                LOG.error("There was more than one row in a rs from a query find a series version with id "+versionUid);
-            series = om.readTree(rs.getString(1));
-            return new ResponseEntity<>(series, OK);
-        } catch (SQLException ex) {
-            LOG.error("Failed to create series", ex);
-            return ErrorHandler.newHttpError("Failed to get series version", INTERNAL_SERVER_ERROR, LOG);
-        } catch (JsonProcessingException e) {
-            LOG.error("Failed to parse json", e);
-            return ErrorHandler.newHttpError("Failed to parse json", INTERNAL_SERVER_ERROR, LOG);
-        }
+
     }
 
     @Override
