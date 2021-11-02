@@ -1,4 +1,4 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -9,9 +9,11 @@ import java.util.List;
 
 /**
  * This interface presents some operations that can be made against a connection
- * to an instance of Linked Data Store
+ * to an instance of the database
  */
-public interface LDSInterface {
+public interface DatabaseInterface {
+
+    ResponseEntity<JsonNode> initializeDatabase();
 
     ResponseEntity<JsonNode> getVersionByID(String versionId);
 
@@ -25,9 +27,11 @@ public interface LDSInterface {
 
     ResponseEntity<JsonNode> createSubsetSeries(JsonNode subset, String id);
 
-    ResponseEntity<JsonNode> postVersionInSeries(String id, String versionID, JsonNode versionNode);
+    ResponseEntity<JsonNode> saveVersionInSeries(String id, String versionID, JsonNode versionNode);
 
     ResponseEntity<JsonNode> resolveVersionLink(String versionLink);
+
+    boolean existsSubsetSeriesWithID(String id);
 
     ResponseEntity<JsonNode> getSubsetSeriesDefinition();
 
@@ -43,7 +47,7 @@ public interface LDSInterface {
 
     ResponseEntity<JsonNode> deleteSubsetSeries(String id);
 
-    void deleteSubsetVersionFromSeriesAndFromLDS(String id, String versionUid);
+    void deleteSubsetVersion(String subsetId, String versionUid);
 
     ResponseEntity<JsonNode> editVersion(ObjectNode editablePutVersion);
 }

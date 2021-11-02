@@ -31,6 +31,7 @@ resources:
 jobs:
   - job: buildTestAndRunTest
     condition: eq(False, startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+    timeoutInMinutes: 120
     displayName: 'Test/build app and Dockerimage'
     steps:
       - task: DownloadSecureFile@1
@@ -40,18 +41,12 @@ jobs:
           secureFile: 'docker-compose.ci.build.yml'
       - task: DownloadSecureFile@1
         name: sqlInit # use $(sqlInit.secureFilePath) to refer to it
-        displayName: 'Download init-db-and-user.sql'
+        displayName: 'Download init-db.sql'
         inputs:
-          secureFile: 'init-db-and-user.sql'
-      - task: DownloadSecureFile@1
-        name: schemaGraphQL # use $(schemaGraphQL.secureFilePath) to refer to it
-        displayName: 'Download schema.graphql'
-        inputs:
-          secureFile: 'schema.graphql'
+          secureFile: 'init-db.sql'
       - task: DockerCompose@0
         env:
           SQL_INIT_PATH: $(sqlInit.secureFilePath)
-          SCHEMA_PATH: $(schemaGraphQL.secureFilePath)
         displayName: 'Run integration test backend services'
         inputs:
           action: Run services
@@ -68,8 +63,8 @@ jobs:
           scriptPath: sethost.sh
       - task: Maven@3
         env:
-          API_LDS: "http://localhost:9090"
           API_KLASS: "https://data.ssb.no/api/klass"
+          JDBC_PS_URL: "jdbc:postgresql://localhost:5432/subsets"
         displayName: 'Maven install'
         inputs:
           mavenPomFile: 'pom.xml'
