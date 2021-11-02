@@ -33,16 +33,16 @@ public class HealthController {
 
     @GetMapping("/health/ready")
     public ResponseEntity<String> ready() {
-        LOG.debug("starting ready check. Pinging KLASS");
+        LOG.trace("starting ready check. Pinging KLASS");
         boolean klassReady = new KlassURNResolver().pingKLASSClassifications();
-        LOG.debug("klass ready: "+klassReady);
-        LOG.debug("getting database instance");
+        LOG.trace("klass ready: "+klassReady);
+        LOG.trace("getting database instance");
         DatabaseInterface database = DatabaseFactory.getDatabase(DatabaseFactory.DEFAULT_DATABASE);
-        LOG.debug("checking readiness of database");
+        LOG.trace("checking readiness of database");
         boolean databaseReady = database.healthReady();
-        LOG.debug("database ready: "+databaseReady+". Now checking schema presence.");
+        LOG.trace("database ready: "+databaseReady+". Now checking schema presence.");
         boolean schemaPresent = database.getSubsetSeriesSchema().getStatusCode().equals(HttpStatus.OK);
-        LOG.debug("schema present: "+schemaPresent);
+        LOG.trace("schema present: "+schemaPresent);
         if (klassReady && databaseReady && schemaPresent)
             return new ResponseEntity<>("The service is ready!", HttpStatus.OK);
         String readinessDescription = "The service is not ready yet. "+
