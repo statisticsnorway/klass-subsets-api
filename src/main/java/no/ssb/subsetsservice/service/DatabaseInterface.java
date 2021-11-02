@@ -3,9 +3,6 @@ package no.ssb.subsetsservice.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.HttpClientErrorException;
-
-import java.util.List;
 
 /**
  * This interface presents some operations that can be made against a connection
@@ -14,6 +11,8 @@ import java.util.List;
 public interface DatabaseInterface {
 
     ResponseEntity<JsonNode> initializeDatabase();
+
+    ResponseEntity<JsonNode> getVersionBySeriesID(String seriesID, boolean includeFuture, boolean includeDrafts);
 
     ResponseEntity<JsonNode> getVersionByID(String versionId);
 
