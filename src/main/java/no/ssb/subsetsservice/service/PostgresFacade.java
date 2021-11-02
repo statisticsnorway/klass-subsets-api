@@ -76,23 +76,22 @@ public class PostgresFacade implements DatabaseInterface {
 
         LOG.debug("initializeDatabase in PostgresFacade");
         connectionPool = ConnectionPool.getInstance();
-        try {
-            Connection con = connectionPool.getConnection();
+        try (Connection con = connectionPool.getConnection()) {
             Statement st = con.createStatement();
             ResultSet rs = st.executeQuery("SELECT VERSION()");
             if (rs.next()) {
-                LOG.debug("'SELECT VERSION()' result : "+rs.getString(1));
+                LOG.debug("'SELECT VERSION()' result : " + rs.getString(1));
             }
 
             String getTablesQuery = "SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'";
-            LOG.debug("Executing query: '"+getTablesQuery+"'");
+            LOG.debug("Executing query: '" + getTablesQuery + "'");
             ResultSet rs1 = st.executeQuery(getTablesQuery);
-            con.close();
+
             LOG.debug("Printing SQL table(name)s retrieved with query:");
             int columnIndex = 1;
             while (rs1.next()) {
                 String table = rs1.getString(columnIndex);
-                LOG.debug("'rs.getString("+columnIndex+"): "+table);
+                LOG.debug("'rs.getString(" + columnIndex + "): " + table);
                 columnIndex++;
             }
             return new ResponseEntity<>(OK);
