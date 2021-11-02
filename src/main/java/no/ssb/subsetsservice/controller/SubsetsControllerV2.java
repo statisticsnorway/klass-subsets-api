@@ -532,11 +532,14 @@ public class SubsetsControllerV2 {
         if (!Utils.isClean(id))
             return ErrorHandler.illegalID(LOG);
 
-        ResponseEntity<JsonNode> versions = DatabaseFactory.getDatabase(BACKEND_TYPE).getVersionBySeriesID(id, includeFuture, includeDrafts);
+        ResponseEntity<JsonNode> versions = DatabaseFactory.getDatabase(BACKEND_TYPE).getVersionsBySeriesID(id, includeFuture, includeDrafts);
+        if (!versions.getStatusCode().is2xxSuccessful())
+            return versions;
+        if (!versions.hasBody() || !versions.getBody().isArray())
+            throw new Error("versions body was not a json array!");
         ArrayNode fullVersionsArrayNode = new ObjectMapper().createArrayNode();
-        final Iterator<JsonNode> iterator = versions.getBody().elements();
-        while (iterator.hasNext()) {
-            ObjectNode node = Utils.addLinksToSubsetVersion(iterator.next());
+        for (JsonNode jsonNode : versions.getBody()) {
+            ObjectNode node = Utils.addLinksToSubsetVersion(jsonNode);
             if (!language.equals("all")) {
                 fullVersionsArrayNode.add(setSingleLanguage(node, language));
             } else {

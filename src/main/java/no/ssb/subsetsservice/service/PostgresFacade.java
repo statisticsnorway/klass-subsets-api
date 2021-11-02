@@ -119,7 +119,7 @@ public class PostgresFacade implements DatabaseInterface {
     }
 
     @Override
-    public ResponseEntity<JsonNode> getVersionBySeriesID(String seriesID, boolean includeFuture, boolean includeDrafts) {
+    public ResponseEntity<JsonNode> getVersionsBySeriesID(String seriesID, boolean includeFuture, boolean includeDrafts) {
         LOG.debug("getVersionBySeriesID " + seriesID);
         try (Connection con = connectionPool.getConnection()) {
             PreparedStatement pstmt;
@@ -129,20 +129,24 @@ public class PostgresFacade implements DatabaseInterface {
                 pstmt = con.prepareStatement(SELECT_SERIES_VERSIONS_VALID);
             }
             pstmt.setString(1, seriesID);
-            Array array;
+            String commaDelimitedList;
             if (includeDrafts) {
-                array = pstmt.getConnection().createArrayOf("VARCHAR", new Object[]{Field.DRAFT, Field.OPEN});
+                commaDelimitedList = Field.DRAFT+","+Field.OPEN;
             } else {
-                array = pstmt.getConnection().createArrayOf("VARCHAR", new Object[]{Field.OPEN});
+                commaDelimitedList = Field.OPEN;
             }
-            pstmt.setArray(2, array);
+            pstmt.setString(2, commaDelimitedList);
             LOG.debug("pstmt: " + pstmt);
             ResultSet rs = pstmt.executeQuery();
-            if (!rs.next()) {
+            if (!rs.isBeforeFirst()) {
                 return ErrorHandler.newHttpError("There were no versions for series ID " + seriesID, NOT_FOUND, LOG);
             }
             ObjectMapper om = new ObjectMapper();
-            return new ResponseEntity<>(om.readTree(rs.getString(1)), OK);
+            ArrayNode versionsArrayNode = om.createArrayNode();
+            while (rs.next()) {
+                versionsArrayNode.add(om.readTree(rs.getString(1)));
+            }
+            return new ResponseEntity<>(versionsArrayNode, OK);
 
         } catch (SQLException ex) {
             LOG.error("Failed to create series", ex);

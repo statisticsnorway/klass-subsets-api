@@ -12,7 +12,7 @@ public interface DatabaseInterface {
 
     ResponseEntity<JsonNode> initializeDatabase();
 
-    ResponseEntity<JsonNode> getVersionBySeriesID(String seriesID, boolean includeFuture, boolean includeDrafts);
+    ResponseEntity<JsonNode> getVersionsBySeriesID(String seriesID, boolean includeFuture, boolean includeDrafts);
 
     ResponseEntity<JsonNode> getVersionByID(String versionId);
 
