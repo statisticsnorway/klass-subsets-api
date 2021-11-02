@@ -4,6 +4,9 @@ trigger:
   branches:
     include:
       - 'master'
+  tags:
+    include:
+      - '*'
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -27,6 +30,7 @@ resources:
 
 jobs:
   - job: buildTestAndRunTest
+    condition: eq(False, startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
     timeoutInMinutes: 120
     displayName: 'Test/build app and Dockerimage'
     steps:

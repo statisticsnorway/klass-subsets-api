@@ -43,7 +43,7 @@ public class PostgresFacade implements DatabaseInterface {
     private String SERIES_SCHEMA_PATH = LOCAL_SUBSETS_SCHEMA_DIR+SERIES_SCHEMA_FILENAME;
 
     public PostgresFacade(){
-        ResponseEntity<JsonNode> initBackendRE = initializeDatabase();
+        initializeDatabase();
     }
 
     @Override
@@ -80,18 +80,39 @@ public class PostgresFacade implements DatabaseInterface {
             Statement st = con.createStatement();
             ResultSet rs = st.executeQuery("SELECT VERSION()");
             if (rs.next()) {
-                LOG.debug("'SELECT VERSION()' result : " + rs.getString(1));
+                LOG.debug("'SELECT VERSION()' result : "+rs.getString(1));
             }
 
-            String getTablesQuery = "SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'";
-            LOG.debug("Executing query: '" + getTablesQuery + "'");
-            ResultSet rs1 = st.executeQuery(getTablesQuery);
+            LOG.debug("Attempting subsets table and index creation...");
+            PreparedStatement preparedStatement = con.prepareStatement(SQL.CREATE_SERIES);
+            LOG.debug("Crete series table");
+            preparedStatement.executeUpdate();
 
+            preparedStatement = con.prepareStatement(SQL.SET_OWNER_SERIES);
+            LOG.debug("Set owner of series table");
+            preparedStatement.executeUpdate();
+
+            preparedStatement = con.prepareStatement(SQL.CREATE_VERSIONS);
+            LOG.debug("create versions table");
+            preparedStatement.executeUpdate();
+
+            preparedStatement = con.prepareStatement(SQL.SET_OWNER_VERSIONS);
+            LOG.debug("set owner of versions table");
+            preparedStatement.executeUpdate();
+
+            preparedStatement = con.prepareStatement(SQL.CREATE_INDEX);
+            LOG.debug("create index");
+            preparedStatement.executeUpdate();
+
+            st = con.createStatement();
+            String getTablesQuery = "SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'";
+            LOG.debug("Executing query: '"+getTablesQuery+"'");
+            rs = st.executeQuery(getTablesQuery);
             LOG.debug("Printing SQL table(name)s retrieved with query:");
             int columnIndex = 1;
-            while (rs1.next()) {
-                String table = rs1.getString(columnIndex);
-                LOG.debug("'rs.getString(" + columnIndex + "): " + table);
+            while (rs.next()) {
+                String table = rs.getString(columnIndex);
+                LOG.debug("'rs.getString("+columnIndex+"): "+table);
                 columnIndex++;
             }
             return new ResponseEntity<>(OK);
@@ -104,13 +125,11 @@ public class PostgresFacade implements DatabaseInterface {
     @Override
     public ResponseEntity<JsonNode> getVersionByID(String versionUid) {
         LOG.debug("getVersionByID uid "+versionUid);
-        try {
-            Connection con = connectionPool.getConnection();
+        try (Connection con = connectionPool.getConnection()) {
             PreparedStatement pstmt = con.prepareStatement(SELECT_VERSION_BY_ID);
             pstmt.setString(1, versionUid);
             LOG.debug("pstmt: "+pstmt);
             ResultSet rs = pstmt.executeQuery();
-            con.close();
             ObjectMapper om = new ObjectMapper();
             JsonNode series;
             boolean next = rs.next();
@@ -132,13 +151,11 @@ public class PostgresFacade implements DatabaseInterface {
     @Override
     public ResponseEntity<JsonNode> getSubsetSeries(String id) {
         LOG.debug("getSubsetSeries id "+id);
-        try {
-            Connection con = connectionPool.getConnection();
+        try (Connection con = connectionPool.getConnection()) {
             PreparedStatement pstmt = con.prepareStatement(SELECT_SERIES_BY_ID);
             pstmt.setString(1, id);
             LOG.debug("pstmt: "+pstmt);
             ResultSet rs = pstmt.executeQuery();
-            con.close();
             ObjectMapper om = new ObjectMapper();
             JsonNode series;
             boolean next = rs.next();
@@ -159,11 +176,9 @@ public class PostgresFacade implements DatabaseInterface {
 
     @Override
     public ResponseEntity<JsonNode> getAllSubsetSeries() {
-        try {
-            Connection con = connectionPool.getConnection();
+        try (Connection con = connectionPool.getConnection()) {
             PreparedStatement pstmt = con.prepareStatement(SELECT_ALL_SERIES);
             ResultSet rs = pstmt.executeQuery();
-            con.close();
             ObjectMapper om = new ObjectMapper();
             ArrayNode allSeriesArrayNode = om.createArrayNode();
             LOG.debug("rs get fetch size "+rs.getFetchSize());
@@ -184,11 +199,9 @@ public class PostgresFacade implements DatabaseInterface {
 
     @Override
     public boolean healthReady() {
-        try {
-            Connection con = connectionPool.getConnection();
+        try (Connection con = connectionPool.getConnection()) {
             Statement st = con.createStatement();
             ResultSet rs = st.executeQuery("SELECT VERSION()");
-            con.close();
             if (rs.next()) {
                 LOG.debug("'SELECT VERSION()' result : "+rs.getString(1));
                 return true;
@@ -203,8 +216,7 @@ public class PostgresFacade implements DatabaseInterface {
     @Override
     public ResponseEntity<JsonNode> editSeries(JsonNode newVersionOfSeries, String seriesID) {
         LOG.debug("editSeries with id "+seriesID);
-        try {
-            Connection con = connectionPool.getConnection();
+        try (Connection con = connectionPool.getConnection()) {
             PreparedStatement pstmt = con.prepareStatement(UPDATE_SERIES);
             pstmt.setString(2, seriesID);
             PGobject jsonObject = new PGobject();
@@ -212,7 +224,6 @@ public class PostgresFacade implements DatabaseInterface {
             jsonObject.setValue(newVersionOfSeries.toString());
             pstmt.setObject(1, jsonObject);
             int affectedRows = pstmt.executeUpdate();
-            con.close();
             if (affectedRows > 0) {
                 LOG.debug("edit series affected "+affectedRows+" rows");
                 return new ResponseEntity<>(CREATED);
@@ -227,8 +238,7 @@ public class PostgresFacade implements DatabaseInterface {
     @Override
     public ResponseEntity<JsonNode> createSubsetSeries(JsonNode subset, String id) {
         LOG.debug("createSubsetSeries with id "+id);
-        try {
-            Connection con = connectionPool.getConnection();
+        try (Connection con = connectionPool.getConnection()) {
             PreparedStatement pstmt = con.prepareStatement("insert into series values(?, ?::JSON)");
             pstmt.setString(1, id);
             PGobject jsonObject = new PGobject();
@@ -236,7 +246,6 @@ public class PostgresFacade implements DatabaseInterface {
             jsonObject.setValue(subset.toString());
             pstmt.setObject(2, jsonObject);
             int affectedRows = pstmt.executeUpdate();
-            con.close();
             if (affectedRows > 0) {
                 LOG.debug("insert into series affected "+affectedRows+" rows");
                 return new ResponseEntity<>(CREATED);
@@ -254,8 +263,7 @@ public class PostgresFacade implements DatabaseInterface {
         String versionUID = seriesID+"_"+versionID;
         LOG.debug("Attempting to insert version with UID "+versionUID+" to POSTGRES and update series to point to version");
 
-        try {
-            Connection con = connectionPool.getConnection();
+        try (Connection con = connectionPool.getConnection()) {
             PreparedStatement pstmt = con.prepareStatement("insert into versions values(?, ?, ?::JSON)");
             pstmt.setString(1, versionUID);
             pstmt.setString(2, seriesID);
@@ -275,7 +283,6 @@ public class PostgresFacade implements DatabaseInterface {
             pstmt.setString(2, seriesID);
             LOG.debug("pstmt: "+pstmt);
             int affectedRowsUpdateSeries = pstmt.executeUpdate();
-            con.close();
             if (affectedRowsUpdateSeries > 0) {
                 LOG.debug("update series with version affected "+affectedRows+" rows");
             } else {
@@ -374,8 +381,7 @@ public class PostgresFacade implements DatabaseInterface {
 
     @Override
     public ResponseEntity<JsonNode> deleteAllSubsetSeries() {
-        try {
-            Connection con = connectionPool.getConnection();
+        try (Connection con = connectionPool.getConnection()) {
             PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS);
             LOG.debug("pstmt: "+pstmt);
             try {
@@ -387,11 +393,10 @@ public class PostgresFacade implements DatabaseInterface {
             pstmt = con.prepareStatement(DELETE_SERIES);
             LOG.debug("pstmt: "+pstmt);
             try {
-                ResultSet rs = pstmt.executeQuery();
+                pstmt.executeQuery();
             } catch (SQLException ex) {
                 LOG.warn("SQLEx: " + ex.getMessage());
             }
-            con.close();
             return new ResponseEntity<>(OK);
         } catch (SQLException ex) {
             LOG.error("Failed to delete all versions and series", ex);
@@ -401,8 +406,7 @@ public class PostgresFacade implements DatabaseInterface {
 
     @Override
     public ResponseEntity<JsonNode> deleteSubsetSeries(String id) {
-        try {
-            Connection con = connectionPool.getConnection();
+        try (Connection con = connectionPool.getConnection()) {
             PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS_IN_SERIES);
             pstmt.setString(1, id);
             LOG.debug("pstmt: "+pstmt);
@@ -420,7 +424,6 @@ public class PostgresFacade implements DatabaseInterface {
             } catch (SQLException ex) {
                 LOG.warn("SQLEx: " + ex.getMessage());
             }
-            con.close();
             return new ResponseEntity<>(OK);
         } catch (SQLException ex) {
             LOG.error("Failed to delete all series", ex);
@@ -430,13 +433,12 @@ public class PostgresFacade implements DatabaseInterface {
 
     @Override
     public void deleteSubsetVersion(String subsetId, String versionUid) {
-        try {
-            Connection con = connectionPool.getConnection();
+        try (Connection con = connectionPool.getConnection()) {
             PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS_BY_ID);
             pstmt.setString(1, subsetId);
             pstmt.setString(2, versionUid);
             LOG.debug("pstmt: "+pstmt);
-            ResultSet rs = pstmt.executeQuery();
+            pstmt.executeQuery();
         } catch (SQLException ex) {
             LOG.error("Failed to delete version of series "+subsetId+" with versionUid"+versionUid, ex);
         }
@@ -448,8 +450,7 @@ public class PostgresFacade implements DatabaseInterface {
         String versionNr = editablePutVersion.get(Field.VERSION_ID).asText();
         String versionUid = seriesID+"_"+versionNr;
         LOG.debug("editVersion "+versionUid);
-        try {
-            Connection con = connectionPool.getConnection();
+        try (Connection con = connectionPool.getConnection()) {
             PreparedStatement pstmt = con.prepareStatement(UPDATE_VERSION);
             pstmt.setString(2, seriesID);
             pstmt.setString(3, versionUid);
