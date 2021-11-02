@@ -48,71 +48,35 @@ public class PostgresFacade implements DatabaseInterface {
 
     @Override
     public ResponseEntity<JsonNode> initializeDatabase() {
-        LOG.debug("Finding schema");
-        String versionSchemaJsonPath = LOCAL_SUBSETS_SCHEMA_DIR+VERSION_SCHEMA_FILENAME;
-        //String seriesSchemaJsonPath = LOCAL_SUBSETS_SCHEMA_DIR+SERIES_SCHEMA_FILENAME;
-        File versionJsonFile = new File(versionSchemaJsonPath);
-        //File seriesJsonFile = new File(seriesSchemaJsonPath);
-        if (versionJsonFile.exists() && versionJsonFile.isFile()) {
-            LOG.debug("version schema file "+versionJsonFile.getPath()+" exists and is a file!");
-            LOG.debug("Setting schema directory to "+LOCAL_SUBSETS_SCHEMA_DIR);
-            SUBSETS_SCHEMA_DIR = LOCAL_SUBSETS_SCHEMA_DIR;
-        }
-        else {
-            versionSchemaJsonPath = DOCKER_SUBSETS_SCHEMA_DIR+VERSION_SCHEMA_FILENAME;
-            versionJsonFile = new File(versionSchemaJsonPath);
-            if (versionJsonFile.exists() && versionJsonFile.isFile()) {
-                LOG.debug(versionJsonFile.getPath()+" exists and is a file!");
-                LOG.debug("Setting schema directory to "+DOCKER_SUBSETS_SCHEMA_DIR);
-                SUBSETS_SCHEMA_DIR = DOCKER_SUBSETS_SCHEMA_DIR;
-            } else {
-                String schemaErrorString = "Could not locate versions.json schema file in "+DOCKER_SUBSETS_SCHEMA_DIR+" which is the docker default, or "+LOCAL_SUBSETS_SCHEMA_DIR+" which is the local testing location.";
-                LOG.error(schemaErrorString);
-                throw new Error(schemaErrorString);
-            }
-        }
-        VERSION_SCHEMA_PATH = SUBSETS_SCHEMA_DIR+VERSION_SCHEMA_FILENAME;
-        SERIES_SCHEMA_PATH = SUBSETS_SCHEMA_DIR+SERIES_SCHEMA_FILENAME;
 
-        LOG.debug("initializeDatabase in PostgresFacade");
-        connectionPool = ConnectionPool.getInstance();
-        try {
-            Connection con = connectionPool.getConnection();
-            Statement st = con.createStatement();
-            ResultSet rs = st.executeQuery("SELECT VERSION()");
-            con.close();
-            if (rs.next()) {
-                LOG.debug("'SELECT VERSION()' result : "+rs.getString(1));
-            }
-        } catch (SQLException ex) {
-            LOG.error(ex.getMessage(), ex);
-            return ErrorHandler.newHttpError(ex.getMessage(), INTERNAL_SERVER_ERROR, LOG);
-        }
-
-        try {
-            Connection con = connectionPool.getConnection();
-            Statement st = con.createStatement();
-            String getTablesQuery = "SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'";
-            LOG.debug("Executing query: '"+getTablesQuery+"'");
-            ResultSet rs = st.executeQuery(getTablesQuery);
-            con.close();
-            LOG.debug("Printing SQL table(name)s retrieved with query:");
-            int columnIndex = 1;
-            while (rs.next()) {
-                String table = rs.getString(columnIndex);
-                LOG.debug("'rs.getString("+columnIndex+"): "+table);
-                columnIndex++;
-            }
-            return new ResponseEntity<>(OK);
-        } catch (SQLException ex) {
-            LOG.error(ex.getMessage(), ex);
-            return ErrorHandler.newHttpError(ex.getMessage(), INTERNAL_SERVER_ERROR, LOG);
-        }
     }
 
     @Override
     public ResponseEntity<JsonNode> getVersionByID(String versionUid) {
-
+        LOG.debug("getVersionByID uid "+versionUid);
+        try {
+            Connection con = connectionPool.getConnection();
+            PreparedStatement pstmt = con.prepareStatement(SELECT_VERSION_BY_ID);
+            pstmt.setString(1, versionUid);
+            LOG.debug("pstmt: "+pstmt);
+            ResultSet rs = pstmt.executeQuery();
+            con.close();
+            ObjectMapper om = new ObjectMapper();
+            JsonNode series;
+            boolean next = rs.next();
+            if (!next)
+                return ErrorHandler.newHttpError("Version with id "+versionUid+" was not found", NOT_FOUND, LOG);
+            if (!rs.isLast())
+                LOG.error("There was more than one row in a rs from a query find a series version with id "+versionUid);
+            series = om.readTree(rs.getString(1));
+            return new ResponseEntity<>(series, OK);
+        } catch (SQLException ex) {
+            LOG.error("Failed to create series", ex);
+            return ErrorHandler.newHttpError("Failed to get series version", INTERNAL_SERVER_ERROR, LOG);
+        } catch (JsonProcessingException e) {
+            LOG.error("Failed to parse json", e);
+            return ErrorHandler.newHttpError("Failed to parse json", INTERNAL_SERVER_ERROR, LOG);
+        }
     }
 
     @Override
