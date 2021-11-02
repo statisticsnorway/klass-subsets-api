@@ -43,7 +43,7 @@ public class PostgresFacade implements DatabaseInterface {
     private String SERIES_SCHEMA_PATH = LOCAL_SUBSETS_SCHEMA_DIR+SERIES_SCHEMA_FILENAME;
 
     public PostgresFacade(){
-        ResponseEntity<JsonNode> initBackendRE = initializeDatabase();
+        initializeDatabase();
     }
 
     @Override
@@ -107,7 +107,7 @@ public class PostgresFacade implements DatabaseInterface {
             st = con.createStatement();
             String getTablesQuery = "SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'";
             LOG.debug("Executing query: '"+getTablesQuery+"'");
-            ResultSet rs = st.executeQuery(getTablesQuery);
+            rs = st.executeQuery(getTablesQuery);
             LOG.debug("Printing SQL table(name)s retrieved with query:");
             int columnIndex = 1;
             while (rs.next()) {
