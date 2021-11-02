@@ -34,8 +34,14 @@ public class SQL {
     public static String ADD_VERSION_TO_SERIES = "UPDATE series SET series_json = jsonb_set(series_json, '{versions,99999}'::text[], to_jsonb(?::text), true) WHERE series_id = ?;";
 
     public static String SELECT_VERSION_BY_ID = "SELECT versions.version_json FROM versions WHERE versions.version_id = ?;";
-    public static String SELECT_VERSIONS_BY_SERIES = "SELECT versions.version_json FROM versions WHERE versions.series_id = ?;";
-    public static String UPDATE_VERSION = "UPDATE versions SET version_json = ? WHERE series_id = ? AND version_id = ?;";
+    public static String SELECT_SERIES_VERSIONS_VALID = "SELECT versions.version_json FROM versions " +
+            "WHERE versions.series_id = ? " +
+            "AND versions.version_json ->> '" + Field.ADMINISTRATIVE_STATUS + "' = ANY (string_to_array(?, ',')) " +
+            "AND CAST (versions.version_json ->> '" + Field.VALID_FROM + "' AS DATE) < CURRENT_DATE;";
+    public static String SELECT_SERIES_VERSIONS_VALID_AND_FUTURE = "SELECT versions.version_json FROM versions " +
+            "WHERE versions.series_id = ? " +
+            "AND versions.version_json ->> '" + Field.ADMINISTRATIVE_STATUS + "' = ANY (string_to_array(?, ','));";
+    public static String UPDATE_VERSION = "UPDATE versions SET version_json = ? WHERE series_id = ? AND version_id = ?";
 
     public static String DELETE_SERIES = "DELETE FROM series;";
     public static String DELETE_SERIES_BY_ID = "DELETE FROM series WHERE series.series_id = ?;";
