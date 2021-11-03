@@ -216,10 +216,8 @@ public class PostgresFacade implements DatabaseInterface {
             ResultSet rs = pstmt.executeQuery();
             ObjectMapper om = new ObjectMapper();
             ArrayNode allSeriesArrayNode = om.createArrayNode();
-            LOG.debug("rs get fetch size " + rs.getFetchSize());
             while (rs.next()) {
                 String rsGETString = rs.getString(1);
-                LOG.debug("rs get string: " + rsGETString);
                 allSeriesArrayNode.add(om.readTree(rsGETString));
             }
             return new ResponseEntity<>(allSeriesArrayNode, OK);
