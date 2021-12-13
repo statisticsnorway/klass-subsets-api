@@ -3,11 +3,8 @@
 echo "docker ps -a: "
 docker ps -a
 
-echo "*** docker logs lds: ***"
-docker logs statisticsnorwayklass-subsets-api_lds_1
-
 echo "*** docker logs postgres db: ***"
-docker logs statisticsnorwayklass-subsets-api_postgresdb_1
+docker logs statisticsnorwayklass-subsets-api_postgresdb-subsets_1
 
 host=localhost
 if grep '^1:name=systemd:/docker/' /proc/1/cgroup

@@ -1,4 +1,4 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
