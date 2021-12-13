@@ -1,9 +1,11 @@
-package no.ssb.subsetsservice;
+package no.ssb.subsetsservice.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import no.ssb.subsetsservice.entity.Field;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -18,9 +20,10 @@ import java.io.IOException;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-class SubsetsControllerV2Test {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SubsetsServiceApplicationTests.class);
+public class SubsetsControllerV2Test {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SubsetsControllerV2Test.class);
     private final File series_1_0 = new File("src/test/resources/series_examples/series_1_0.json");
 
     private final File series_1_extra_field = new File("src/test/resources/series_examples/series_1_extra_field.json");
@@ -41,10 +44,12 @@ class SubsetsControllerV2Test {
     private final File version_2_0_3_draft = new File("src/test/resources/version_examples/version_2_0_3_draft.json");
     private final File version_2_0_3_overlapping_date = new File("src/test/resources/version_examples/version_2_0_3_overlapping_date.json");
 
+    private final File version_large_dirty_payload = new File("src/test/resources/version_examples/version_large_dirty_payload.json");
+
     private final File version_1_extra_field = new File("src/test/resources/version_examples/version_1_extra_field.json");
     private final File version_1_extra_field_in_code = new File("src/test/resources/version_examples/version_1_extra_field_in_code.json");
 
-    public JsonNode readJsonFile(File file){
+    public JsonNode readJsonFile(File file) {
         assert file.exists() : "File "+file.getAbsolutePath()+" did not exist";
         ObjectMapper mapper = new ObjectMapper();
         try {
@@ -56,8 +61,8 @@ class SubsetsControllerV2Test {
     }
 
     @AfterAll
-    public static void cleanUp() {
-        System.out.println("After All cleanUp() method called");
+    static void cleanUp() {
+        System.out.println("@AfterAll cleanUp() method called");
         SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
         instance.deleteAllSeries();
     }
@@ -154,6 +159,23 @@ class SubsetsControllerV2Test {
 
         JsonNode versionWithExtraField = readJsonFile(version_1_extra_field);
         ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, true, versionWithExtraField, "all");
+        assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
+    }
+
+    @Test
+    void postLargeSubsetVersionWithExtraFieldExpecting200() {
+        SubsetsControllerV2 instance = SubsetsControllerV2.getInstance();
+
+        JsonNode series = readJsonFile(series_1_0);
+        String seriesId = series.get(Field.ID).asText();
+        ResponseEntity<JsonNode> postSeriesRE = instance.postSubsetSeries(false, series);
+        assertEquals(HttpStatus.CREATED, postSeriesRE.getStatusCode());
+
+        JsonNode versionWithExtraField = readJsonFile(version_large_dirty_payload);
+        long startTime = System.nanoTime();
+        ResponseEntity<JsonNode> postVersionRE = instance.postSubsetVersion(seriesId, true, versionWithExtraField, "all");
+        long endTime = System.nanoTime() - startTime;
+        System.out.println("Time to execute POST subset version: "+endTime);
         assertEquals(HttpStatus.CREATED, postVersionRE.getStatusCode());
     }
 
@@ -1377,8 +1399,9 @@ class SubsetsControllerV2Test {
         System.out.println();
         ArrayNode getCodesFromToREBody = getCodesFromToRE.getBody().deepCopy();
         System.out.println(getCodesFromToREBody.toPrettyString());
-        assertEquals(1, getCodesFromToREBody.size());
-        assertEquals(10, getCodesFromToREBody.get(0).get(Field.CLASSIFICATION_VERSIONS).size());
+        assertEquals(2, getCodesFromToREBody.size());
+        assertEquals(7, getCodesFromToREBody.get(0).get(Field.CLASSIFICATION_VERSIONS).size());
+        assertEquals(3, getCodesFromToREBody.get(1).get(Field.CLASSIFICATION_VERSIONS).size());
     }
 
     @Test
