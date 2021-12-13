@@ -54,12 +54,6 @@
             <version>4.5.13</version>
         </dependency>
 
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.12.1</version>
-        </dependency>
-
         <!-- <dependency>
             <groupId>io.micronaut.micrometer</groupId>
             <artifactId>micronaut-micrometer-core</artifactId>
@@ -70,7 +64,6 @@
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
-
 
         <dependency>
             <groupId>ch.qos.logback</groupId>

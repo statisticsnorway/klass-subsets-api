@@ -3,7 +3,6 @@ package no.ssb.subsetsservice.util;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import no.ssb.subsetsservice.entity.Field;
-import no.ssb.subsetsservice.util.Utils;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
