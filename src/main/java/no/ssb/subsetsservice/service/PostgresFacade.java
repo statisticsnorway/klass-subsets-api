@@ -108,11 +108,11 @@ public class PostgresFacade implements DatabaseInterface {
                     try (Statement st2 = con.createStatement()) {
                         String getTablesQuery = "SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'";
                         LOG.debug("Executing query: '" + getTablesQuery + "'");
-                        rs = st2.executeQuery(getTablesQuery);
+                        ResultSet rs2 = st2.executeQuery(getTablesQuery);
                         LOG.debug("Printing SQL table(name)s retrieved with query:");
                         int columnIndex = 1;
-                        while (rs.next()) {
-                            String table = rs.getString(columnIndex);
+                        while (rs2.next()) {
+                            String table = rs2.getString(columnIndex);
                             LOG.debug("'rs.getString(" + columnIndex + "): " + table);
                             columnIndex++;
                         }
@@ -155,8 +155,8 @@ public class PostgresFacade implements DatabaseInterface {
                     while (rs.next()) {
                         versionsArrayNode.add(om.readTree(rs.getString(1)));
                     }
+                    return new ResponseEntity<>(versionsArrayNode, OK);
                 }
-                return new ResponseEntity<>(versionsArrayNode, OK);
             }
         } catch (SQLException ex) {
             LOG.error("Failed to create series", ex);
