@@ -128,26 +128,27 @@ public class PostgresFacade implements DatabaseInterface {
             } else {
                 pstmt = con.prepareStatement(SELECT_SERIES_VERSIONS_VALID);
             }
-            pstmt.setString(1, seriesID);
-            String commaDelimitedList;
-            if (includeDrafts) {
-                commaDelimitedList = Field.DRAFT+","+Field.OPEN;
-            } else {
-                commaDelimitedList = Field.OPEN;
+            try (pstmt) {
+                pstmt.setString(1, seriesID);
+                String commaDelimitedList;
+                if (includeDrafts) {
+                    commaDelimitedList = Field.DRAFT + "," + Field.OPEN;
+                } else {
+                    commaDelimitedList = Field.OPEN;
+                }
+                pstmt.setString(2, commaDelimitedList);
+                LOG.debug("pstmt: " + pstmt);
+                ResultSet rs = pstmt.executeQuery();
+                if (!rs.isBeforeFirst()) {
+                    return ErrorHandler.newHttpError("There were no versions for series ID " + seriesID, NOT_FOUND, LOG);
+                }
+                ObjectMapper om = new ObjectMapper();
+                ArrayNode versionsArrayNode = om.createArrayNode();
+                while (rs.next()) {
+                    versionsArrayNode.add(om.readTree(rs.getString(1)));
+                }
+                return new ResponseEntity<>(versionsArrayNode, OK);
             }
-            pstmt.setString(2, commaDelimitedList);
-            LOG.debug("pstmt: " + pstmt);
-            ResultSet rs = pstmt.executeQuery();
-            if (!rs.isBeforeFirst()) {
-                return ErrorHandler.newHttpError("There were no versions for series ID " + seriesID, NOT_FOUND, LOG);
-            }
-            ObjectMapper om = new ObjectMapper();
-            ArrayNode versionsArrayNode = om.createArrayNode();
-            while (rs.next()) {
-                versionsArrayNode.add(om.readTree(rs.getString(1)));
-            }
-            return new ResponseEntity<>(versionsArrayNode, OK);
-
         } catch (SQLException ex) {
             LOG.error("Failed to create series", ex);
             return ErrorHandler.newHttpError("Failed to get series version", INTERNAL_SERVER_ERROR, LOG);
@@ -161,19 +162,20 @@ public class PostgresFacade implements DatabaseInterface {
     public ResponseEntity<JsonNode> getVersionByID(String versionUid) {
         LOG.debug("getVersionByID uid " + versionUid);
         try (Connection con = connectionPool.getConnection()) {
-            PreparedStatement pstmt = con.prepareStatement(SELECT_VERSION_BY_ID);
-            pstmt.setString(1, versionUid);
-            LOG.debug("pstmt: " + pstmt);
-            ResultSet rs = pstmt.executeQuery();
-            ObjectMapper om = new ObjectMapper();
-            JsonNode series;
-            boolean next = rs.next();
-            if (!next)
-                return ErrorHandler.newHttpError("Version with id " + versionUid + " was not found", NOT_FOUND, LOG);
-            if (!rs.isLast())
-                LOG.error("There was more than one row in a rs from a query find a series version with id " + versionUid);
-            series = om.readTree(rs.getString(1));
-            return new ResponseEntity<>(series, OK);
+            try (PreparedStatement pstmt = con.prepareStatement(SELECT_VERSION_BY_ID)) {
+                pstmt.setString(1, versionUid);
+                LOG.debug("pstmt: " + pstmt);
+                ResultSet rs = pstmt.executeQuery();
+                ObjectMapper om = new ObjectMapper();
+                JsonNode series;
+                boolean next = rs.next();
+                if (!next)
+                    return ErrorHandler.newHttpError("Version with id " + versionUid + " was not found", NOT_FOUND, LOG);
+                if (!rs.isLast())
+                    LOG.error("There was more than one row in a rs from a query find a series version with id " + versionUid);
+                series = om.readTree(rs.getString(1));
+                return new ResponseEntity<>(series, OK);
+            }
         } catch (SQLException ex) {
             LOG.error("Failed to create series", ex);
             return ErrorHandler.newHttpError("Failed to get series version", INTERNAL_SERVER_ERROR, LOG);
@@ -187,19 +189,20 @@ public class PostgresFacade implements DatabaseInterface {
     public ResponseEntity<JsonNode> getSubsetSeries(String id) {
         LOG.debug("getSubsetSeries id " + id);
         try (Connection con = connectionPool.getConnection()) {
-            PreparedStatement pstmt = con.prepareStatement(SELECT_SERIES_BY_ID);
-            pstmt.setString(1, id);
-            LOG.debug("pstmt: " + pstmt);
-            ResultSet rs = pstmt.executeQuery();
-            ObjectMapper om = new ObjectMapper();
-            JsonNode series;
-            boolean next = rs.next();
-            if (!next)
-                return ErrorHandler.newHttpError("Series with id " + id + " was not found", NOT_FOUND, LOG);
-            if (!rs.isLast())
-                LOG.error("There was more than one row in a rs from a query find a series with id " + id);
-            series = om.readTree(rs.getString(1));
-            return new ResponseEntity<>(series, OK);
+            try (PreparedStatement pstmt = con.prepareStatement(SELECT_SERIES_BY_ID)) {
+                pstmt.setString(1, id);
+                LOG.debug("pstmt: " + pstmt);
+                ResultSet rs = pstmt.executeQuery();
+                ObjectMapper om = new ObjectMapper();
+                JsonNode series;
+                boolean next = rs.next();
+                if (!next)
+                    return ErrorHandler.newHttpError("Series with id " + id + " was not found", NOT_FOUND, LOG);
+                if (!rs.isLast())
+                    LOG.error("There was more than one row in a rs from a query find a series with id " + id);
+                series = om.readTree(rs.getString(1));
+                return new ResponseEntity<>(series, OK);
+            }
         } catch (SQLException ex) {
             LOG.error("Failed to create series", ex);
             return ErrorHandler.newHttpError("Failed to get series", INTERNAL_SERVER_ERROR, LOG);
@@ -212,15 +215,16 @@ public class PostgresFacade implements DatabaseInterface {
     @Override
     public ResponseEntity<JsonNode> getAllSubsetSeries() {
         try (Connection con = connectionPool.getConnection()) {
-            PreparedStatement pstmt = con.prepareStatement(SELECT_ALL_SERIES);
-            ResultSet rs = pstmt.executeQuery();
-            ObjectMapper om = new ObjectMapper();
-            ArrayNode allSeriesArrayNode = om.createArrayNode();
-            while (rs.next()) {
-                String rsGETString = rs.getString(1);
-                allSeriesArrayNode.add(om.readTree(rsGETString));
+            try (PreparedStatement pstmt = con.prepareStatement(SELECT_ALL_SERIES)) {
+                ResultSet rs = pstmt.executeQuery();
+                ObjectMapper om = new ObjectMapper();
+                ArrayNode allSeriesArrayNode = om.createArrayNode();
+                while (rs.next()) {
+                    String rsGETString = rs.getString(1);
+                    allSeriesArrayNode.add(om.readTree(rsGETString));
+                }
+                return new ResponseEntity<>(allSeriesArrayNode, OK);
             }
-            return new ResponseEntity<>(allSeriesArrayNode, OK);
         } catch (SQLException ex) {
             LOG.error("Failed to create series", ex);
             return ErrorHandler.newHttpError("Failed to create series", INTERNAL_SERVER_ERROR, LOG);
@@ -250,18 +254,19 @@ public class PostgresFacade implements DatabaseInterface {
     public ResponseEntity<JsonNode> editSeries(JsonNode newVersionOfSeries, String seriesID) {
         LOG.debug("editSeries with id " + seriesID);
         try (Connection con = connectionPool.getConnection()) {
-            PreparedStatement pstmt = con.prepareStatement(UPDATE_SERIES);
-            pstmt.setString(2, seriesID);
-            PGobject jsonObject = new PGobject();
-            jsonObject.setType("json");
-            jsonObject.setValue(newVersionOfSeries.toString());
-            pstmt.setObject(1, jsonObject);
-            int affectedRows = pstmt.executeUpdate();
-            if (affectedRows > 0) {
-                LOG.debug("edit series affected " + affectedRows + " rows");
-                return new ResponseEntity<>(CREATED);
+            try (PreparedStatement pstmt = con.prepareStatement(UPDATE_SERIES)) {
+                pstmt.setString(2, seriesID);
+                PGobject jsonObject = new PGobject();
+                jsonObject.setType("json");
+                jsonObject.setValue(newVersionOfSeries.toString());
+                pstmt.setObject(1, jsonObject);
+                int affectedRows = pstmt.executeUpdate();
+                if (affectedRows > 0) {
+                    LOG.debug("edit series affected " + affectedRows + " rows");
+                    return new ResponseEntity<>(CREATED);
+                }
+                return ErrorHandler.newHttpError("No rows were affected", INTERNAL_SERVER_ERROR, LOG);
             }
-            return ErrorHandler.newHttpError("No rows were affected", INTERNAL_SERVER_ERROR, LOG);
         } catch (SQLException ex) {
             LOG.error("Failed to edit series", ex);
             return ErrorHandler.newHttpError("Failed to edit series", INTERNAL_SERVER_ERROR, LOG);
@@ -272,18 +277,19 @@ public class PostgresFacade implements DatabaseInterface {
     public ResponseEntity<JsonNode> createSubsetSeries(JsonNode subset, String id) {
         LOG.debug("createSubsetSeries with id " + id);
         try (Connection con = connectionPool.getConnection()) {
-            PreparedStatement pstmt = con.prepareStatement("insert into series values(?, ?::JSON)");
-            pstmt.setString(1, id);
-            PGobject jsonObject = new PGobject();
-            jsonObject.setType("json");
-            jsonObject.setValue(subset.toString());
-            pstmt.setObject(2, jsonObject);
-            int affectedRows = pstmt.executeUpdate();
-            if (affectedRows > 0) {
-                LOG.debug("insert into series affected " + affectedRows + " rows");
-                return new ResponseEntity<>(CREATED);
+            try (PreparedStatement pstmt = con.prepareStatement("insert into series values(?, ?::JSON)")) {
+                pstmt.setString(1, id);
+                PGobject jsonObject = new PGobject();
+                jsonObject.setType("json");
+                jsonObject.setValue(subset.toString());
+                pstmt.setObject(2, jsonObject);
+                int affectedRows = pstmt.executeUpdate();
+                if (affectedRows > 0) {
+                    LOG.debug("insert into series affected " + affectedRows + " rows");
+                    return new ResponseEntity<>(CREATED);
+                }
+                return ErrorHandler.newHttpError("No rows were affected", INTERNAL_SERVER_ERROR, LOG);
             }
-            return ErrorHandler.newHttpError("No rows were affected", INTERNAL_SERVER_ERROR, LOG);
         } catch (SQLException ex) {
             ex.printStackTrace();
             LOG.error("Failed to create series", ex);
@@ -297,29 +303,31 @@ public class PostgresFacade implements DatabaseInterface {
         LOG.debug("Attempting to insert version with UID " + versionUID + " to POSTGRES and update series to point to version");
 
         try (Connection con = connectionPool.getConnection()) {
-            PreparedStatement pstmt = con.prepareStatement("insert into versions values(?, ?, ?::JSON)");
-            pstmt.setString(1, versionUID);
-            pstmt.setString(2, seriesID);
-            PGobject jsonObject = new PGobject();
-            jsonObject.setType("json");
-            jsonObject.setValue(versionNode.toString());
-            pstmt.setObject(3, jsonObject);
-            int affectedRows = pstmt.executeUpdate();
-            if (affectedRows > 0) {
-                LOG.debug("insert into versions affected " + affectedRows + " rows");
-            } else {
-                return ErrorHandler.newHttpError("No rows were affected by insert into versions", INTERNAL_SERVER_ERROR, LOG);
-            }
-            LOG.debug("preparing statement to add version to series");
-            pstmt = con.prepareStatement(ADD_VERSION_TO_SERIES);
-            pstmt.setString(1, versionUID);
-            pstmt.setString(2, seriesID);
-            LOG.debug("pstmt: " + pstmt);
-            int affectedRowsUpdateSeries = pstmt.executeUpdate();
-            if (affectedRowsUpdateSeries > 0) {
-                LOG.debug("update series with version affected " + affectedRows + " rows");
-            } else {
-                return ErrorHandler.newHttpError("No rows were affected by update into series", INTERNAL_SERVER_ERROR, LOG);
+            try (PreparedStatement pstmt = con.prepareStatement("insert into versions values(?, ?, ?::JSON)")) {
+                pstmt.setString(1, versionUID);
+                pstmt.setString(2, seriesID);
+                PGobject jsonObject = new PGobject();
+                jsonObject.setType("json");
+                jsonObject.setValue(versionNode.toString());
+                pstmt.setObject(3, jsonObject);
+                int affectedRows = pstmt.executeUpdate();
+                if (affectedRows > 0) {
+                    LOG.debug("insert into versions affected " + affectedRows + " rows");
+                } else {
+                    return ErrorHandler.newHttpError("No rows were affected by insert into versions", INTERNAL_SERVER_ERROR, LOG);
+                }
+                LOG.debug("preparing statement to add version to series");
+                try (PreparedStatement pstmt2 = con.prepareStatement(ADD_VERSION_TO_SERIES)) {
+                    pstmt2.setString(1, versionUID);
+                    pstmt2.setString(2, seriesID);
+                    LOG.debug("pstmt2: " + pstmt2);
+                    int affectedRowsUpdateSeries = pstmt2.executeUpdate();
+                    if (affectedRowsUpdateSeries > 0) {
+                        LOG.debug("update series with version affected " + affectedRows + " rows");
+                    } else {
+                        return ErrorHandler.newHttpError("No rows were affected by update into series", INTERNAL_SERVER_ERROR, LOG);
+                    }
+                }
             }
             return new ResponseEntity<>(CREATED);
         } catch (SQLException ex) {
@@ -415,22 +423,20 @@ public class PostgresFacade implements DatabaseInterface {
     @Override
     public ResponseEntity<JsonNode> deleteAllSubsetSeries() {
         try (Connection con = connectionPool.getConnection()) {
-            PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS);
-            LOG.debug("pstmt: " + pstmt);
-            try {
-                ResultSet rs = pstmt.executeQuery();
-            } catch (SQLException ex) {
-                LOG.warn("SQLEx: " + ex.getMessage());
-            }
-
-            pstmt = con.prepareStatement(DELETE_SERIES);
-            LOG.debug("pstmt: " + pstmt);
-            try {
+            try (PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS)) {
+                LOG.debug("pstmt: " + pstmt);
                 pstmt.executeQuery();
             } catch (SQLException ex) {
                 LOG.warn("SQLEx: " + ex.getMessage());
             }
+            try (PreparedStatement pstmt2 = con.prepareStatement(DELETE_SERIES)) {
+                LOG.debug("pstmt2: " + pstmt2);
+                pstmt2.executeQuery();
+            } catch (SQLException ex) {
+                LOG.warn("SQLEx: " + ex.getMessage());
+            }
             return new ResponseEntity<>(OK);
+
         } catch (SQLException ex) {
             LOG.error("Failed to delete all versions and series", ex);
             return ErrorHandler.newHttpError("Failed to delete all versions and series", INTERNAL_SERVER_ERROR, LOG);
@@ -440,22 +446,23 @@ public class PostgresFacade implements DatabaseInterface {
     @Override
     public ResponseEntity<JsonNode> deleteSubsetSeries(String id) {
         try (Connection con = connectionPool.getConnection()) {
-            PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS_IN_SERIES);
-            pstmt.setString(1, id);
-            LOG.debug("pstmt: " + pstmt);
-            try {
-                ResultSet rs = pstmt.executeQuery();
-            } catch (SQLException ex) {
-                LOG.warn("SQLEx: " + ex.getMessage());
+            try (PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS_IN_SERIES)) {
+                pstmt.setString(1, id);
+                LOG.debug("pstmt: " + pstmt);
+                try {
+                    ResultSet rs = pstmt.executeQuery();
+                } catch (SQLException ex) {
+                    LOG.warn("SQLEx: " + ex.getMessage());
+                }
             }
-
-            pstmt = con.prepareStatement(DELETE_SERIES_BY_ID);
-            pstmt.setString(1, id);
-            LOG.debug("pstmt: " + pstmt);
-            try {
-                ResultSet rs = pstmt.executeQuery();
-            } catch (SQLException ex) {
-                LOG.warn("SQLEx: " + ex.getMessage());
+            try (PreparedStatement pstmt2 = con.prepareStatement(DELETE_SERIES_BY_ID)) {
+                pstmt2.setString(1, id);
+                LOG.debug("pstmt2: " + pstmt2);
+                try {
+                    ResultSet rs = pstmt2.executeQuery();
+                } catch (SQLException ex) {
+                    LOG.warn("SQLEx: " + ex.getMessage());
+                }
             }
             return new ResponseEntity<>(OK);
         } catch (SQLException ex) {
@@ -467,11 +474,12 @@ public class PostgresFacade implements DatabaseInterface {
     @Override
     public void deleteSubsetVersion(String subsetId, String versionUid) {
         try (Connection con = connectionPool.getConnection()) {
-            PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS_BY_ID);
-            pstmt.setString(1, subsetId);
-            pstmt.setString(2, versionUid);
-            LOG.debug("pstmt: " + pstmt);
-            pstmt.executeQuery();
+            try (PreparedStatement pstmt = con.prepareStatement(DELETE_VERSIONS_BY_ID)) {
+                pstmt.setString(1, subsetId);
+                pstmt.setString(2, versionUid);
+                LOG.debug("pstmt: " + pstmt);
+                pstmt.executeQuery();
+            }
         } catch (SQLException ex) {
             LOG.error("Failed to delete version of series " + subsetId + " with versionUid" + versionUid, ex);
         }
@@ -484,19 +492,20 @@ public class PostgresFacade implements DatabaseInterface {
         String versionUid = seriesID + "_" + versionNr;
         LOG.debug("editVersion " + versionUid);
         try (Connection con = connectionPool.getConnection()) {
-            PreparedStatement pstmt = con.prepareStatement(UPDATE_VERSION);
-            pstmt.setString(2, seriesID);
-            pstmt.setString(3, versionUid);
-            PGobject jsonObject = new PGobject();
-            jsonObject.setType("json");
-            jsonObject.setValue(editablePutVersion.toString());
-            pstmt.setObject(1, jsonObject);
-            int affectedRows = pstmt.executeUpdate();
-            if (affectedRows > 0) {
-                LOG.debug("edit version affected " + affectedRows + " rows");
-                return new ResponseEntity<>(CREATED);
+            try (PreparedStatement pstmt = con.prepareStatement(UPDATE_VERSION)) {
+                pstmt.setString(2, seriesID);
+                pstmt.setString(3, versionUid);
+                PGobject jsonObject = new PGobject();
+                jsonObject.setType("json");
+                jsonObject.setValue(editablePutVersion.toString());
+                pstmt.setObject(1, jsonObject);
+                int affectedRows = pstmt.executeUpdate();
+                if (affectedRows > 0) {
+                    LOG.debug("edit version affected " + affectedRows + " rows");
+                    return new ResponseEntity<>(CREATED);
+                }
+                return ErrorHandler.newHttpError("No rows were affected", INTERNAL_SERVER_ERROR, LOG);
             }
-            return ErrorHandler.newHttpError("No rows were affected", INTERNAL_SERVER_ERROR, LOG);
         } catch (SQLException ex) {
             LOG.error("Failed to edit version", ex);
             return ErrorHandler.newHttpError("Failed to edit version", INTERNAL_SERVER_ERROR, LOG);
