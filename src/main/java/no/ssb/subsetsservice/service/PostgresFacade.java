@@ -139,7 +139,6 @@ public class PostgresFacade implements DatabaseInterface {
                 pstmt.setString(2, commaDelimitedList);
                 LOG.debug("pstmt: " + pstmt);
                 ResultSet rs = pstmt.executeQuery();
-                pstmt.close();
                 if (!rs.isBeforeFirst()) {
                     return ErrorHandler.newHttpError("There were no versions for series ID " + seriesID, NOT_FOUND, LOG);
                 }
@@ -317,7 +316,6 @@ public class PostgresFacade implements DatabaseInterface {
                 } else {
                     return ErrorHandler.newHttpError("No rows were affected by insert into versions", INTERNAL_SERVER_ERROR, LOG);
                 }
-                pstmt.close();
                 LOG.debug("preparing statement to add version to series");
                 try (PreparedStatement pstmt2 = con.prepareStatement(ADD_VERSION_TO_SERIES)) {
                     pstmt2.setString(1, versionUID);
@@ -431,7 +429,6 @@ public class PostgresFacade implements DatabaseInterface {
             } catch (SQLException ex) {
                 LOG.warn("SQLEx: " + ex.getMessage());
             }
-
             try (PreparedStatement pstmt2 = con.prepareStatement(DELETE_SERIES)) {
                 LOG.debug("pstmt2: " + pstmt2);
                 pstmt2.executeQuery();
@@ -460,7 +457,7 @@ public class PostgresFacade implements DatabaseInterface {
             }
             try (PreparedStatement pstmt2 = con.prepareStatement(DELETE_SERIES_BY_ID)) {
                 pstmt2.setString(1, id);
-                LOG.debug("pstmt: " + pstmt2);
+                LOG.debug("pstmt2: " + pstmt2);
                 try {
                     ResultSet rs = pstmt2.executeQuery();
                 } catch (SQLException ex) {
