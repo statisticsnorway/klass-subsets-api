@@ -73,43 +73,51 @@ public class PostgresFacade implements DatabaseInterface {
         LOG.debug("initializeDatabase in PostgresFacade");
         connectionPool = ConnectionPool.getInstance();
         try (Connection con = connectionPool.getConnection()) {
-            Statement st = con.createStatement();
-            ResultSet rs = st.executeQuery("SELECT VERSION()");
-            if (rs.next()) {
-                LOG.debug("'SELECT VERSION()' result : " + rs.getString(1));
-            }
+            try (Statement st = con.createStatement()) {
+                try (ResultSet rs = st.executeQuery("SELECT VERSION()")) {
+                    if (rs.next()) {
+                        LOG.debug("'SELECT VERSION()' result : " + rs.getString(1));
+                    }
 
-            LOG.debug("Attempting subsets table and index creation...");
-            PreparedStatement preparedStatement = con.prepareStatement(SQL.CREATE_SERIES);
-            LOG.debug("Crete series table");
-            preparedStatement.executeUpdate();
+                    LOG.debug("Attempting subsets table and index creation...");
+                    try (PreparedStatement preparedStatement = con.prepareStatement(SQL.CREATE_SERIES)) {
+                        LOG.debug("Crete series table");
+                        preparedStatement.executeUpdate();
+                    }
 
-            preparedStatement = con.prepareStatement(SQL.SET_OWNER_SERIES);
-            LOG.debug("Set owner of series table");
-            preparedStatement.executeUpdate();
+                    try (PreparedStatement preparedStatement = con.prepareStatement(SQL.SET_OWNER_SERIES)) {
+                        LOG.debug("Set owner of series table");
+                        preparedStatement.executeUpdate();
+                    }
 
-            preparedStatement = con.prepareStatement(SQL.CREATE_VERSIONS);
-            LOG.debug("create versions table");
-            preparedStatement.executeUpdate();
+                    try (PreparedStatement preparedStatement = con.prepareStatement(SQL.CREATE_VERSIONS)) {
+                        LOG.debug("create versions table");
+                        preparedStatement.executeUpdate();
+                    }
 
-            preparedStatement = con.prepareStatement(SQL.SET_OWNER_VERSIONS);
-            LOG.debug("set owner of versions table");
-            preparedStatement.executeUpdate();
+                    try (PreparedStatement preparedStatement = con.prepareStatement(SQL.SET_OWNER_VERSIONS)) {
+                        LOG.debug("set owner of versions table");
+                        preparedStatement.executeUpdate();
+                    }
 
-            preparedStatement = con.prepareStatement(SQL.CREATE_INDEX);
-            LOG.debug("create index");
-            preparedStatement.executeUpdate();
+                    try (PreparedStatement preparedStatement = con.prepareStatement(SQL.CREATE_INDEX)) {
+                        LOG.debug("create index");
+                        preparedStatement.executeUpdate();
+                    }
 
-            st = con.createStatement();
-            String getTablesQuery = "SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'";
-            LOG.debug("Executing query: '"+getTablesQuery+"'");
-            rs = st.executeQuery(getTablesQuery);
-            LOG.debug("Printing SQL table(name)s retrieved with query:");
-            int columnIndex = 1;
-            while (rs.next()) {
-                String table = rs.getString(columnIndex);
-                LOG.debug("'rs.getString(" + columnIndex + "): " + table);
-                columnIndex++;
+                    try (Statement st2 = con.createStatement()) {
+                        String getTablesQuery = "SELECT * FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema='public'";
+                        LOG.debug("Executing query: '" + getTablesQuery + "'");
+                        rs = st2.executeQuery(getTablesQuery);
+                        LOG.debug("Printing SQL table(name)s retrieved with query:");
+                        int columnIndex = 1;
+                        while (rs.next()) {
+                            String table = rs.getString(columnIndex);
+                            LOG.debug("'rs.getString(" + columnIndex + "): " + table);
+                            columnIndex++;
+                        }
+                    }
+                }
             }
             return new ResponseEntity<>(OK);
         } catch (SQLException ex) {
@@ -138,14 +146,15 @@ public class PostgresFacade implements DatabaseInterface {
                 }
                 pstmt.setString(2, commaDelimitedList);
                 LOG.debug("pstmt: " + pstmt);
-                ResultSet rs = pstmt.executeQuery();
-                if (!rs.isBeforeFirst()) {
-                    return ErrorHandler.newHttpError("There were no versions for series ID " + seriesID, NOT_FOUND, LOG);
-                }
-                ObjectMapper om = new ObjectMapper();
-                ArrayNode versionsArrayNode = om.createArrayNode();
-                while (rs.next()) {
-                    versionsArrayNode.add(om.readTree(rs.getString(1)));
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (!rs.isBeforeFirst()) {
+                        return ErrorHandler.newHttpError("There were no versions for series ID " + seriesID, NOT_FOUND, LOG);
+                    }
+                    ObjectMapper om = new ObjectMapper();
+                    ArrayNode versionsArrayNode = om.createArrayNode();
+                    while (rs.next()) {
+                        versionsArrayNode.add(om.readTree(rs.getString(1)));
+                    }
                 }
                 return new ResponseEntity<>(versionsArrayNode, OK);
             }
@@ -165,16 +174,17 @@ public class PostgresFacade implements DatabaseInterface {
             try (PreparedStatement pstmt = con.prepareStatement(SELECT_VERSION_BY_ID)) {
                 pstmt.setString(1, versionUid);
                 LOG.debug("pstmt: " + pstmt);
-                ResultSet rs = pstmt.executeQuery();
-                ObjectMapper om = new ObjectMapper();
-                JsonNode series;
-                boolean next = rs.next();
-                if (!next)
-                    return ErrorHandler.newHttpError("Version with id " + versionUid + " was not found", NOT_FOUND, LOG);
-                if (!rs.isLast())
-                    LOG.error("There was more than one row in a rs from a query find a series version with id " + versionUid);
-                series = om.readTree(rs.getString(1));
-                return new ResponseEntity<>(series, OK);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    ObjectMapper om = new ObjectMapper();
+                    JsonNode series;
+                    boolean next = rs.next();
+                    if (!next)
+                        return ErrorHandler.newHttpError("Version with id " + versionUid + " was not found", NOT_FOUND, LOG);
+                    if (!rs.isLast())
+                        LOG.error("There was more than one row in a rs from a query find a series version with id " + versionUid);
+                    series = om.readTree(rs.getString(1));
+                    return new ResponseEntity<>(series, OK);
+                }
             }
         } catch (SQLException ex) {
             LOG.error("Failed to create series", ex);
@@ -192,16 +202,17 @@ public class PostgresFacade implements DatabaseInterface {
             try (PreparedStatement pstmt = con.prepareStatement(SELECT_SERIES_BY_ID)) {
                 pstmt.setString(1, id);
                 LOG.debug("pstmt: " + pstmt);
-                ResultSet rs = pstmt.executeQuery();
-                ObjectMapper om = new ObjectMapper();
-                JsonNode series;
-                boolean next = rs.next();
-                if (!next)
-                    return ErrorHandler.newHttpError("Series with id " + id + " was not found", NOT_FOUND, LOG);
-                if (!rs.isLast())
-                    LOG.error("There was more than one row in a rs from a query find a series with id " + id);
-                series = om.readTree(rs.getString(1));
-                return new ResponseEntity<>(series, OK);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    ObjectMapper om = new ObjectMapper();
+                    JsonNode series;
+                    boolean next = rs.next();
+                    if (!next)
+                        return ErrorHandler.newHttpError("Series with id " + id + " was not found", NOT_FOUND, LOG);
+                    if (!rs.isLast())
+                        LOG.error("There was more than one row in a rs from a query find a series with id " + id);
+                    series = om.readTree(rs.getString(1));
+                    return new ResponseEntity<>(series, OK);
+                }
             }
         } catch (SQLException ex) {
             LOG.error("Failed to create series", ex);
@@ -216,14 +227,15 @@ public class PostgresFacade implements DatabaseInterface {
     public ResponseEntity<JsonNode> getAllSubsetSeries() {
         try (Connection con = connectionPool.getConnection()) {
             try (PreparedStatement pstmt = con.prepareStatement(SELECT_ALL_SERIES)) {
-                ResultSet rs = pstmt.executeQuery();
-                ObjectMapper om = new ObjectMapper();
-                ArrayNode allSeriesArrayNode = om.createArrayNode();
-                while (rs.next()) {
-                    String rsGETString = rs.getString(1);
-                    allSeriesArrayNode.add(om.readTree(rsGETString));
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    ObjectMapper om = new ObjectMapper();
+                    ArrayNode allSeriesArrayNode = om.createArrayNode();
+                    while (rs.next()) {
+                        String rsGETString = rs.getString(1);
+                        allSeriesArrayNode.add(om.readTree(rsGETString));
+                    }
+                    return new ResponseEntity<>(allSeriesArrayNode, OK);
                 }
-                return new ResponseEntity<>(allSeriesArrayNode, OK);
             }
         } catch (SQLException ex) {
             LOG.error("Failed to create series", ex);
@@ -237,13 +249,15 @@ public class PostgresFacade implements DatabaseInterface {
     @Override
     public boolean healthReady() {
         try (Connection con = connectionPool.getConnection()) {
-            Statement st = con.createStatement();
-            ResultSet rs = st.executeQuery("SELECT VERSION()");
-            if (rs.next()) {
-                LOG.debug("'SELECT VERSION()' result : " + rs.getString(1));
-                return true;
+            try (Statement st = con.createStatement()) {
+                try (ResultSet rs = st.executeQuery("SELECT VERSION()")) {
+                    if (rs.next()) {
+                        LOG.debug("'SELECT VERSION()' result : " + rs.getString(1));
+                        return true;
+                    }
+                    return false;
+                }
             }
-            return false;
         } catch (SQLException ex) {
             LOG.error(ex.getMessage(), ex);
             return false;
@@ -451,6 +465,7 @@ public class PostgresFacade implements DatabaseInterface {
                 LOG.debug("pstmt: " + pstmt);
                 try {
                     ResultSet rs = pstmt.executeQuery();
+                    rs.close();
                 } catch (SQLException ex) {
                     LOG.warn("SQLEx: " + ex.getMessage());
                 }
@@ -460,6 +475,7 @@ public class PostgresFacade implements DatabaseInterface {
                 LOG.debug("pstmt2: " + pstmt2);
                 try {
                     ResultSet rs = pstmt2.executeQuery();
+                    rs.close();
                 } catch (SQLException ex) {
                     LOG.warn("SQLEx: " + ex.getMessage());
                 }
