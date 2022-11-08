@@ -25,7 +25,7 @@ resources:
     - repository: templates
       type: github
       name: statisticsnorway/azure-pipelines-templates
-      ref: refs/tags/1.1.10
+      ref: refs/tags/1.1.32
       endpoint: statisticsnorway
 
 jobs:
