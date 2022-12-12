@@ -1,6 +1,9 @@
 -- noinspection SqlNoDataSourceInspectionForFile
 
--- Dataset Access
-CREATE USER subsets WITH PASSWORD 'postgres';
-CREATE DATABASE subsets;
-GRANT ALL PRIVILEGES ON DATABASE subsets TO subsets;
+-- subsets Access
+create USER subsets with PASSWORD 'postgres';
+create DATABASE subsets;
+grant all privileges on DATABASE subsets TO subsets;
+alter role subsets SUPERUSER;
+commit;
+
