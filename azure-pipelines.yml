@@ -16,6 +16,8 @@ variables:
   - name: fullSha
     value: '$(Build.SourceVersion)'
   - name: imageName
+    value: 'prod-bip/ssb/klass/subsets-api'
+  - name: gcrImageName
     value: 'eu.gcr.io/prod-bip/ssb/klass/subsets-api'
 
 resources:
@@ -83,4 +85,4 @@ jobs:
   - template: 'docker/docker-tag-for-production.yml@templates'
     parameters:
       tagToTag: 'master-$(fullSha)'
-      gcrImageName: $(imageName)
+      gcrImageName: $(gcrImageName)
