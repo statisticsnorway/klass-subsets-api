@@ -17,8 +17,6 @@ variables:
     value: '$(Build.SourceVersion)'
   - name: imageName
     value: 'eu.gcr.io/prod-bip/ssb/klass/subsets-api'
-  - name: repoName
-    value: 'prod-bip/ssb/klass/subsets-api'
 
 resources:
   repositories:
@@ -79,7 +77,6 @@ jobs:
       - template: 'docker/docker-build-snykscan-and-push-to-gcr.yaml@templates'
         parameters:
           imageName: $(imageName)
-          repoName: $(repoName)
           snykServiceConnection: 'Klass-Snyk'
           snykScanThreshold: 'high'
           snykOrganisation: 'klass'
