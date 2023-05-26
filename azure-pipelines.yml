@@ -15,10 +15,14 @@ variables:
   - group: Hemmeligheter
   - name: fullSha
     value: '$(Build.SourceVersion)'
+  - name: baseImagePath
+    value: 'eu.gcr.io/'
   - name: imageName
     value: 'prod-bip/ssb/klass/subsets-api'
-  - name: gcrImageName
-    value: 'eu.gcr.io/prod-bip/ssb/klass/subsets-api'
+  - name: snykServiceConnection
+    value: 'Klass-Snyk'
+  - name: snykOrganisation
+    value: 'klass'
 
 resources:
   repositories:
@@ -79,10 +83,9 @@ jobs:
       - template: 'docker/docker-build-snykscan-and-push-to-gcr.yaml@templates'
         parameters:
           imageName: $(imageName)
-          snykServiceConnection: 'Klass-Snyk'
-          snykScanThreshold: 'high'
-          snykOrganisation: 'klass'
+          snykServiceConnection: $(snykServiceConnection)
+          snykOrganisation: $(snykOrganisation)
   - template: 'docker/docker-tag-for-production.yml@templates'
     parameters:
       tagToTag: 'master-$(fullSha)'
-      gcrImageName: $(gcrImageName)
+      gcrImageName: '$(baseImagePath)$(imageName)'
