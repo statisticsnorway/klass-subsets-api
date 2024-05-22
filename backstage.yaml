@@ -6,7 +6,7 @@ metadata:
 spec:
   type: openapi
   system: kostra-kompis
-  owner: team_nettopp
+  owner: dapla-metadata-developers
   lifecycle: production
   definition: |
     openapi: "3.0.0"
