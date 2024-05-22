@@ -1,0 +1,23 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: klass-subsets-api
+  description: A REST API to store, search and maintain KLASS subsets.
+spec:
+  type: openapi
+  system: kostra-kompis
+  owner: team_nettopp
+  lifecycle: production
+  definition: |
+    openapi: "3.0.0"
+    info:
+      version: 2
+      title: Klass Uttrekk
+    servers:
+      - url: https://subsets-api.prod-bip-app.ssb.no/v2/subsets/
+    paths:
+      /subsets:
+        get:
+          summary: Get a subset
+        post:
+          summary: Create a subset          
