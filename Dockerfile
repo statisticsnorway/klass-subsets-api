@@ -1,4 +1,4 @@
-FROM azul/zulu-openjdk-alpine:11-jre
+FROM azul/zulu-openjdk-alpine:11.0.25-11.76-jre-headless-x86
 
 # Add the service itself
 COPY ./target/klass-subsets-api.jar /usr/share/klass-subsets-api/
